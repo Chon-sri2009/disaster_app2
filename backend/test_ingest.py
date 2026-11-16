@@ -59,6 +59,16 @@ class AuthTests(Base):
         self.assertEqual(self.send(0, 100, fault="weird")[0], 400)
 
 
+class PruneTests(Base):
+    def test_old_readings_are_deleted_but_state_stays(self):
+        self.assertEqual(self.send(0, 100)[0], 200)
+        self.clock.t += si.KEEP_S + 10
+        self.assertEqual(self.send(0, 100)[0], 200)
+        n = self.store.db.execute("SELECT COUNT(*) FROM readings").fetchone()[0]
+        self.assertEqual(n, 1)
+        self.assertEqual(self.send(0, 100, seq=1)[0], 409)  # replay guard survives pruning
+
+
 class StateTests(Base):
     def test_calm_is_safe(self):
         for age, dist, f in series("calm", H):

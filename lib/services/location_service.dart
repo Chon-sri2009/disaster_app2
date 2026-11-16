@@ -30,6 +30,9 @@ class LocationService {
 
   final StorageService _storage;
 
+  // The last position we saved, or null if GPS has never worked.
+  LatLng? get lastKnown => _storage.lastPosition;
+
   // Asks for permission if needed, reads GPS, and saves the position for later.
   Future<LocationResult> getCurrent() async {
     LocationIssue issue;

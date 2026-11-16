@@ -53,3 +53,5 @@ backend/stations.json
 __pycache__/
 .env
 node_modules/
+
+backend/*.db

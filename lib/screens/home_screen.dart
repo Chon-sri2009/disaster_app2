@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../data/emergency_numbers.dart';
 import '../data/mock_data.dart';
 import '../l10n/l10n.dart';
+import '../services/alert_rules.dart';
 import '../services/alert_service.dart';
 import '../services/emergency_launcher.dart';
 import '../services/location_service.dart';
@@ -49,7 +51,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (point != null) {
       final lat = point.latitude.toStringAsFixed(6);
       final lng = point.longitude.toStringAsFixed(6);
-      final time = DateTime.now().toString().substring(0, 16);
+      // Local time plus the UTC offset, so a rescuer in another zone reads the right hour.
+      final now = DateTime.now();
+      final off = now.timeZoneOffset;
+      final hh = off.inHours.abs().toString().padLeft(2, '0');
+      final mm = (off.inMinutes.abs() % 60).toString().padLeft(2, '0');
+      final time =
+          '${now.toString().substring(0, 16)} UTC${off.isNegative ? '-' : '+'}$hh:$mm';
       // The person reading this may speak either language, so the message carries both.
       final cached = result.fromCache
           ? ' (ตำแหน่งที่บันทึกไว้ล่าสุด / last saved position)'
@@ -81,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final content = _StatusColumn(
           sensors: widget.sensors,
           alerts: widget.alerts,
+          position: widget.location.lastKnown,
         );
         if (wide) {
           // Tablet or landscape: status on the left, SOS panel pinned on the right.
@@ -120,17 +129,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
 // The scrolling part of Home: level band, official alerts and the water meter.
 class _StatusColumn extends StatelessWidget {
-  const _StatusColumn({required this.sensors, this.alerts});
+  const _StatusColumn({required this.sensors, this.alerts, this.position});
 
   final SensorService sensors;
   final AlertService? alerts;
+  final LatLng? position;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _LevelBand(sensors: sensors),
+        _LevelBand(sensors: sensors, alerts: alerts, position: position),
         Padding(
           padding: const EdgeInsets.all(AppSpace.md),
           child: Column(
@@ -149,23 +159,35 @@ class _StatusColumn extends StatelessWidget {
 
 // A full-width colored band with the alert level as icon + word + advice (never color alone).
 class _LevelBand extends StatelessWidget {
-  const _LevelBand({required this.sensors});
+  const _LevelBand({required this.sensors, this.alerts, this.position});
 
   final SensorService sensors;
+  final AlertService? alerts;
+  final LatLng? position;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListenableBuilder(
-      listenable: sensors,
+      listenable: Listenable.merge([sensors, ?alerts]),
       builder: (context, _) {
-        final level = sensors.level;
+        final p = position;
+        final official = alerts != null && alerts!.hasSnapshot && p != null
+            ? alerts!.levelAt(p)
+            : null;
+        final level = AlertRules.combine(sensors.level, official);
+        final fromOfficial = level != null && level == official && level != sensors.level;
         final t = context.tokens;
         final style = level == null ? null : t.styleFor(level);
         final onColor = style?.onColor ?? t.ink;
         final at = sensors.fetchedAt;
         final String source;
-        if (sensors.isDemo) {
+        if (fromOfficial) {
+          source = context.tr(
+            th: 'ประกาศเตือนภัยทางการ ในพื้นที่ล่าสุดของคุณ',
+            en: 'Official alert for your last known area',
+          );
+        } else if (sensors.isDemo) {
           source = context.tr(
             th: 'ข้อมูลทดลอง ไม่ใช่ค่าจริง',
             en: 'Demo data, not real',

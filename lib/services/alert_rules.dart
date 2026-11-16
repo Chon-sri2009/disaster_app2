@@ -37,6 +37,14 @@ abstract final class AlertRules {
     return best;
   }
 
+  // The level Home shows: the worse of the sensor level and an official alert at the user's
+  // position. An official "no alert here" never lowers or creates a Safe; only an alert escalates.
+  static AlertLevel? combine(AlertLevel? sensor, AlertLevel? official) {
+    if (official == null || official == AlertLevel.safe) return sensor;
+    if (sensor == null || official.index > sensor.index) return official;
+    return sensor;
+  }
+
   // Ray-casting point-in-polygon on WGS84 degrees (x = longitude, y = latitude).
   static bool contains(List<LatLng> ring, LatLng p) {
     var inside = false;

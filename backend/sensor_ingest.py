@@ -34,6 +34,7 @@ STUCK_N, STUCK_EPS_CM = 90, 0.1
 STALE_S, OFFLINE_S = 120, 600
 RATE_WINDOW_S, RATE_MIN_SPAN_S = 600, 120
 MAX_AGE_MS = 24 * 3600 * 1000
+KEEP_S = 7 * 24 * 3600       # readings older than this are deleted; nothing reads further back
 MAX_BODY = 2048
 FAULTS = {"ok", "noecho", "range", "jump", "stuck"}
 
@@ -142,6 +143,9 @@ class Store:
                 "INSERT INTO readings VALUES(?,?,?,?,?,?)",
                 (device, t, m["seq"], m["dist"], water, status),
             )
+            self.db.execute(
+                "DELETE FROM readings WHERE station=? AND t<?", (device, now - KEEP_S)
+            )
             self.db.commit()
         return 200, {"ok": True, "status": status}
 
@@ -246,6 +250,8 @@ class Store:
 # ------------------------------------------------------------------ HTTP
 def make_handler(store):
     class Handler(BaseHTTPRequestHandler):
+        timeout = 10  # a client that stalls mid-request is dropped, not held forever
+
         def _send(self, code, obj):
             body = json.dumps(obj).encode()
             self.send_response(code)

@@ -1,4 +1,4 @@
-package com.example.disaster_app2
+package app.disasteralert.th
 
 import io.flutter.embedding.android.FlutterActivity
 

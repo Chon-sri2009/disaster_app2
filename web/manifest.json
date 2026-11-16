@@ -1,6 +1,6 @@
 {
-    "name": "disaster_app2",
-    "short_name": "disaster_app2",
+    "name": "Disaster Alert & Rescue",
+    "short_name": "Disaster Alert",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

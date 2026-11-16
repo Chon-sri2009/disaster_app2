@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "disaster_app2" "\0"
+            VALUE "CompanyName", "Disaster Alert" "\0"
+            VALUE "FileDescription", "Disaster Alert & Rescue" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "disaster_app2" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Disaster Alert. All rights reserved." "\0"
             VALUE "OriginalFilename", "disaster_app2.exe" "\0"
-            VALUE "ProductName", "disaster_app2" "\0"
+            VALUE "ProductName", "Disaster Alert" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

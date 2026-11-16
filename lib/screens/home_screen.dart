@@ -138,7 +138,7 @@ class _StatusColumn extends StatelessWidget {
             children: [
               // Official alerts come first: they outrank the community sensor below.
               if (alerts != null) _OfficialAlerts(alerts: alerts!),
-              _WaterMeter(sensors: sensors),
+              if (sensors.isDemo) _WaterMeter(sensors: sensors),
             ],
           ),
         ),
@@ -160,14 +160,45 @@ class _LevelBand extends StatelessWidget {
       listenable: sensors,
       builder: (context, _) {
         final level = sensors.level;
-        final style = context.tokens.styleFor(level);
-        final onColor = style.onColor;
-        final source = context.tr(
-          th: 'จากเซนเซอร์ชุมชน',
-          en: 'From community sensors',
-        );
-        final label = context.levelLabel(level);
-        final advice = context.levelAdvice(level);
+        final t = context.tokens;
+        final style = level == null ? null : t.styleFor(level);
+        final onColor = style?.onColor ?? t.ink;
+        final at = sensors.fetchedAt;
+        final String source;
+        if (sensors.isDemo) {
+          source = context.tr(
+            th: 'ข้อมูลทดลอง ไม่ใช่ค่าจริง',
+            en: 'Demo data, not real',
+          );
+        } else if (!sensors.isLive) {
+          source = context.tr(
+            th: 'ยังไม่ได้เชื่อมต่อเซนเซอร์',
+            en: 'Not connected to sensors yet',
+          );
+        } else if (at == null) {
+          source = context.tr(
+            th: 'เชื่อมต่อเซนเซอร์ไม่ได้',
+            en: 'Cannot reach the sensors',
+          );
+        } else {
+          source = context.tr(
+            th:
+                'จากเซนเซอร์ชุมชน · อัปเดต ${context.stamp(at)}'
+                '${sensors.isStale ? ' (ข้อมูลอาจเก่า)' : ''}',
+            en:
+                'From community sensors · updated ${context.stamp(at)}'
+                '${sensors.isStale ? ' (may be out of date)' : ''}',
+          );
+        }
+        final label = level == null
+            ? context.tr(th: 'ไม่มีข้อมูลสด', en: 'No live data')
+            : context.levelLabel(level);
+        final advice = level == null
+            ? context.tr(
+                th: 'อย่าถือว่าปลอดภัย โปรดติดตาม T-Alert และสายด่วน 1784',
+                en: 'Do not assume it is safe. Watch T-Alert and the 1784 hotline.',
+              )
+            : context.levelAdvice(level);
         return Semantics(
           container: true,
           liveRegion: true,
@@ -175,7 +206,7 @@ class _LevelBand extends StatelessWidget {
           child: ExcludeSemantics(
             child: Container(
               width: double.infinity,
-              color: style.color,
+              color: style?.color ?? t.hairline,
               child: SafeArea(
                 bottom: false,
                 child: Padding(
@@ -183,7 +214,11 @@ class _LevelBand extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(style.icon, size: 56, color: onColor),
+                      Icon(
+                        style?.icon ?? Icons.sensors_off,
+                        size: 56,
+                        color: onColor,
+                      ),
                       const SizedBox(width: AppSpace.md),
                       Expanded(
                         child: Column(

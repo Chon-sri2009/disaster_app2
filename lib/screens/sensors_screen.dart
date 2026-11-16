@@ -22,6 +22,7 @@ class SensorsScreen extends StatelessWidget {
         child: ListenableBuilder(
           listenable: sensors,
           builder: (context, _) {
+            if (!sensors.isDemo) return _LiveStations(sensors: sensors);
             final reading = sensors.latest;
             return ListView(
               padding: const EdgeInsets.all(AppSpace.md),
@@ -224,6 +225,82 @@ class _SensorCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Real stations from the backend: name, level word, water depth and age. A station with no
+// usable reading says so; it is never drawn as Safe.
+class _LiveStations extends StatelessWidget {
+  const _LiveStations({required this.sensors});
+
+  final SensorService sensors;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final at = sensors.fetchedAt;
+    return ListView(
+      padding: const EdgeInsets.all(AppSpace.md),
+      children: [
+        Text(
+          context.tr(th: 'เซนเซอร์', en: 'Sensors'),
+          style: theme.textTheme.headlineMedium,
+        ),
+        const SizedBox(height: AppSpace.md),
+        if (!sensors.isLive)
+          WarningBanner(
+            kind: BannerKind.offline,
+            message: context.tr(
+              th: 'ยังไม่ได้เชื่อมต่อเซนเซอร์',
+              en: 'Not connected to sensors yet.',
+            ),
+          )
+        else if (at == null)
+          WarningBanner(
+            kind: BannerKind.offline,
+            message: context.tr(
+              th: 'เชื่อมต่อเซนเซอร์ไม่ได้ ยังไม่มีข้อมูลสด',
+              en: 'Cannot reach the sensors. No live data yet.',
+            ),
+          )
+        else if (sensors.isStale)
+          WarningBanner(
+            kind: BannerKind.offline,
+            message: context.tr(
+              th: 'อัปเดตล่าสุด ${context.stamp(at)} ข้อมูลอาจไม่เป็นปัจจุบัน',
+              en: 'Last updated ${context.stamp(at)}. May be out of date.',
+            ),
+          ),
+        for (final s in sensors.stations)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              s.level == null
+                  ? Icons.sensors_off
+                  : context.tokens.styleFor(s.level!).icon,
+            ),
+            title: Text(s.name),
+            subtitle: Text(
+              s.level == null
+                  ? context.tr(
+                      th: 'ไม่มีข้อมูลที่เชื่อถือได้',
+                      en: 'No reliable reading',
+                    )
+                  : '${context.levelLabel(s.level!)} · '
+                        '${s.waterCm?.toStringAsFixed(0) ?? '-'} ${context.cmUnit}'
+                        '${s.readingTime == null ? '' : ' · ${context.stamp(s.readingTime!)}'}',
+            ),
+          ),
+        const SizedBox(height: AppSpace.sm),
+        Text(
+          context.tr(
+            th: 'เซนเซอร์ชุมชน ไม่ใช่เครื่องวัดทางการ',
+            en: 'Community sensors, not official gauges.',
+          ),
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
     );
   }
 }

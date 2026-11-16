@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
@@ -7,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../models/alert_level.dart';
 import '../models/official_alert.dart';
 import 'alert_rules.dart';
+import 'http_get.dart';
 import 'storage_service.dart';
 
 // Holds the last alert snapshot, caches it for offline use, and says how old it is (plan 7.5).
@@ -17,7 +17,7 @@ class AlertService extends ChangeNotifier {
     this.snapshotUrl = '',
     Future<String> Function(Uri url)? fetcher,
     DateTime Function()? clock,
-  }) : _fetch = fetcher ?? _httpGet,
+  }) : _fetch = fetcher ?? httpGetText,
        _clock = clock ?? DateTime.now {
     final cached = _storage.snapshot;
     if (cached != null) {
@@ -73,17 +73,5 @@ class AlertService extends ChangeNotifier {
     ];
     _fetchedAt = fetchedAt;
     notifyListeners();
-  }
-
-  static Future<String> _httpGet(Uri url) async {
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 10);
-    try {
-      final res = await (await client.getUrl(url)).close();
-      if (res.statusCode != 200) throw HttpException('HTTP ${res.statusCode}');
-      return await utf8.decodeStream(res);
-    } finally {
-      client.close();
-    }
   }
 }

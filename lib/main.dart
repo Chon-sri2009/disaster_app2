@@ -20,8 +20,9 @@ import 'theme/app_tokens.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final storage = await StorageService.create();
-  // Stand-in for "download shelters when online"; real data would be saved here.
-  await storage.saveShelters(MockData.shelters);
+  // Stand-in for "download shelters when online". Seed only an empty cache: a real
+  // downloaded list must survive a restart.
+  if (storage.shelters.isEmpty) await storage.saveShelters(MockData.shelters);
   runApp(DisasterApp(storage: storage));
 }
 
@@ -70,7 +71,10 @@ class AppShell extends StatefulWidget {
 
 // Creates the services once and keeps the selected tab.
 class _AppShellState extends State<AppShell> {
-  late final SensorService _sensors = SensorService();
+  // Set at build time: --dart-define=SENSOR_SNAPSHOT_URL=https://host/snapshot
+  late final SensorService _sensors = SensorService(
+    snapshotUrl: const String.fromEnvironment('SENSOR_SNAPSHOT_URL'),
+  );
   late final AlertService _alerts = AlertService(widget.storage)..refresh();
   late final LocationService _location = LocationService(widget.storage);
   int _index = 0;

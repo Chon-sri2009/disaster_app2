@@ -11,11 +11,11 @@ import 'package:vector_map_tiles_pmtiles/vector_map_tiles_pmtiles.dart';
 // - places get their icon and name: emergency places first, landmarks next, everyday shops and
 //   food only when zoomed in close (so panning stays smooth). The zoom limits are set per
 //   layer: this renderer reads the data's own min_zoom wrongly, which hid every place.
-// Icons come from the sprite sheet loaded by loadMapSprites().
+// Icons come from the sprite sheet loaded by loadMapSprites(). No sprite URL is set here on
+// purpose: the renderer only reads one when it loads a style over the network, which this app
+// never does, so the theme names nothing that could need a connection.
 final offlineMapTheme =
-    ProtomapsThemes(
-      sprites: 'https://protomaps.github.io/basemaps-assets/sprites/v4/light',
-    ).build([
+    const ProtomapsThemes().build([
       for (final layer in v4.themeLight)
         if (_dropped.contains(layer['id']) ||
             (layer['id'] as String).startsWith('roads_tunnels') ||

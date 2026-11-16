@@ -17,13 +17,44 @@ final offlineMapTheme =
       sprites: 'https://protomaps.github.io/basemaps-assets/sprites/v4/light',
     ).build([
       for (final layer in v4.themeLight)
-        if (layer['id'] == 'pois') ...[
+        if (_dropped.contains(layer['id']) ||
+            (layer['id'] as String).startsWith('roads_tunnels') ||
+            (layer['id'] as String).startsWith('roads_bridges'))
+          ...const <Map<String, Object>>[]
+        else if (layer['id'] == 'pois') ...[
           _placeLayer('pois_emergency', _emergencyKinds, minzoom: 14),
           _placeLayer('pois_key', _keyKinds, minzoom: 15),
           _placeLayer('pois_minor', _minorKinds, minzoom: 16),
         ] else
           _tuned(layer),
     ]);
+
+// Layers that add little to a rescue map but cost drawing time on every tile (drawing runs on the
+// UI thread, so each layer counts toward drag smoothness). Tunnels and bridges are skipped too:
+// their roads still show as normal roads.
+const _dropped = {
+  'landuse_industrial',
+  'landuse_military',
+  'landuse_wood',
+  'landuse_scrub',
+  'landuse_glacier',
+  'landuse_sand',
+  'landuse_aerodrome',
+  'landuse_runway',
+  'landuse_zoo',
+  'landuse_pier',
+  'landuse_pedestrian',
+  'roads_runway',
+  'roads_taxiway',
+  'roads_pier',
+  'roads_rail',
+  'boundaries_country',
+  'boundaries',
+  'water_waterway_label',
+  'water_label_ocean',
+  'places_region',
+  'places_country',
+};
 
 // Places people look for in an emergency: shown from the first zoom level that has labels.
 const _emergencyKinds = [
@@ -120,7 +151,7 @@ Map<String, Object> _tuned(Map<String, Object> layer) {
   final size = layout['text-size'];
   return {
     ...layer,
-    if (layer['id'] == 'roads_labels_minor') 'minzoom': 14,
+    if (layer['id'] == 'roads_other') 'minzoom': 15,
     'layout': {
       ...layout.cast<String, Object>(),
       'text-field': _name,

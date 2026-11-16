@@ -1,0 +1,13 @@
+{
+  "station-1": {
+    "key": "PUT_THE_SAME_64_CHARACTER_STRING_AS_IN_secrets.h",
+    "name": "Test station",
+    "lat": 13.7563,
+    "lng": 100.5018,
+    "sensorHeightCm": 300,
+    "watchCm": 120,
+    "warningCm": 160,
+    "dangerCm": 185,
+    "riseWatchCmH": 20
+  }
+}

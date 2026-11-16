@@ -5,20 +5,23 @@ import 'package:latlong2/latlong.dart';
 
 import 'storage_service.dart';
 
-// The outcome of a GPS request: a point (fresh or saved) and/or a readable error.
+// Why GPS failed. The words for each case live in l10n (context.locationError).
+enum LocationIssue { serviceOff, denied, blocked, timeout, unknown }
+
+// The outcome of a GPS request: a point (fresh or saved) and/or the reason it failed.
 class LocationResult {
-  const LocationResult({this.point, this.fromCache = false, this.error});
+  const LocationResult({this.point, this.fromCache = false, this.issue});
 
   final LatLng? point;
   final bool fromCache;
-  final String? error;
+  final LocationIssue? issue;
 }
 
-// A problem with GPS that has a message safe to show to the user.
+// A known problem with GPS.
 class _LocationProblem implements Exception {
-  const _LocationProblem(this.message);
+  const _LocationProblem(this.issue);
 
-  final String message;
+  final LocationIssue issue;
 }
 
 // Reads the phone's GPS position and never throws; falls back to the last saved position.
@@ -29,30 +32,27 @@ class LocationService {
 
   // Asks for permission if needed, reads GPS, and saves the position for later.
   Future<LocationResult> getCurrent() async {
-    String error;
+    LocationIssue issue;
     try {
       final point = await _readGps();
       await _storage.saveLastPosition(point);
       return LocationResult(point: point);
     } on _LocationProblem catch (e) {
-      error = e.message;
+      issue = e.issue;
     } on TimeoutException {
-      error =
-          'GPS took too long to answer. Try again outside or near a window.';
+      issue = LocationIssue.timeout;
     } catch (_) {
-      error = 'Could not read the GPS position on this device.';
+      issue = LocationIssue.unknown;
     }
 
     final saved = _storage.lastPosition;
-    return LocationResult(point: saved, fromCache: saved != null, error: error);
+    return LocationResult(point: saved, fromCache: saved != null, issue: issue);
   }
 
   // Checks that location is on and allowed, then returns the current position.
   Future<LatLng> _readGps() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
-      throw const _LocationProblem(
-        'Location is turned off. Please turn on GPS.',
-      );
+      throw const _LocationProblem(LocationIssue.serviceOff);
     }
 
     var permission = await Geolocator.checkPermission();
@@ -60,12 +60,10 @@ class LocationService {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.denied) {
-      throw const _LocationProblem('Location permission was denied.');
+      throw const _LocationProblem(LocationIssue.denied);
     }
     if (permission == LocationPermission.deniedForever) {
-      throw const _LocationProblem(
-        'Location permission is blocked. Enable it in the phone settings.',
-      );
+      throw const _LocationProblem(LocationIssue.blocked);
     }
 
     final position = await Geolocator.getCurrentPosition(

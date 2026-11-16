@@ -14,4 +14,13 @@ abstract final class EmergencyLauncher {
       queryParameters: {'body': body},
     ),
   );
+
+  // Opens turn-by-turn directions in the phone's map app.
+  static Future<bool> navigate(double lat, double lng) => launchUrl(
+    Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': '$lat,$lng',
+    }),
+    mode: LaunchMode.externalApplication,
+  );
 }

@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../data/emergency_numbers.dart';
 import '../data/mock_data.dart';
+import '../l10n/l10n.dart';
 import '../services/alert_service.dart';
 import '../services/emergency_launcher.dart';
 import '../services/location_service.dart';
@@ -12,7 +13,7 @@ import '../widgets/content_width.dart';
 import '../widgets/sos_hold_button.dart';
 import '../widgets/warning_banner.dart';
 
-// Home screen: alert level, water level, latest warning, and a pinned press-and-hold SOS button.
+// Home screen: alert level, water level, official alerts, and a pinned press-and-hold SOS button.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -40,89 +41,34 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() => _locating = false);
 
-    final danger = context.tokens.danger;
     final point = result.point;
-    if (point == null) {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          icon: Icon(Icons.location_off, color: danger, size: 32),
-          title: const Text('Cannot find your location'),
-          content: Text(
-            '${result.error}\n\nNo saved position is available. '
-            'Call your local emergency number if you are in danger.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-      return;
+    final reason = result.issue == null
+        ? ''
+        : context.locationError(result.issue!);
+    String? message;
+    if (point != null) {
+      final lat = point.latitude.toStringAsFixed(6);
+      final lng = point.longitude.toStringAsFixed(6);
+      final time = DateTime.now().toString().substring(0, 16);
+      // The person reading this may speak either language, so the message carries both.
+      final cached = result.fromCache
+          ? ' (ตำแหน่งที่บันทึกไว้ล่าสุด / last saved position)'
+          : '';
+      message =
+          'SOS! ต้องการความช่วยเหลือ / I need help.\n'
+          'ตำแหน่ง / Location: $lat, $lng$cached\n'
+          'แผนที่ / Map: https://www.google.com/maps?q=$lat,$lng\n'
+          'เวลา / Time: $time';
     }
-
-    final lat = point.latitude.toStringAsFixed(6);
-    final lng = point.longitude.toStringAsFixed(6);
-    final time = DateTime.now().toString().substring(0, 16);
-    final source = result.fromCache ? ' (last saved position)' : '';
-    final message =
-        'SOS! I need help.\n'
-        'Location: $lat, $lng$source\n'
-        'Map: https://www.google.com/maps?q=$lat,$lng\n'
-        'Time: $time';
-
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        icon: Icon(Icons.sos, color: danger, size: 32),
-        title: const Text('Your help message'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (result.fromCache)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpace.md),
-                  child: WarningBanner(
-                    kind: BannerKind.error,
-                    message:
-                        'GPS failed (${result.error}) so the last saved position is used.',
-                  ),
-                ),
-              SelectableText(message),
-              const SizedBox(height: AppSpace.md),
-              Text(
-                'Emergency calls: ${EmergencyNumbers.sos.map((n) => '${n.number} ${n.service}').join(', ')}',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          for (final n in EmergencyNumbers.sos)
-            TextButton.icon(
-              onPressed: () => EmergencyLauncher.call(n.number),
-              icon: const Icon(Icons.call),
-              label: Text('Call ${n.number}'),
-            ),
-          TextButton.icon(
-            onPressed: () => EmergencyLauncher.sms(const [], message),
-            icon: const Icon(Icons.sms),
-            label: const Text('SMS'),
-          ),
-          FilledButton.icon(
-            onPressed: () =>
-                SharePlus.instance.share(ShareParams(text: message)),
-            icon: const Icon(Icons.share),
-            label: const Text('Share'),
-          ),
-        ],
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (context) => _SosSheet(
+        message: message,
+        reason: reason,
+        fromCache: result.fromCache,
       ),
     );
   }
@@ -172,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// The scrolling part of Home: level band, water meter and the latest warning.
+// The scrolling part of Home: level band, official alerts and the water meter.
 class _StatusColumn extends StatelessWidget {
   const _StatusColumn({required this.sensors, this.alerts});
 
@@ -190,10 +136,8 @@ class _StatusColumn extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Official alerts come first: they outrank the community sensor below.
               if (alerts != null) _OfficialAlerts(alerts: alerts!),
-              // The warning comes first: it is the next thing to read after the level.
-              const WarningBanner(message: MockData.latestWarning),
-              const SizedBox(height: AppSpace.md),
               _WaterMeter(sensors: sensors),
             ],
           ),
@@ -218,11 +162,16 @@ class _LevelBand extends StatelessWidget {
         final level = sensors.level;
         final style = context.tokens.styleFor(level);
         final onColor = style.onColor;
+        final source = context.tr(
+          th: 'จากเซนเซอร์ชุมชน',
+          en: 'From community sensors',
+        );
+        final label = context.levelLabel(level);
+        final advice = context.levelAdvice(level);
         return Semantics(
           container: true,
           liveRegion: true,
-          label:
-              'Alert level for ${MockData.areaName}: ${level.label}. ${level.advice}',
+          label: '$source: $label. $advice',
           child: ExcludeSemantics(
             child: Container(
               width: double.infinity,
@@ -241,19 +190,19 @@ class _LevelBand extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              MockData.areaName,
+                              source,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: onColor,
                               ),
                             ),
                             Text(
-                              level.label,
+                              label,
                               style: theme.textTheme.displaySmall?.copyWith(
                                 color: onColor,
                               ),
                             ),
                             Text(
-                              level.advice,
+                              advice,
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 color: onColor,
                               ),
@@ -290,13 +239,19 @@ class _WaterMeter extends StatelessWidget {
         final over = sensors.waterOverLimit;
         final fill = (reading.waterCm / MockData.waterMaxCm).clamp(0.0, 1.0);
         final limit = MockData.waterLimitCm / MockData.waterMaxCm;
-        final time = reading.time.toString().substring(11, 19);
+        final cm = context.cmUnit;
+        final level = reading.waterCm.toStringAsFixed(0);
+        final limitText = MockData.waterLimitCm.toStringAsFixed(0);
         return Semantics(
           container: true,
-          label:
-              'Water level ${reading.waterCm.toStringAsFixed(0)} centimeters, '
-              'safe limit ${MockData.waterLimitCm.toStringAsFixed(0)} centimeters'
-              '${over ? ', over the limit' : ''}',
+          label: context.tr(
+            th:
+                'ระดับน้ำ $level เซนติเมตร ระดับปลอดภัยไม่เกิน $limitText เซนติเมตร'
+                '${over ? ' เกินระดับปลอดภัยแล้ว' : ''}',
+            en:
+                'Water level $level centimeters, safe limit $limitText centimeters'
+                '${over ? ', over the limit' : ''}',
+          ),
           child: ExcludeSemantics(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,12 +262,12 @@ class _WaterMeter extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'Water level',
+                        context.tr(th: 'ระดับน้ำ', en: 'Water level'),
                         style: theme.textTheme.titleMedium,
                       ),
                     ),
                     Text(
-                      '${reading.waterCm.toStringAsFixed(0)} cm',
+                      '$level $cm',
                       style: theme.textTheme.headlineMedium?.copyWith(
                         color: over ? t.danger : t.ink,
                         fontFeatures: const [FontFeature.tabularFigures()],
@@ -359,8 +314,14 @@ class _WaterMeter extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpace.sm),
                 Text(
-                  'Safe limit ${MockData.waterLimitCm.toStringAsFixed(0)} cm · '
-                  'mock data, updated $time',
+                  context.tr(
+                    th:
+                        'ระดับปลอดภัยไม่เกิน $limitText $cm · '
+                        'ข้อมูลทดลอง ไม่ใช่ค่าจริง · ${context.clock(reading.time)}',
+                    en:
+                        'Safe limit $limitText $cm · '
+                        'demo data, not live · ${context.clock(reading.time)}',
+                  ),
                   style: theme.textTheme.bodySmall,
                 ),
               ],
@@ -425,8 +386,14 @@ class _SosPanel extends StatelessWidget {
           const SizedBox(height: AppSpace.sm),
           Text(
             busy
-                ? 'Finding your location…'
-                : 'Hold 1.5 seconds to share your location',
+                ? context.tr(
+                    th: 'กำลังหาตำแหน่งของคุณ…',
+                    en: 'Finding your location…',
+                  )
+                : context.tr(
+                    th: 'กดค้าง 1.5 วินาทีเพื่อส่งตำแหน่งของคุณ',
+                    en: 'Hold for 1.5 seconds to share your location',
+                  ),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
@@ -436,7 +403,8 @@ class _SosPanel extends StatelessWidget {
   }
 }
 
-// Official alerts with their age. Shows nothing until a snapshot has loaded.
+// Official alerts with sender and time. With no backend yet it says so plainly instead of
+// showing an invented warning.
 class _OfficialAlerts extends StatelessWidget {
   const _OfficialAlerts({required this.alerts});
 
@@ -444,37 +412,202 @@ class _OfficialAlerts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ListenableBuilder(
       listenable: alerts,
       builder: (context, _) {
         final at = alerts.fetchedAt;
-        if (at == null) return const SizedBox.shrink();
-        final local = at.toLocal();
-        final hh = local.hour.toString().padLeft(2, '0');
-        final mm = local.minute.toString().padLeft(2, '0');
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpace.md),
-          child: Column(
+        final Widget body;
+        if (at == null) {
+          body = WarningBanner(
+            kind: BannerKind.offline,
+            message: context.tr(
+              th:
+                  'แอปนี้ยังไม่ได้เชื่อมต่อประกาศเตือนภัยทางการ '
+                  'โปรดติดตาม T-Alert และสายด่วน 1784 ควบคู่กัน',
+              en:
+                  'This app is not connected to official alerts yet. '
+                  'Please also watch T-Alert and the 1784 hotline.',
+            ),
+          );
+        } else {
+          final shown = alerts.visibleAlerts;
+          body = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (alerts.isStale)
                 WarningBanner(
                   kind: BannerKind.offline,
-                  message:
-                      'Alerts last updated $hh:$mm. They may be out of date.',
+                  message: context.tr(
+                    th:
+                        'อัปเดตประกาศล่าสุด ${context.stamp(at)} '
+                        'ข้อมูลอาจไม่เป็นปัจจุบัน',
+                    en:
+                        'Alerts last updated ${context.stamp(at)}. '
+                        'They may be out of date.',
+                  ),
                 ),
-              for (final a in alerts.visibleAlerts)
+              if (shown.isEmpty && !alerts.isStale)
+                Text(
+                  context.tr(
+                    th: 'ไม่มีประกาศเตือนภัยในพื้นที่ · ตรวจล่าสุด ${context.stamp(at)}',
+                    en: 'No alerts for your area · checked ${context.stamp(at)}',
+                  ),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              for (final a in shown)
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpace.sm),
                   child: WarningBanner(
                     message:
-                        '${a.level.label} (${a.sender}): ${a.headline['th'] ?? a.headline.values.first}',
+                        '${context.levelLabel(a.level)} · ${a.sender} · '
+                        '${context.stamp(a.sent)}\n'
+                        '${a.headline[context.isThai ? 'th' : 'en'] ?? a.headline['th'] ?? a.headline.values.first}',
                   ),
                 ),
             ],
-          ),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.lg),
+          child: body,
         );
       },
+    );
+  }
+}
+
+// What opens after a confirmed SOS: calling comes first, the ready-made message second.
+class _SosSheet extends StatelessWidget {
+  const _SosSheet({
+    required this.message,
+    required this.reason,
+    required this.fromCache,
+  });
+
+  // Null when no position (fresh or saved) is available.
+  final String? message;
+  final String reason;
+  final bool fromCache;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = context.tokens;
+    final text = message;
+    final primary = EmergencyNumbers.medical;
+    final others = EmergencyNumbers.sos.where((n) => n != primary);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.md,
+        0,
+        AppSpace.md,
+        AppSpace.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            text == null
+                ? context.tr(
+                    th: 'หาตำแหน่งของคุณไม่ได้',
+                    en: 'Cannot find your location',
+                  )
+                : context.tr(th: 'ขอความช่วยเหลือ', en: 'Ask for help'),
+            style: theme.textTheme.headlineSmall,
+          ),
+          const SizedBox(height: AppSpace.md),
+          if (text == null)
+            WarningBanner(
+              kind: BannerKind.error,
+              message: context.tr(
+                th:
+                    '$reason ยังไม่มีตำแหน่งที่บันทึกไว้ '
+                    'ถ้าอยู่ในอันตราย โทรเบอร์ฉุกเฉินได้เลย',
+                en:
+                    '$reason No saved position is available. '
+                    'If you are in danger, call an emergency number.',
+              ),
+            ),
+          if (text != null && fromCache)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              child: WarningBanner(
+                kind: BannerKind.error,
+                message: context.tr(
+                  th: 'อ่าน GPS ไม่สำเร็จ ($reason) จึงใช้ตำแหน่งที่บันทึกไว้ล่าสุด',
+                  en: 'GPS failed ($reason) so the last saved position is used.',
+                ),
+              ),
+            ),
+          if (text != null) ...[
+            Container(
+              padding: const EdgeInsets.all(AppSpace.md),
+              decoration: BoxDecoration(
+                color: t.ground,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: t.hairline),
+              ),
+              child: SelectableText(text),
+            ),
+            const SizedBox(height: AppSpace.md),
+          ],
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: t.danger,
+              foregroundColor: t.onDanger,
+            ),
+            onPressed: () => EmergencyLauncher.call(primary.number),
+            icon: const Icon(Icons.call),
+            label: Text(
+              context.tr(
+                th: 'โทร ${primary.number} ${context.serviceName(primary)}',
+                en: 'Call ${primary.number} ${context.serviceName(primary)}',
+              ),
+            ),
+          ),
+          if (text != null) ...[
+            const SizedBox(height: AppSpace.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => EmergencyLauncher.sms(const [], text),
+                    icon: const Icon(Icons.sms),
+                    label: Text(context.tr(th: 'ส่ง SMS', en: 'SMS')),
+                  ),
+                ),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        SharePlus.instance.share(ShareParams(text: text)),
+                    icon: const Icon(Icons.share),
+                    label: Text(context.tr(th: 'แชร์', en: 'Share')),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: AppSpace.sm),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: AppSpace.sm,
+            children: [
+              for (final n in others)
+                TextButton.icon(
+                  onPressed: () => EmergencyLauncher.call(n.number),
+                  icon: const Icon(Icons.call),
+                  label: Text('${n.number} ${context.serviceName(n)}'),
+                ),
+            ],
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.tr(th: 'ปิด', en: 'Close')),
+          ),
+        ],
+      ),
     );
   }
 }

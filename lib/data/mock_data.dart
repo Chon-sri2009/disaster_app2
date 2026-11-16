@@ -10,10 +10,6 @@ import '../models/shelter.dart';
 class MockData {
   MockData._();
 
-  static const String areaName = 'Riverside District';
-  static const String latestWarning =
-      'Heavy rain expected tonight. River level may rise above 1.5 m by morning.';
-
   // Safe limits for each sensor.
   static const double waterLimitCm = 150;
   static const double vibrationLimitG = 0.5;

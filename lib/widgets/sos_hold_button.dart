@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import '../theme/app_tokens.dart';
 
 // A big round SOS button: hold it about 1.5 s while a ring fills, with haptic feedback, to confirm.
@@ -78,8 +79,11 @@ class _SosHoldButtonState extends State<SosHoldButton>
     return Semantics(
       button: true,
       enabled: !widget.busy,
-      label: 'SOS emergency',
-      hint: 'Press and hold for 1.5 seconds to send your location',
+      label: context.tr(th: 'SOS ฉุกเฉิน', en: 'SOS emergency'),
+      hint: context.tr(
+        th: 'กดค้าง 1.5 วินาทีเพื่อส่งตำแหน่งของคุณ',
+        en: 'Press and hold for 1.5 seconds to send your location',
+      ),
       onLongPress: widget.busy ? null : _confirmFromScreenReader,
       excludeSemantics: true,
       child: Listener(

@@ -1,12 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
+import '../l10n/l10n.dart';
 import '../services/sensor_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
 import '../widgets/warning_banner.dart';
 
-// Sensors screen: live water and vibration readings, limit warnings and a demo slider.
+// Sensors screen: water and vibration readings, limit warnings and (debug builds only) a demo slider.
 class SensorsScreen extends StatelessWidget {
   const SensorsScreen({super.key, required this.sensors});
 
@@ -24,36 +26,45 @@ class SensorsScreen extends StatelessWidget {
             return ListView(
               padding: const EdgeInsets.all(AppSpace.md),
               children: [
-                Text('Sensors', style: theme.textTheme.headlineMedium),
+                Text(
+                  context.tr(th: 'เซนเซอร์', en: 'Sensors'),
+                  style: theme.textTheme.headlineMedium,
+                ),
                 const SizedBox(height: AppSpace.md),
                 if (sensors.waterOverLimit)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: AppSpace.md),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpace.md),
                     child: WarningBanner(
                       kind: BannerKind.error,
-                      message: 'Water level passed the safe limit!',
+                      message: context.tr(
+                        th: 'ระดับน้ำเกินระดับปลอดภัยแล้ว',
+                        en: 'Water level is over the safe limit.',
+                      ),
                     ),
                   ),
                 if (sensors.vibrationOverLimit)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: AppSpace.md),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpace.md),
                     child: WarningBanner(
                       kind: BannerKind.error,
-                      message: 'Strong vibration detected!',
+                      message: context.tr(
+                        th: 'ตรวจพบแรงสั่นสะเทือนสูง',
+                        en: 'Strong vibration detected.',
+                      ),
                     ),
                   ),
                 _SensorCard(
-                  title: 'Water level',
+                  title: context.tr(th: 'ระดับน้ำ', en: 'Water level'),
                   icon: Icons.water,
                   value: reading.waterCm,
-                  unit: 'cm',
+                  unit: context.cmUnit,
                   limit: MockData.waterLimitCm,
                   decimals: 0,
                   over: sensors.waterOverLimit,
                 ),
                 const SizedBox(height: AppSpace.md),
                 _SensorCard(
-                  title: 'Vibration',
+                  title: context.tr(th: 'แรงสั่นสะเทือน', en: 'Vibration'),
                   icon: Icons.vibration,
                   value: reading.vibrationG,
                   unit: 'g',
@@ -63,27 +74,46 @@ class SensorsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpace.sm),
                 Text(
-                  'Mock data · updated ${reading.time.toString().substring(11, 19)} '
-                  '(every 2 seconds)',
+                  context.tr(
+                    th:
+                        'ข้อมูลทดลอง ไม่ใช่ค่าจริง · อัปเดต ${context.clock(reading.time)} '
+                        '(ทุก 2 วินาที)',
+                    en:
+                        'Demo data, not live · updated ${context.clock(reading.time)} '
+                        '(every 2 seconds)',
+                  ),
                   style: theme.textTheme.bodySmall,
                 ),
-                const SizedBox(height: AppSpace.lg),
-                Text(
-                  'Demo: simulate water level',
-                  style: theme.textTheme.titleMedium,
-                ),
-                Text(
-                  'For demos only. The sensor timer replaces this value on its next update.',
-                  style: theme.textTheme.bodySmall,
-                ),
-                Slider(
-                  value: reading.waterCm.clamp(0.0, MockData.waterMaxCm),
-                  max: MockData.waterMaxCm,
-                  divisions: 50,
-                  label: '${reading.waterCm.toStringAsFixed(0)} cm',
-                  semanticFormatterCallback: (v) => '${v.round()} centimeters',
-                  onChanged: sensors.simulateWater,
-                ),
+                // The simulator is a developer tool: it never ships in release builds.
+                if (kDebugMode) ...[
+                  const SizedBox(height: AppSpace.lg),
+                  Text(
+                    context.tr(
+                      th: 'ทดลอง: จำลองระดับน้ำ',
+                      en: 'Demo: simulate water level',
+                    ),
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  Text(
+                    context.tr(
+                      th: 'สำหรับทดลองเท่านั้น ค่าจะถูกแทนที่เมื่อเซนเซอร์อัปเดตครั้งถัดไป',
+                      en: 'For demos only. The sensor timer replaces this value on its next update.',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  Slider(
+                    value: reading.waterCm.clamp(0.0, MockData.waterMaxCm),
+                    max: MockData.waterMaxCm,
+                    divisions: 50,
+                    label:
+                        '${reading.waterCm.toStringAsFixed(0)} ${context.cmUnit}',
+                    semanticFormatterCallback: (v) => context.tr(
+                      th: '${v.round()} เซนติเมตร',
+                      en: '${v.round()} centimeters',
+                    ),
+                    onChanged: sensors.simulateWater,
+                  ),
+                ],
               ],
             );
           },
@@ -121,12 +151,16 @@ class _SensorCard extends StatelessWidget {
     final muted = over ? t.onDanger : t.inkMuted;
     final shown = value.toStringAsFixed(decimals);
     final limitText = limit.toStringAsFixed(decimals);
+    final status = over
+        ? context.tr(th: 'เกินระดับปลอดภัย', en: 'Over the limit')
+        : context.tr(th: 'อยู่ในเกณฑ์ปกติ', en: 'Within the limit');
     return Semantics(
       container: true,
       liveRegion: over,
-      label:
-          '$title $shown $unit, safe limit $limitText $unit, '
-          '${over ? 'over the limit' : 'within the limit'}',
+      label: context.tr(
+        th: '$title $shown $unit ระดับปลอดภัยไม่เกิน $limitText $unit $status',
+        en: '$title $shown $unit, safe limit $limitText $unit, $status',
+      ),
       child: ExcludeSemantics(
         child: Container(
           padding: const EdgeInsets.all(AppSpace.md),
@@ -156,7 +190,10 @@ class _SensorCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Safe limit: $limitText $unit',
+                      context.tr(
+                        th: 'ระดับปลอดภัย: ไม่เกิน $limitText $unit',
+                        en: 'Safe limit: $limitText $unit',
+                      ),
                       style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                     ),
                     const SizedBox(height: AppSpace.sm),
@@ -170,10 +207,12 @@ class _SensorCard extends StatelessWidget {
                               : t.tier(AlertTier.safe).color,
                         ),
                         const SizedBox(width: AppSpace.sm),
-                        Text(
-                          over ? 'OVER LIMIT' : 'WITHIN LIMIT',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: fg,
+                        Expanded(
+                          child: Text(
+                            status,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: fg,
+                            ),
                           ),
                         ),
                       ],

@@ -25,14 +25,11 @@ void main() {
     await tester.pumpWidget(
       DisasterApp(storage: storage, loadMap: failingLoadMap),
     );
-    await tester.tap(find.text('Map').first);
+    await tester.tap(find.text('แผนที่').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(
-      find.textContaining('offline map could not be opened'),
-      findsOneWidget,
-    );
-    expect(find.text('Try again'), findsOneWidget);
+    expect(find.textContaining('เปิดแผนที่ออฟไลน์ไม่ได้'), findsOneWidget);
+    expect(find.text('ลองอีกครั้ง'), findsOneWidget);
     await expectLater(
       find.byType(DisasterApp),
       matchesGoldenFile('goldens/map_offline_390x844.png'),

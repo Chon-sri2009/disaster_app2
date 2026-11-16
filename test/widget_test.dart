@@ -26,23 +26,69 @@ void main() {
 
     expect(find.text('SOS'), findsOneWidget);
 
-    await tester.tap(find.text('Sensors'));
+    // Thai is the default language.
+    await tester.tap(find.text('เซนเซอร์'));
     await tester.pump();
-    expect(find.text('Demo: simulate water level'), findsOneWidget);
+    expect(find.text('ทดลอง: จำลองระดับน้ำ'), findsOneWidget);
 
-    await tester.tap(find.text('Map'));
+    await tester.tap(find.text('แผนที่'));
     await tester.pump();
     expect(find.byType(NavigationBar), findsOneWidget);
 
-    await tester.tap(find.text('Report'));
+    await tester.tap(find.text('รายงาน'));
     await tester.pump();
-    expect(find.text('Report damage'), findsOneWidget);
+    expect(find.text('แจ้งความเสียหาย'), findsOneWidget);
 
-    await tester.tap(find.text('Guide'));
+    await tester.tap(find.text('คู่มือ'));
     await tester.pump();
-    expect(find.text('Offline guide'), findsOneWidget);
+    expect(find.text('คู่มือออฟไลน์'), findsOneWidget);
 
     // Remove the app so the sensor timer is cancelled before the test ends.
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the language button switches the whole UI to English', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final storage = await StorageService.create();
+    await tester.pumpWidget(
+      DisasterApp(storage: storage, loadMap: neverLoadMap),
+    );
+
+    await tester.tap(find.text('คู่มือ'));
+    await tester.pump();
+    await tester.tap(find.text('English'));
+    await tester.pump();
+
+    expect(find.text('Offline guide'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(storage.language.code, 'en');
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Home shows no invented warning when no alert data exists', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final storage = await StorageService.create();
+    await tester.pumpWidget(
+      DisasterApp(storage: storage, loadMap: neverLoadMap),
+    );
+
+    expect(
+      find.textContaining('ยังไม่ได้เชื่อมต่อประกาศเตือนภัยทางการ'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Heavy rain'), findsNothing);
+
     await tester.pumpWidget(const SizedBox());
   });
 }

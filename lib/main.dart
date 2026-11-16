@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/mock_data.dart';
+import 'l10n/l10n.dart';
 import 'screens/guide_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/map_screen.dart';
@@ -36,11 +38,21 @@ class DisasterApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Disaster Alert & Rescue',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      home: AppShell(storage: storage, loadMap: loadMap),
+    // Rebuilds when the language changes; AppShell keeps its state because its type is unchanged.
+    return ListenableBuilder(
+      listenable: storage,
+      builder: (context, _) => MaterialApp(
+        onGenerateTitle: (context) => context.tr(
+          th: 'แจ้งภัยและช่วยเหลือ',
+          en: 'Disaster Alert & Rescue',
+        ),
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        locale: Locale(storage.language.code),
+        supportedLocales: const [Locale('th'), Locale('en')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: AppShell(storage: storage, loadMap: loadMap),
+      ),
     );
   }
 }
@@ -63,12 +75,24 @@ class _AppShellState extends State<AppShell> {
   late final LocationService _location = LocationService(widget.storage);
   int _index = 0;
 
-  static const _destinations = [
-    (Icons.home_outlined, Icons.home, 'Home'),
-    (Icons.sensors_outlined, Icons.sensors, 'Sensors'),
-    (Icons.map_outlined, Icons.map, 'Map'),
-    (Icons.edit_note_outlined, Icons.edit_note, 'Report'),
-    (Icons.menu_book_outlined, Icons.menu_book, 'Guide'),
+  List<(IconData, IconData, String)> _destinations(BuildContext context) => [
+    (Icons.home_outlined, Icons.home, context.tr(th: 'หน้าแรก', en: 'Home')),
+    (
+      Icons.sensors_outlined,
+      Icons.sensors,
+      context.tr(th: 'เซนเซอร์', en: 'Sensors'),
+    ),
+    (Icons.map_outlined, Icons.map, context.tr(th: 'แผนที่', en: 'Map')),
+    (
+      Icons.edit_note_outlined,
+      Icons.edit_note,
+      context.tr(th: 'รายงาน', en: 'Report'),
+    ),
+    (
+      Icons.menu_book_outlined,
+      Icons.menu_book,
+      context.tr(th: 'คู่มือ', en: 'Guide'),
+    ),
   ];
 
   @override
@@ -80,6 +104,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final destinations = _destinations(context);
     final size = MediaQuery.sizeOf(context);
     // A rail needs room for five labeled items, so short landscape phones keep the bottom bar.
     final wide =
@@ -93,7 +118,7 @@ class _AppShellState extends State<AppShell> {
         SensorsScreen(sensors: _sensors),
         MapScreen(storage: widget.storage, loadMap: widget.loadMap),
         ReportScreen(storage: widget.storage, location: _location),
-        const GuideScreen(),
+        GuideScreen(storage: widget.storage),
       ],
     );
 
@@ -107,7 +132,7 @@ class _AppShellState extends State<AppShell> {
                 selectedIndex: _index,
                 onDestinationSelected: (i) => setState(() => _index = i),
                 destinations: [
-                  for (final d in _destinations)
+                  for (final d in destinations)
                     NavigationRailDestination(
                       icon: Icon(d.$1),
                       selectedIcon: Icon(d.$2),
@@ -129,7 +154,7 @@ class _AppShellState extends State<AppShell> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: [
-          for (final d in _destinations)
+          for (final d in destinations)
             NavigationDestination(
               icon: Icon(d.$1),
               selectedIcon: Icon(d.$2),

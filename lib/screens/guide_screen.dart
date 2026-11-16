@@ -1,24 +1,46 @@
 import 'package:flutter/material.dart';
 
 import '../data/guide_data.dart';
+import '../l10n/app_lang.dart';
+import '../l10n/l10n.dart';
+import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
 import 'about_screen.dart';
 
-// Guide screen: offline first-aid and evacuation topics in an expandable list.
+// Guide screen: offline first-aid and evacuation topics in an expandable list, plus the language switch.
 class GuideScreen extends StatelessWidget {
-  const GuideScreen({super.key});
+  const GuideScreen({super.key, required this.storage});
+
+  final StorageService storage;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = context.tokens;
+    final thai = context.isThai;
     return SafeArea(
       child: ContentWidth(
         child: ListView(
           padding: const EdgeInsets.all(AppSpace.md),
           children: [
-            Text('Offline guide', style: theme.textTheme.headlineMedium),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.tr(th: 'คู่มือออฟไลน์', en: 'Offline guide'),
+                    style: theme.textTheme.headlineMedium,
+                  ),
+                ),
+                // Shows the language you would switch to, written in that language.
+                TextButton.icon(
+                  onPressed: () =>
+                      storage.setLanguage(thai ? AppLang.en : AppLang.th),
+                  icon: const Icon(Icons.translate),
+                  label: Text(thai ? 'English' : 'ภาษาไทย'),
+                ),
+              ],
+            ),
             const SizedBox(height: AppSpace.md),
             for (final topic in GuideData.topics)
               Padding(
@@ -33,7 +55,7 @@ class GuideScreen extends StatelessWidget {
                     ),
                     leading: Icon(topic.icon, color: t.accent),
                     title: Text(
-                      topic.title,
+                      thai ? topic.titleTh : topic.title,
                       style: theme.textTheme.titleMedium,
                     ),
                     childrenPadding: const EdgeInsets.fromLTRB(
@@ -44,11 +66,15 @@ class GuideScreen extends StatelessWidget {
                     ),
                     expandedCrossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (var i = 0; i < topic.steps.length; i++)
+                      for (
+                        var i = 0;
+                        i < (thai ? topic.stepsTh : topic.steps).length;
+                        i++
+                      )
                         Padding(
                           padding: const EdgeInsets.only(bottom: AppSpace.sm),
                           child: Text(
-                            '${i + 1}. ${topic.steps[i]}',
+                            '${i + 1}. ${(thai ? topic.stepsTh : topic.steps)[i]}',
                             style: theme.textTheme.bodyLarge,
                           ),
                         ),
@@ -58,7 +84,12 @@ class GuideScreen extends StatelessWidget {
               ),
             ListTile(
               leading: Icon(Icons.info_outline, color: t.accent),
-              title: const Text('About and disclaimer'),
+              title: Text(
+                context.tr(
+                  th: 'เกี่ยวกับแอปและข้อสงวนสิทธิ์',
+                  en: 'About and disclaimer',
+                ),
+              ),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(builder: (_) => const AboutScreen()),

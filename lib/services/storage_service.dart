@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_lang.dart';
 import '../models/damage_report.dart';
 import '../models/shelter.dart';
 
@@ -17,6 +18,7 @@ class StorageService extends ChangeNotifier {
   static const _reportsKey = 'reports';
   static const _lastPositionKey = 'last_position';
   static const _snapshotKey = 'alert_snapshot';
+  static const _languageKey = 'language';
 
   final SharedPreferences _prefs;
   late List<DamageReport> _reports;
@@ -24,6 +26,14 @@ class StorageService extends ChangeNotifier {
   // Opens the phone storage; call once at app start.
   static Future<StorageService> create() async =>
       StorageService._(await SharedPreferences.getInstance());
+
+  // The UI language; Thai until the user picks English.
+  AppLang get language => AppLang.fromCode(_prefs.getString(_languageKey));
+
+  Future<void> setLanguage(AppLang lang) async {
+    await _prefs.setString(_languageKey, lang.code);
+    notifyListeners();
+  }
 
   // Newest report first.
   List<DamageReport> get reports => List.unmodifiable(_reports);

@@ -33,8 +33,9 @@ void _setScreen(WidgetTester tester, Size size, {double textScale = 1.0}) {
 Future<StorageService> _pumpApp(
   WidgetTester tester, {
   bool seeded = true,
+  bool english = false,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({if (english) 'language': 'en'});
   final storage = await StorageService.create();
   if (seeded) await storage.saveShelters(MockData.shelters);
   await tester.pumpWidget(
@@ -56,7 +57,7 @@ void main() {
     mockPathProvider();
   });
 
-  const tabs = ['Home', 'Sensors', 'Map', 'Report', 'Guide'];
+  const tabs = ['หน้าแรก', 'เซนเซอร์', 'แผนที่', 'รายงาน', 'คู่มือ'];
   const sizes = {
     'phone-360x640': Size(360, 640),
     'phone-390x844': Size(390, 844),
@@ -144,7 +145,7 @@ void main() {
 
   group('accessibility guidelines', () {
     for (final tab in tabs) {
-      testWidgets('$tab: tap targets, labels, contrast', (tester) async {
+      testWidgets('$tab: tap targets and labels (Thai)', (tester) async {
         _setScreen(tester, const Size(390, 844));
         final handle = tester.ensureSemantics();
         await _pumpApp(tester);
@@ -152,6 +153,22 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        handle.dispose();
+        await _teardownApp(tester);
+      });
+    }
+
+    // Flutter's text-contrast check samples screenshot pixels, and thin Thai glyphs fool it
+    // (it reports 1.4:1 for dark ink on white). The English UI uses the same colors, so the
+    // pixel check runs there; the exact color pairs are verified in the 'tokens' group.
+    const tabsEn = ['Home', 'Sensors', 'Map', 'Report', 'Guide'];
+    for (final tab in tabsEn) {
+      testWidgets('$tab: text contrast (English)', (tester) async {
+        _setScreen(tester, const Size(390, 844));
+        final handle = tester.ensureSemantics();
+        await _pumpApp(tester, english: true);
+        await tester.tap(find.text(tab).first);
+        await tester.pump(const Duration(milliseconds: 300));
         await expectLater(tester, meetsGuideline(textContrastGuideline));
         handle.dispose();
         await _teardownApp(tester);
@@ -170,7 +187,7 @@ void main() {
 
       await tester.tap(sos);
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Cannot find your location'), findsNothing);
+      expect(find.text('หาตำแหน่งของคุณไม่ได้'), findsNothing);
 
       final gesture = await tester.startGesture(tester.getCenter(sos));
       await tester.pump(); // the ticker starts on the first frame
@@ -183,8 +200,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
       // GPS is unavailable in tests, so the clear error dialog (not a crash) must appear.
-      expect(find.text('Cannot find your location'), findsOneWidget);
-      await tester.tap(find.text('Close'));
+      expect(find.text('หาตำแหน่งของคุณไม่ได้'), findsOneWidget);
+      await tester.tap(find.text('ปิด'));
       await tester.pump(const Duration(milliseconds: 300));
       await _teardownApp(tester);
     });
@@ -213,8 +230,13 @@ void main() {
       await _teardownApp(tester);
     });
 
-    for (final tab in ['Sensors', 'Map', 'Report', 'Guide']) {
-      testWidgets('${tab.toLowerCase()} 390x844', (tester) async {
+    for (final (tab, slug) in [
+      ('เซนเซอร์', 'sensors'),
+      ('แผนที่', 'map'),
+      ('รายงาน', 'report'),
+      ('คู่มือ', 'guide'),
+    ]) {
+      testWidgets('$slug 390x844', (tester) async {
         _setScreen(tester, const Size(390, 844));
         await _pumpApp(tester);
         await tester.tap(find.text(tab).first);
@@ -226,7 +248,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 1000));
         await expectLater(
           find.byType(DisasterApp),
-          matchesGoldenFile('goldens/${tab.toLowerCase()}_390x844.png'),
+          matchesGoldenFile('goldens/${slug}_390x844.png'),
         );
         await _teardownApp(tester);
       });

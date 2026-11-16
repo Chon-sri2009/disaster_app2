@@ -21,8 +21,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final storage = await StorageService.create();
     await tester.pumpWidget(
-      DisasterApp(storage: storage, loadMap: neverLoadMap),
+      DisasterApp(storage: storage, loadMap: failingLoadMap),
     );
+    // The loading screen gives way to the app once the map has failed to open.
+    await tester.pump();
 
     expect(find.text('SOS'), findsOneWidget);
 
@@ -56,8 +58,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final storage = await StorageService.create();
     await tester.pumpWidget(
-      DisasterApp(storage: storage, loadMap: neverLoadMap),
+      DisasterApp(storage: storage, loadMap: failingLoadMap),
     );
+    // The loading screen gives way to the app once the map has failed to open.
+    await tester.pump();
 
     await tester.tap(find.text('คู่มือ'));
     await tester.pump();
@@ -80,8 +84,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final storage = await StorageService.create();
     await tester.pumpWidget(
-      DisasterApp(storage: storage, loadMap: neverLoadMap),
+      DisasterApp(storage: storage, loadMap: failingLoadMap),
     );
+    // The loading screen gives way to the app once the map has failed to open.
+    await tester.pump();
 
     expect(
       find.textContaining('ยังไม่ได้เชื่อมต่อประกาศเตือนภัยทางการ'),

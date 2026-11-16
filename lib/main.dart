@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:vector_map_tiles/vector_map_tiles.dart';
 
 import 'data/mock_data.dart';
 import 'l10n/l10n.dart';
@@ -52,8 +53,59 @@ class DisasterApp extends StatelessWidget {
         locale: Locale(storage.language.code),
         supportedLocales: const [Locale('th'), Locale('en')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: AppShell(storage: storage, loadMap: loadMap),
+        home: _MapGate(storage: storage, loadMap: loadMap),
       ),
+    );
+  }
+}
+
+// Shows a loading screen while the map pack is prepared (the first launch copies it into the
+// app's folder), then opens the app with the ready map. If preparing fails, the app still opens
+// and the Map tab shows its own "try again" banner.
+class _MapGate extends StatefulWidget {
+  const _MapGate({required this.storage, required this.loadMap});
+
+  final StorageService storage;
+  final OfflineMapLoader loadMap;
+
+  @override
+  State<_MapGate> createState() => _MapGateState();
+}
+
+class _MapGateState extends State<_MapGate> {
+  late final Future<VectorTileProvider> _ready = widget.loadMap();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<VectorTileProvider>(
+      future: _ready,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: AppSpace.md),
+                  Text(
+                    context.tr(
+                      th: 'กำลังเตรียมแผนที่ออฟไลน์…',
+                      en: 'Preparing the offline map…',
+                    ),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        final provider = snap.data;
+        return AppShell(
+          storage: widget.storage,
+          loadMap: provider == null ? widget.loadMap : () async => provider,
+        );
+      },
     );
   }
 }

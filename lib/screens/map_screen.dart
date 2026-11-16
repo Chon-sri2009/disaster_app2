@@ -257,6 +257,9 @@ class _MapScreenState extends State<MapScreen> {
                       // label layouts) per screen, which is what keeps dragging smooth.
                       tileOffset: TileOffset.mapbox,
                       tileProviders: TileProviders({'protomaps': provider}),
+                      // One tile drawn at a time, so a drag never stacks several 40 ms tiles
+                      // into one long frame.
+                      concurrency: 1,
                       // Tiles are already local: a second cache copy would only waste storage.
                       fileCacheTtl: Duration.zero,
                       // Bigger memory caches so panning back over seen tiles does not redraw them.

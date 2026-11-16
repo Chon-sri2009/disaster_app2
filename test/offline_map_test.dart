@@ -25,6 +25,7 @@ void main() {
     await tester.pumpWidget(
       DisasterApp(storage: storage, loadMap: failingLoadMap),
     );
+    await tester.pump();
     await tester.tap(find.text('แผนที่').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));

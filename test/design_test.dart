@@ -41,6 +41,7 @@ Future<StorageService> _pumpApp(
   await tester.pumpWidget(
     DisasterApp(storage: storage, loadMap: failingLoadMap),
   );
+  await tester.pump();
   await tester.pump(const Duration(milliseconds: 300));
   return storage;
 }

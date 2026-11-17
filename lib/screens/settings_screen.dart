@@ -29,7 +29,7 @@ class SettingsButton extends StatelessWidget {
   }
 }
 
-// Settings: the app language and the About page.
+// Settings: the app language, day or night board, and the About page.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.storage});
 
@@ -64,6 +64,29 @@ class SettingsScreen extends StatelessWidget {
                   ],
                   selected: {storage.language},
                   onSelectionChanged: (s) => storage.setLanguage(s.first),
+                ),
+                SectionLabel(context.tr(th: 'ธีม', en: 'Theme')),
+                SegmentedButton<ThemeMode>(
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      icon: const Icon(Icons.brightness_auto),
+                      label: Text(context.tr(th: 'ตามเครื่อง', en: 'Phone')),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      icon: const Icon(Icons.light_mode),
+                      label: Text(context.tr(th: 'สว่าง', en: 'Light')),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      icon: const Icon(Icons.dark_mode),
+                      label: Text(context.tr(th: 'มืด', en: 'Dark')),
+                    ),
+                  ],
+                  selected: {storage.themeMode},
+                  onSelectionChanged: (s) => storage.setThemeMode(s.first),
                 ),
                 SectionLabel(context.tr(th: 'เกี่ยวกับ', en: 'About')),
                 NoticeTile(

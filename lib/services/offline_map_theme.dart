@@ -14,20 +14,19 @@ import 'package:vector_map_tiles_pmtiles/vector_map_tiles_pmtiles.dart';
 // Icons come from the sprite sheet loaded by loadMapSprites(). No sprite URL is set here on
 // purpose: the renderer only reads one when it loads a style over the network, which this app
 // never does, so the theme names nothing that could need a connection.
-final offlineMapTheme =
-    const ProtomapsThemes().build([
-      for (final layer in v4.themeLight)
-        if (_dropped.contains(layer['id']) ||
-            (layer['id'] as String).startsWith('roads_tunnels') ||
-            (layer['id'] as String).startsWith('roads_bridges'))
-          ...const <Map<String, Object>>[]
-        else if (layer['id'] == 'pois') ...[
-          _placeLayer('pois_emergency', _emergencyKinds, minzoom: 14),
-          _placeLayer('pois_key', _keyKinds, minzoom: 15),
-          _placeLayer('pois_minor', _minorKinds, minzoom: 16),
-        ] else
-          _tuned(layer),
-    ]);
+final offlineMapTheme = const ProtomapsThemes().build([
+  for (final layer in v4.themeLight)
+    if (_dropped.contains(layer['id']) ||
+        (layer['id'] as String).startsWith('roads_tunnels') ||
+        (layer['id'] as String).startsWith('roads_bridges'))
+      ...const <Map<String, Object>>[]
+    else if (layer['id'] == 'pois') ...[
+      _placeLayer('pois_emergency', _emergencyKinds, minzoom: 14),
+      _placeLayer('pois_key', _keyKinds, minzoom: 15),
+      _placeLayer('pois_minor', _minorKinds, minzoom: 16),
+    ] else
+      _tuned(layer),
+]);
 
 // Layers that add little to a rescue map but cost drawing time on every tile (drawing runs on the
 // UI thread, so each layer counts toward drag smoothness). Tunnels and bridges are skipped too:

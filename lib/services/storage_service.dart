@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,6 +20,7 @@ class StorageService extends ChangeNotifier {
   static const _lastPositionKey = 'last_position';
   static const _snapshotKey = 'alert_snapshot';
   static const _languageKey = 'language';
+  static const _themeKey = 'theme';
 
   final SharedPreferences _prefs;
   late List<DamageReport> _reports;
@@ -32,6 +34,18 @@ class StorageService extends ChangeNotifier {
 
   Future<void> setLanguage(AppLang lang) async {
     await _prefs.setString(_languageKey, lang.code);
+    notifyListeners();
+  }
+
+  // Day board, night board, or follow the phone (the default).
+  ThemeMode get themeMode => switch (_prefs.getString(_themeKey)) {
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => ThemeMode.system,
+  };
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    await _prefs.setString(_themeKey, mode.name);
     notifyListeners();
   }
 

@@ -116,9 +116,16 @@ class ScreenHeader extends StatelessWidget {
             Expanded(
               child: Semantics(
                 header: true,
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineMedium,
+                // One line at any text size: a long title shrinks rather than wrapping, so the
+                // pinned SOS below it keeps its place on small phones.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                 ),
               ),
             ),

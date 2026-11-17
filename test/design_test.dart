@@ -58,7 +58,7 @@ void main() {
     mockPathProvider();
   });
 
-  const tabs = ['หน้าแรก', 'แผนที่', 'รายงาน', 'คู่มือ'];
+  const tabs = ['หน้าแรก', 'โทร', 'แผนที่', 'รายงาน', 'คู่มือ'];
   const sizes = {
     'phone-360x640': Size(360, 640),
     'phone-390x844': Size(390, 844),
@@ -188,7 +188,7 @@ void main() {
     // Flutter's text-contrast check samples screenshot pixels, and thin Thai glyphs fool it
     // (it reports 1.4:1 for dark ink on white). The English UI uses the same colors, so the
     // pixel check runs there; the exact color pairs are verified in the 'tokens' group.
-    const tabsEn = ['Home', 'Map', 'Report', 'Guide'];
+    const tabsEn = ['Home', 'Call', 'Map', 'Report', 'Guide'];
     for (final tab in tabsEn) {
       testWidgets('$tab: text contrast (English)', (tester) async {
         _setScreen(tester, const Size(390, 844));
@@ -258,6 +258,7 @@ void main() {
     });
 
     for (final (tab, slug) in [
+      ('โทร', 'calls'),
       ('แผนที่', 'map'),
       ('รายงาน', 'report'),
       ('คู่มือ', 'guide'),
@@ -301,17 +302,22 @@ void main() {
       await _teardownApp(tester);
     });
 
-    testWidgets('home scrolled to the readings 390x844', (tester) async {
+    testWidgets('map sheet showing the sensor readings 390x844', (
+      tester,
+    ) async {
       _setScreen(tester, const Size(390, 844));
       await _pumpApp(tester);
-      await tester.drag(
-        find.byType(SingleChildScrollView).first,
-        const Offset(0, -600),
+      await tester.tap(find.text('แผนที่').first);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 400)),
       );
       await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('เซนเซอร์'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(seconds: 1));
       await expectLater(
         find.byType(DisasterApp),
-        matchesGoldenFile('goldens/home_scrolled_390x844.png'),
+        matchesGoldenFile('goldens/map_sensors_390x844.png'),
       );
       await _teardownApp(tester);
     });

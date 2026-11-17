@@ -49,6 +49,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _noteController = TextEditingController();
+  final _addressController = TextEditingController();
   final _picker = ImagePicker();
 
   String? _category;
@@ -61,6 +62,7 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void dispose() {
     _noteController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -98,6 +100,13 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() => _locating = true);
     final result = await widget.location.getCurrent();
     if (!mounted) return;
+    final point = result.point;
+    // The address is only a suggestion: the person can correct it or type their own below.
+    final place = point == null ? null : await widget.location.describe(point);
+    if (!mounted) return;
+    if (place != null && !place.isEmpty) {
+      _addressController.text = context.placeText(place);
+    }
     setState(() {
       _locating = false;
       _point = result.point;
@@ -125,12 +134,16 @@ class _ReportScreenState extends State<ReportScreen> {
       createdAt: DateTime.now(),
       lat: _point?.latitude,
       lng: _point?.longitude,
+      address: _addressController.text.trim().isEmpty
+          ? null
+          : _addressController.text.trim(),
       photoPath: _photoPath,
     );
     await widget.storage.addReport(report);
     if (!mounted) return;
     _formKey.currentState!.reset();
     _noteController.clear();
+    _addressController.clear();
     setState(() {
       _category = null;
       _photoPath = null;
@@ -360,15 +373,26 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
             ),
           ),
-        if (point != null)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpace.sm),
-            child: Text(
-              '${context.tr(th: 'ตำแหน่ง', en: 'Location')}: '
-              '${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}',
-              style: theme.textTheme.bodySmall,
+        const SizedBox(height: AppSpace.sm),
+        TextFormField(
+          controller: _addressController,
+          textInputAction: TextInputAction.done,
+          maxLines: 2,
+          minLines: 1,
+          decoration: InputDecoration(
+            labelText: context.tr(
+              th: 'ที่อยู่ (แก้ไขได้ หรือพิมพ์เอง)',
+              en: 'Address (edit it or type your own)',
             ),
+            helperText: point == null
+                ? null
+                : context.tr(
+                    th: 'ที่อยู่ใกล้ที่สุดจาก GPS ถ้าไม่ตรง กรุณาแก้ไข',
+                    en: 'Closest address from GPS. Correct it if it is wrong.',
+                  ),
+            prefixIcon: const Icon(Icons.home_outlined),
           ),
+        ),
         if (message != null)
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.sm),
@@ -482,7 +506,6 @@ class _ReportTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final photo = report.photoPath;
-    final hasLocation = report.lat != null && report.lng != null;
     final category = _ReportScreenState._categories[report.category];
     return NoticeFrame(
       child: Row(
@@ -513,8 +536,7 @@ class _ReportTile extends StatelessWidget {
                 Text(
                   [
                     context.stamp(report.createdAt),
-                    if (hasLocation)
-                      '${report.lat!.toStringAsFixed(5)}, ${report.lng!.toStringAsFixed(5)}',
+                    if (report.address != null) report.address!,
                   ].join(' · '),
                   style: theme.textTheme.bodySmall,
                 ),

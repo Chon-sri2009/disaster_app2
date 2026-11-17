@@ -4,6 +4,7 @@ import 'package:vector_map_tiles/vector_map_tiles.dart';
 
 import 'data/mock_data.dart';
 import 'l10n/l10n.dart';
+import 'screens/calls_screen.dart';
 import 'screens/guide_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/map_screen.dart';
@@ -51,7 +52,7 @@ class DisasterApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
-        themeMode: ThemeMode.system,
+        themeMode: storage.themeMode,
         locale: Locale(storage.language.code),
         supportedLocales: const [Locale('th'), Locale('en')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -95,7 +96,7 @@ class _MapGateState extends State<_MapGate> {
   }
 }
 
-// Holds the services and the navigation that switches between the 4 tabs.
+// Holds the services and the navigation that switches between the 5 tabs.
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.storage, required this.loadMap});
 
@@ -118,6 +119,7 @@ class _AppShellState extends State<AppShell> {
 
   List<(IconData, IconData, String)> _destinations(BuildContext context) => [
     (Icons.home_outlined, Icons.home, context.tr(th: 'หน้าแรก', en: 'Home')),
+    (Icons.call_outlined, Icons.call, context.tr(th: 'โทร', en: 'Call')),
     (Icons.map_outlined, Icons.map, context.tr(th: 'แผนที่', en: 'Map')),
     (
       Icons.edit_note_outlined,
@@ -131,7 +133,7 @@ class _AppShellState extends State<AppShell> {
     ),
   ];
 
-  static const _mapTab = 1;
+  static const _mapTab = 2;
 
   @override
   void dispose() {
@@ -144,7 +146,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final destinations = _destinations(context);
     final size = MediaQuery.sizeOf(context);
-    // A rail needs room for four labeled items, so short landscape phones keep the bottom bar.
+    // A rail needs room for five labeled items, so short landscape phones keep the bottom bar.
     final wide =
         size.width >= AppSize.wideBreakpoint &&
         size.height >= AppSize.railMinHeight;
@@ -159,7 +161,12 @@ class _AppShellState extends State<AppShell> {
           storage: widget.storage,
           onOpenMap: () => setState(() => _index = _mapTab),
         ),
-        MapScreen(storage: widget.storage, loadMap: widget.loadMap),
+        CallsScreen(storage: widget.storage),
+        MapScreen(
+          storage: widget.storage,
+          sensors: _sensors,
+          loadMap: widget.loadMap,
+        ),
         ReportScreen(storage: widget.storage, location: _location),
         GuideScreen(storage: widget.storage),
       ],

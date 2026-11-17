@@ -16,13 +16,12 @@ import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
 import '../widgets/level_meter.dart';
 import '../widgets/notice.dart';
-import '../widgets/sensor_readings.dart';
 import '../widgets/sos_hold_button.dart';
 import '../widgets/warning_banner.dart';
 import 'settings_screen.dart';
 
-// Home: the level notice, one-tap calls, the nearest shelter, official notices and sensor
-// readings, with the press-and-hold SOS block pinned in the thumb zone.
+// Home: the press-and-hold SOS block pinned at the top, then the level notice, the nearest
+// shelter and official notices.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -60,6 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
         : context.locationError(result.issue!);
     String? message;
     if (point != null) {
+      final place = await widget.location.describe(point);
+      if (!mounted) return;
+      final where = context.placeText(place);
       final lat = point.latitude.toStringAsFixed(6);
       final lng = point.longitude.toStringAsFixed(6);
       // Local time plus the UTC offset, so a rescuer in another zone reads the right hour.
@@ -75,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : '';
       message =
           'SOS! ต้องการความช่วยเหลือ / I need help.\n'
-          'ตำแหน่ง / Location: $lat, $lng$cached\n'
+          'ที่อยู่ / Address: ${where.isEmpty ? '-' : where}$cached\n'
           'แผนที่ / Map: https://www.google.com/maps?q=$lat,$lng\n'
           'เวลา / Time: $time';
     }
@@ -96,107 +98,66 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
-        final wide = box.maxWidth >= AppSize.wideBreakpoint;
-        final content = _Board(
-          sensors: widget.sensors,
-          alerts: widget.alerts,
-          storage: widget.storage,
-          onOpenMap: widget.onOpenMap,
-          showCalls: !wide,
-        );
-        if (wide) {
-          // Tablet or landscape: the board on the left, SOS and calls pinned on the right.
-          final sosHeight = (box.maxHeight * 0.3).clamp(
-            AppSize.sosHeight,
-            AppSize.sosHeight * 2,
-          );
-          return Row(
+        final t = context.tokens;
+        // Header and SOS stay put at the top; everything else scrolls beneath them.
+        return SafeArea(
+          bottom: false,
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: SafeArea(
-                    bottom: false,
-                    child: ContentWidth(child: content),
+              ScreenHeader(
+                title: context.tr(
+                  th: 'แจ้งภัยและช่วยเหลือ',
+                  en: 'Disaster Alert',
+                ),
+                trailing: SettingsButton(storage: widget.storage),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: t.ground,
+                  border: Border(
+                    bottom: BorderSide(color: t.ink, width: AppStroke.heavy),
                   ),
                 ),
-              ),
-              Container(
-                width: AppSize.sidePanelWidth,
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(
-                      color: context.tokens.ink,
-                      width: AppStroke.heavy,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpace.sm),
+                  child: ContentWidth(
+                    child: SosHoldButton(
+                      busy: _locating,
+                      onConfirmed: _onSos,
+                      height: box.maxHeight >= AppSize.sosHeightTallScreen
+                          ? AppSize.sosHeight
+                          : AppSize.sosHeightCompact,
                     ),
                   ),
                 ),
-                child: SafeArea(
-                  left: false,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(AppSpace.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SosHoldButton(
-                          busy: _locating,
-                          onConfirmed: _onSos,
-                          height: sosHeight,
-                        ),
-                        SectionLabel(
-                          context.tr(th: 'โทรฉุกเฉิน', en: 'Emergency calls'),
-                        ),
-                        const _CallTiles(vertical: true),
-                      ],
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: ContentWidth(
+                    child: _Board(
+                      sensors: widget.sensors,
+                      alerts: widget.alerts,
+                      storage: widget.storage,
+                      onOpenMap: widget.onOpenMap,
                     ),
                   ),
                 ),
               ),
             ],
-          );
-        }
-        // Phone portrait: the board scrolls, SOS stays pinned in the thumb zone.
-        return Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: SafeArea(bottom: false, child: content),
-              ),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: context.tokens.ground,
-                border: Border(
-                  top: BorderSide(
-                    color: context.tokens.ink,
-                    width: AppStroke.heavy,
-                  ),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpace.sm),
-                child: SosHoldButton(
-                  busy: _locating,
-                  onConfirmed: _onSos,
-                  height: box.maxHeight >= AppSize.sosHeightTallScreen
-                      ? AppSize.sosHeight
-                      : AppSize.sosHeightCompact,
-                ),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
   }
 }
 
-// The scrolling board: header, level notice, calls, nearest shelter, official notices, readings.
+// The scrolling board: level notice, nearest shelter and official notices. Calls have their own
+// tab, and sensor readings live on the Map.
 class _Board extends StatelessWidget {
   const _Board({
     required this.sensors,
     required this.storage,
-    required this.showCalls,
     this.alerts,
     this.onOpenMap,
   });
@@ -205,45 +166,24 @@ class _Board extends StatelessWidget {
   final StorageService storage;
   final AlertService? alerts;
   final VoidCallback? onOpenMap;
-  final bool showCalls;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ScreenHeader(
-          title: context.tr(th: 'แจ้งภัยและช่วยเหลือ', en: 'Disaster Alert'),
-          trailing: SettingsButton(storage: storage),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpace.md,
-            AppSpace.md,
-            AppSpace.md,
-            AppSpace.lg,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _LevelNotice(sensors: sensors, alerts: alerts, storage: storage),
-              if (showCalls) ...[
-                SectionLabel(
-                  context.tr(th: 'โทรฉุกเฉิน', en: 'Emergency calls'),
-                ),
-                const _CallTiles(vertical: false),
-              ],
-              _NearestShelter(storage: storage, onOpenMap: onOpenMap),
-              // Official notices outrank the community sensors below them.
-              if (alerts != null) _OfficialAlerts(alerts: alerts!),
-              SectionLabel(
-                context.tr(th: 'ค่าจากเซนเซอร์', en: 'Sensor readings'),
-              ),
-              SensorReadings(sensors: sensors),
-            ],
-          ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.md,
+        AppSpace.md,
+        AppSpace.md,
+        AppSpace.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _LevelNotice(sensors: sensors, alerts: alerts, storage: storage),
+          _NearestShelter(storage: storage, onOpenMap: onOpenMap),
+          if (alerts != null) _OfficialAlerts(alerts: alerts!),
+        ],
+      ),
     );
   }
 }
@@ -459,76 +399,6 @@ class _LevelNotice extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-// One framed tile per emergency number: one tap opens the dialer (the user still presses call).
-class _CallTiles extends StatelessWidget {
-  const _CallTiles({required this.vertical});
-
-  final bool vertical;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tiles = [
-      for (final n in EmergencyNumbers.sos)
-        NoticeTile(
-          semanticLabel: context.tr(
-            th: 'โทร ${n.number} ${context.serviceName(n)}',
-            en: 'Call ${n.number}, ${context.serviceName(n)}',
-          ),
-          onTap: () => EmergencyLauncher.call(n.number),
-          padding: const EdgeInsets.all(AppSpace.sm),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.call, size: AppIconSize.sm),
-                  const SizedBox(width: AppSpace.xs),
-                  Flexible(
-                    child: Text(
-                      n.number,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                context.serviceName(n),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: context.tokens.ink,
-                ),
-              ),
-            ],
-          ),
-        ),
-    ];
-    if (vertical) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (i, tile) in tiles.indexed) ...[
-            if (i > 0) const SizedBox(height: AppSpace.sm),
-            tile,
-          ],
-        ],
-      );
-    }
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (i, tile) in tiles.indexed) ...[
-            if (i > 0) const SizedBox(width: AppSpace.sm),
-            Expanded(child: tile),
-          ],
-        ],
-      ),
     );
   }
 }

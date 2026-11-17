@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../data/emergency_numbers.dart';
 import '../models/alert_level.dart';
 import '../services/location_service.dart';
+import '../services/place_lookup.dart';
 
 // Thai/English text lives next to where it is used: context.tr(th: ..., en: ...).
 // The helpers below cover the strings that several screens share.
@@ -49,6 +50,17 @@ extension AppL10n on BuildContext {
           th: '${(meters / 1000).toStringAsFixed(1)} กม.',
           en: '${(meters / 1000).toStringAsFixed(1)} km',
         );
+
+  // A place in words: the address, or "Near <shelter> (about 300 m)" when no address is known.
+  String placeText(Place place) {
+    final near = place.nearest;
+    if (place.address != null) return place.address!;
+    if (near == null) return '';
+    return tr(
+      th: 'ใกล้ ${near.name} (ประมาณ ${distance(place.meters ?? 0)})',
+      en: 'Near ${near.name} (about ${distance(place.meters ?? 0)})',
+    );
+  }
 
   String shelterCapacity(int people) =>
       tr(th: 'รองรับได้ประมาณ $people คน', en: 'Holds about $people people');

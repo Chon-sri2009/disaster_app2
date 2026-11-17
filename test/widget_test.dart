@@ -13,7 +13,7 @@ void main() {
     mockPathProvider();
   });
 
-  testWidgets('all four tabs are reachable', (tester) async {
+  testWidgets('all five tabs are reachable', (tester) async {
     // A phone-sized portrait screen shows the bottom NavigationBar (wider screens get a rail).
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
@@ -28,13 +28,20 @@ void main() {
 
     expect(find.text('SOS'), findsOneWidget);
 
-    // Thai is the default language. Sensor readings live on Home now.
-    expect(find.text('ระดับน้ำ'), findsOneWidget);
-    expect(find.text('ทดลอง: จำลองระดับน้ำ'), findsOneWidget);
+    // Thai is the default language.
+    await tester.tap(find.text('โทร'));
+    await tester.pump();
+    expect(find.text('โทรฉุกเฉิน'), findsOneWidget);
+    expect(find.text('1669'), findsOneWidget);
 
     await tester.tap(find.text('แผนที่'));
     await tester.pump();
     expect(find.byType(NavigationBar), findsOneWidget);
+    // Sensor readings live in the map's sheet, behind the Sensors switch.
+    await tester.tap(find.text('เซนเซอร์'));
+    await tester.pump();
+    expect(find.text('ระดับน้ำ'), findsOneWidget);
+    expect(find.text('ทดลอง: จำลองระดับน้ำ'), findsOneWidget);
 
     await tester.tap(find.text('รายงาน'));
     await tester.pump();
@@ -76,6 +83,34 @@ void main() {
     expect(find.text('Offline guide'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(storage.language.code, 'en');
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Settings can force the night board and keep it', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final storage = await StorageService.create();
+    await tester.pumpWidget(
+      DisasterApp(storage: storage, loadMap: failingLoadMap),
+    );
+    await tester.pump();
+
+    BuildContext home() => tester.element(find.text('หน้าแรก').first);
+    expect(Theme.of(home()).brightness, Brightness.light);
+
+    await tester.tap(find.byTooltip('ตั้งค่า').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('มืด'));
+    await tester.pumpAndSettle();
+    // pageBack() looks for the English "Back" tooltip; this UI is Thai.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(Theme.of(home()).brightness, Brightness.dark);
+    expect(storage.themeMode, ThemeMode.dark);
 
     await tester.pumpWidget(const SizedBox());
   });

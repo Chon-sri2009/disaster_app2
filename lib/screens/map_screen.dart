@@ -10,9 +10,11 @@ import '../services/emergency_launcher.dart';
 import '../services/nearby.dart';
 import '../services/offline_map.dart';
 import '../services/offline_map_theme.dart';
+import '../services/sensor_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/notice.dart';
+import '../widgets/sensor_readings.dart';
 import '../widgets/warning_banner.dart';
 import 'settings_screen.dart';
 
@@ -22,10 +24,12 @@ class MapScreen extends StatefulWidget {
   const MapScreen({
     super.key,
     required this.storage,
+    required this.sensors,
     this.loadMap = loadBundledBangkokMap,
   });
 
   final StorageService storage;
+  final SensorService sensors;
   final OfflineMapLoader loadMap;
 
   @override
@@ -42,6 +46,9 @@ class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   late Future<_MapSource> _tiles = _open();
   Object? _loadError;
+
+  // Which list the sheet shows: shelters (default) or the sensor readings.
+  bool _showSensors = false;
 
   // The map area's height when the camera last fitted the markers; a change (the offline notice
   // appearing, rotation) fits them again so none sits clipped at an edge.
@@ -458,7 +465,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // The shelter list (nearest first when the position is known), or an empty state.
+  // The sheet: a Shelters | Sensors switch, then the shelter list (nearest first when the position is known), or an empty state.
   Widget _buildList(
     List<Shelter> shelters,
     LatLng? from,
@@ -485,111 +492,135 @@ class _MapScreenState extends State<MapScreen> {
               color: t.ink,
             ),
           ),
-        Text(
-          context.tr(
-            th: 'ศูนย์พักพิง (${shelters.length})',
-            en: 'Shelters (${shelters.length})',
-          ),
-          style: theme.textTheme.titleMedium,
-        ),
-        Text(
-          from == null
-              ? context.tr(
-                  th: 'ยังไม่ทราบตำแหน่งของคุณ จึงเรียงตามที่บันทึกไว้',
-                  en: 'Your position is not known, so these are in saved order.',
-                )
-              : context.tr(
-                  th: 'เรียงจากใกล้คุณที่สุด',
-                  en: 'Nearest to you first',
-                ),
-          style: theme.textTheme.bodySmall,
-        ),
-        if (MockData.isDemoShelterList(shelters))
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpace.xs),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: NoticeTag(
-                context.tr(
-                  th: 'ตัวอย่าง ไม่ใช่ศูนย์พักพิงจริง',
-                  en: 'Sample, not real shelters',
-                ),
-              ),
+        SegmentedButton<bool>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(
+              value: false,
+              icon: const Icon(Icons.home_work),
+              label: Text(context.tr(th: 'ศูนย์พักพิง', en: 'Shelters')),
             ),
-          ),
-        const SizedBox(height: AppSpace.sm),
-        // Legend: the two marker shapes, drawn as they appear on the map.
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSpace.sm,
-          runSpacing: AppSpace.xs,
-          children: [
-            _LegendMark(tokens: t, square: true, icon: Icons.home_work),
-            Text(
-              context.tr(th: 'ศูนย์พักพิง', en: 'Shelter'),
-              style: theme.textTheme.labelMedium,
-            ),
-            const SizedBox(width: AppSpace.sm),
-            _LegendMark(tokens: t, square: false, icon: Icons.sensors),
-            Text(
-              context.tr(th: 'สถานีเซนเซอร์', en: 'Sensor station'),
-              style: theme.textTheme.labelMedium,
+            ButtonSegment(
+              value: true,
+              icon: const Icon(Icons.sensors),
+              label: Text(context.tr(th: 'เซนเซอร์', en: 'Sensors')),
             ),
           ],
+          selected: {_showSensors},
+          onSelectionChanged: (v) => setState(() => _showSensors = v.first),
         ),
         const SizedBox(height: AppSpace.md),
-        if (shelters.isEmpty)
-          WarningBanner(
-            message: context.tr(
-              th:
-                  'ยังไม่มีรายชื่อศูนย์พักพิงในเครื่อง '
-                  'เปิดแอปตอนมีอินเทอร์เน็ตสักครั้งเพื่อดาวน์โหลด',
-              en:
-                  'No shelters are saved on this phone yet. '
-                  'Open the app once with internet to download the list.',
+        if (_showSensors)
+          SensorReadings(sensors: widget.sensors)
+        else ...[
+          Text(
+            context.tr(
+              th: 'ศูนย์พักพิง (${shelters.length})',
+              en: 'Shelters (${shelters.length})',
             ),
+            style: theme.textTheme.titleMedium,
           ),
-        for (final (i, s) in shelters.indexed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpace.sm),
-            child: NoticeTile(
-              onTap: () => _showShelter(s),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.md,
-                vertical: AppSpace.sm,
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.home_work),
-                  const SizedBox(width: AppSpace.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (i == 0 && from != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpace.xs),
-                            child: NoticeTag(
-                              context.tr(th: 'ใกล้สุด', en: 'Nearest'),
-                            ),
-                          ),
-                        Text(s.name, style: theme.textTheme.titleSmall),
-                        Text(
-                          [
-                            if (from != null)
-                              context.distance(Nearby.metersTo(from, s)),
-                            context.shelterCapacity(s.capacity),
-                          ].join(' · '),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
+          Text(
+            from == null
+                ? context.tr(
+                    th: 'ยังไม่ทราบตำแหน่งของคุณ จึงเรียงตามที่บันทึกไว้',
+                    en: 'Your position is not known, so these are in saved order.',
+                  )
+                : context.tr(
+                    th: 'เรียงจากใกล้คุณที่สุด',
+                    en: 'Nearest to you first',
                   ),
-                  const Icon(Icons.chevron_right),
-                ],
+            style: theme.textTheme.bodySmall,
+          ),
+          if (MockData.isDemoShelterList(shelters))
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xs),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: NoticeTag(
+                  context.tr(
+                    th: 'ตัวอย่าง ไม่ใช่ศูนย์พักพิงจริง',
+                    en: 'Sample, not real shelters',
+                  ),
+                ),
               ),
             ),
+          const SizedBox(height: AppSpace.sm),
+          // Legend: the two marker shapes, drawn as they appear on the map.
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpace.sm,
+            runSpacing: AppSpace.xs,
+            children: [
+              _LegendMark(tokens: t, square: true, icon: Icons.home_work),
+              Text(
+                context.tr(th: 'ศูนย์พักพิง', en: 'Shelter'),
+                style: theme.textTheme.labelMedium,
+              ),
+              const SizedBox(width: AppSpace.sm),
+              _LegendMark(tokens: t, square: false, icon: Icons.sensors),
+              Text(
+                context.tr(th: 'สถานีเซนเซอร์', en: 'Sensor station'),
+                style: theme.textTheme.labelMedium,
+              ),
+            ],
           ),
+          const SizedBox(height: AppSpace.md),
+          if (shelters.isEmpty)
+            WarningBanner(
+              message: context.tr(
+                th:
+                    'ยังไม่มีรายชื่อศูนย์พักพิงในเครื่อง '
+                    'เปิดแอปตอนมีอินเทอร์เน็ตสักครั้งเพื่อดาวน์โหลด',
+                en:
+                    'No shelters are saved on this phone yet. '
+                    'Open the app once with internet to download the list.',
+              ),
+            ),
+          for (final (i, s) in shelters.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
+              child: NoticeTile(
+                onTap: () => _showShelter(s),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.md,
+                  vertical: AppSpace.sm,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.home_work),
+                    const SizedBox(width: AppSpace.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (i == 0 && from != null)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpace.xs,
+                              ),
+                              child: NoticeTag(
+                                context.tr(th: 'ใกล้สุด', en: 'Nearest'),
+                              ),
+                            ),
+                          Text(s.name, style: theme.textTheme.titleSmall),
+                          Text(
+                            [
+                              if (from != null)
+                                context.distance(Nearby.metersTo(from, s)),
+                              context.shelterCapacity(s.capacity),
+                            ].join(' · '),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ],
     );
   }

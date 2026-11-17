@@ -68,7 +68,7 @@ abstract final class AppSize {
   static const double toolbar = 64;
   static const double navBar = 80;
   static const double raisedNavIcon = 44;
-  static const double sosBar = 10;
+  static const double sosBar = 6;
   static const Size dragHandle = Size(40, 4);
   static const double levelCell = 96;
   static const double photoPreview = 160;

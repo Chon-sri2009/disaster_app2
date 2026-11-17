@@ -99,7 +99,6 @@ class AboutScreen extends StatelessWidget {
             children: [
               SectionLabel(context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer')),
               SoftCard(
-                borderWidth: AppStroke.accent,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

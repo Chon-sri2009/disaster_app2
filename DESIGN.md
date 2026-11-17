@@ -1,24 +1,31 @@
 ---
 name: Disaster Alert & Rescue
-description: A posted public notice in your pocket - framed blocks, heavy Thai type, one solid field per alert tier, by day and by night.
+description: Calm, readable soft cards under a navy header band, with the alert level and SOS always first, by day and by night.
 colors:
-  paper: "#F2EDE2"
-  paper-raised: "#FBF8F1"
-  ink: "#16140F"
-  ink-muted: "#4A463D"
-  rule: "#BDB4A1"
-  pressed: "#E3DBCA"
-  offline-day: "#E6E0D2"
-  error-day: "#F6DEDA"
+  canvas: "#EEF2F6"
+  card: "#FFFFFF"
+  ink: "#0F1B2D"
+  ink-muted: "#515C6B"
+  hairline: "#DCE2E9"
+  pressed: "#E4EAF1"
+  offline-day: "#E6EBF1"
+  error-day: "#FBE4E2"
+  brand: "#0B4F8A"
+  brand-soft: "#E1ECF7"
+  on-header-muted: "#C9DBEE"
   danger-ink-day: "#A3101A"
-  charcoal: "#14130F"
-  charcoal-raised: "#1F1D18"
-  paper-ink: "#EFE8D8"
-  paper-ink-muted: "#B8B09F"
-  rule-night: "#6F6858"
-  pressed-night: "#2E2B24"
-  offline-night: "#26241E"
-  error-night: "#3A1A17"
+  canvas-night: "#0B1220"
+  card-night: "#152036"
+  ink-night: "#E8EDF4"
+  ink-muted-night: "#A7B2C2"
+  hairline-night: "#2A3852"
+  pressed-night: "#1F2D47"
+  offline-night: "#1A2639"
+  error-night: "#3B1A21"
+  brand-night: "#9CC8F7"
+  on-brand-night: "#0B1220"
+  brand-soft-night: "#1C3556"
+  header-night: "#0E3560"
   danger-ink-night: "#FF9A90"
   safe: "#1D6B3A"
   on-safe: "#FFFFFF"
@@ -34,7 +41,6 @@ colors:
   safe-ink-night: "#86D49F"
   watch-ink-night: "#F2C200"
   warning-ink-night: "#FFA270"
-  selection: "#F2C20066"
 typography:
   display-large:
     fontFamily: "Sarabun"
@@ -97,7 +103,11 @@ typography:
     fontWeight: 500
     lineHeight: 1.4
 rounded:
-  none: "0px"
+  sm: "8px"
+  md: "12px"
+  lg: "16px"
+  xl: "24px"
+  pill: "999px"
 spacing:
   xs: "4px"
   sm: "8px"
@@ -107,319 +117,237 @@ spacing:
   xxl: "48px"
 components:
   button-primary:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.paper}"
+    backgroundColor: "{colors.brand}"
+    textColor: "{colors.card}"
     typography: "{typography.label-large}"
-    rounded: "{rounded.none}"
+    rounded: "{rounded.pill}"
     padding: "0 24px"
     height: "56px"
   button-outlined:
-    backgroundColor: "{colors.paper-raised}"
-    textColor: "{colors.ink}"
+    backgroundColor: "{colors.card}"
+    textColor: "{colors.brand}"
     typography: "{typography.label-large}"
-    rounded: "{rounded.none}"
-    padding: "0 16px"
+    rounded: "{rounded.pill}"
     height: "48px"
   button-call-danger:
     backgroundColor: "{colors.danger}"
     textColor: "{colors.on-danger}"
     typography: "{typography.label-large}"
-    rounded: "{rounded.none}"
+    rounded: "{rounded.pill}"
     height: "56px"
-  notice-frame:
-    backgroundColor: "{colors.paper-raised}"
+  header-band:
+    backgroundColor: "{colors.brand}"
+    textColor: "{colors.card}"
+    typography: "{typography.headline-small}"
+  soft-card:
+    backgroundColor: "{colors.card}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.none}"
+    rounded: "{rounded.lg}"
     padding: "16px"
-  notice-tile:
-    backgroundColor: "{colors.paper-raised}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.none}"
-    padding: "16px"
-    height: "48px"
-  notice-tile-selected:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.paper}"
-  notice-tag:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.paper}"
+  soft-tile-selected:
+    backgroundColor: "{colors.brand-soft}"
+    textColor: "{colors.brand}"
+    rounded: "{rounded.lg}"
+  status-pill:
+    backgroundColor: "{colors.brand-soft}"
+    textColor: "{colors.brand}"
     typography: "{typography.label-medium}"
-    padding: "2px 8px"
-  sos-block:
+    rounded: "{rounded.pill}"
+    padding: "4px 12px"
+  round-chip:
+    backgroundColor: "{colors.brand-soft}"
+    textColor: "{colors.brand}"
+    size: "56px"
+  sos-card:
     backgroundColor: "{colors.danger}"
     textColor: "{colors.on-danger}"
     typography: "{typography.display-large}"
-    rounded: "{rounded.none}"
+    rounded: "{rounded.xl}"
     height: "112px"
-  sos-block-compact:
+  sos-card-compact:
     height: "88px"
-  level-field-safe:
-    backgroundColor: "{colors.safe}"
-    textColor: "{colors.on-safe}"
-    typography: "{typography.display-small}"
-  level-field-watch:
-    backgroundColor: "{colors.watch}"
-    textColor: "{colors.on-watch}"
-    typography: "{typography.display-small}"
-  level-field-warning:
-    backgroundColor: "{colors.warning}"
-    textColor: "{colors.on-warning}"
-    typography: "{typography.display-small}"
-  level-field-danger:
-    backgroundColor: "{colors.danger}"
-    textColor: "{colors.on-danger}"
-    typography: "{typography.display-small}"
   nav-bar:
-    backgroundColor: "{colors.paper}"
-    textColor: "{colors.ink}"
+    backgroundColor: "{colors.card}"
+    textColor: "{colors.ink-muted}"
     typography: "{typography.label-medium}"
-    height: "76px"
+    height: "80px"
   nav-indicator-selected:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.paper}"
+    backgroundColor: "{colors.brand-soft}"
+    textColor: "{colors.brand}"
+  nav-call-circle:
+    backgroundColor: "{colors.brand}"
+    textColor: "{colors.card}"
+    size: "44px"
   text-field:
-    backgroundColor: "{colors.paper-raised}"
+    backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.body-medium}"
-    rounded: "{rounded.none}"
+    rounded: "{rounded.md}"
     padding: "16px"
 ---
 
 # Design System: Disaster Alert & Rescue
 
-Surface: the whole app (Home, Call, Map, Report, Guide, Settings, About, startup notice), Operate mode. Tokens live in `lib/theme/`: raw hex only in `app_palette.dart`, scales in `app_tokens.dart`, Material wiring in `app_theme.dart`. Screens read colors through `context.tokens` and type through `Theme.of(context).textTheme`. Hex values are given once, in the frontmatter above and in the tables below that mirror `AppPalette`.
+Surface: the whole app (Home, Map, Call, Report, Guide, Settings, About, startup notice), Operate mode. Tokens live in `lib/theme/`: raw hex only in `app_palette.dart`, scales in `app_tokens.dart`, Material wiring in `app_theme.dart`. Screens read colours through `context.tokens` and type through `Theme.of(context).textTheme`. Shared widgets are in `lib/widgets/soft_ui.dart`.
 
 ## Overview
 
-**Creative North Star: "The Posted Public Notice"**
+**Creative North Star: "Soft Cards Under a Navy Band"**
 
-The app is a public notice pinned to a board: square blocks framed in ink, ruled into sections, set in heavy Thai type. The level is a solid field of its tier color with its word and advice on it, and the same 4-step segmented scale is reused for every gauge. It deliberately is not soft rounded cards, pastel banners and a round red hero button.
+Adapted from the layout language of a family-planner app (Crevio's "AI Family Organizer" shot): a deep navy header band at the top of each tab, a cool grey canvas, white rounded cards with soft shadows, rows marked by a thin coloured accent bar, small rounded pills for status, round shortcut chips, folding cards, and a raised round button in the middle of the tab bar. Only the style is borrowed; content and safety rules are this app's own.
 
-There are two boards. By default they follow the phone's setting; Settings offers Phone / Light / Dark, saved on the phone (`StorageService.themeMode`). Day: newsprint paper ground, ink-black 2 dp frames and rules. Night: the same board in charcoal with paper-coloured frames and text. Tier fields and the SOS red are the same on both boards; only the tier colours used as text on the board change. Selection anywhere is an ink block with ground-coloured text.
+The calm look must never hide danger. At WARNING and DANGER the header band and the water-level card fill with the tier colour, so the whole top of Home changes at a glance.
+
+There are two modes. By default they follow the phone's setting; Settings offers Phone / Light / Dark, saved on the phone (`StorageService.themeMode`). Day: grey canvas, white cards, navy band. Night: deep navy canvas, lighter navy cards with no shadow, a light blue brand. Tier fields and the SOS red are the same in both.
 
 The scene it is built for: a frightened resident, one hand, often at night or in rain, low brightness, weak or no signal, who must find the level and the SOS in two seconds.
 
 **Key Characteristics:**
-- Square corners everywhere; frames and rules instead of shadows.
-- One solid field per alert tier, always with icon and word.
-- Sarabun 700 for headings, values and labels; 400 for body.
-- The segmented level meter is the signature, reused for levels and measured values.
-- SOS is a full-width framed red block pinned at the top of Home under the title, press and hold to confirm.
-- Day and night boards, both contrast-tested.
+- Rounded cards (16), tiles and inputs (12), sheets (24), pills fully round.
+- A navy header band behind the status bar; pushed pages use the same band as their app bar.
+- One brand blue for actions and selection; colour beyond that means a state.
+- SOS is a rounded red card pinned over the band's lower edge on Home, press and hold to confirm.
+- Every state is icon + text + colour; both modes are contrast-tested.
 
 ## Colors
 
-Ink on paper, no brand accent: ink does the job an accent would (primary buttons, selection, nav indicator). Colour beyond ink and paper means a state.
-
-### Day board
+### Day
 
 | Token (`AppTokens`) | Palette name | Hex | Use |
 |---|---|---|---|
-| ground | paper | `#F2EDE2` | screen background, nav bar, app bar |
-| surface | paperRaised | `#FBF8F1` | framed blocks, tiles, fields, dialogs, sheets |
-| ink | ink | `#16140F` | text, icons, frames, rules, primary button, selected state (15.8:1 on paper) |
-| inkMuted | inkMuted | `#4A463D` | captions, unselected nav labels, source lines (8.0:1) |
-| hairline | rule | `#BDB4A1` | quiet dividers, offline banner frame, disabled button fill |
-| pressed | pressed | `#E3DBCA` | ripple and highlight fill |
-| offlineBg | offlineDay | `#E6E0D2` | offline banner, "no live data" level field, empty station cell |
-| errorBg | errorDay | `#F6DEDA` | error banner, over-limit reading block |
-| dangerInk | dangerInkDay | `#A3101A` | danger as text, icon or frame on the board (6.8:1) |
+| ground | canvas | `#EEF2F6` | page background, input fill, flat tiles inside cards |
+| surface | card | `#FFFFFF` | cards, tiles, nav bar, sheets, dialogs |
+| ink | ink | `#0F1B2D` | text and icons (15.4:1 on canvas) |
+| inkMuted | inkMuted | `#515C6B` | captions, unselected nav, source lines (6.0:1 on canvas) |
+| hairline | hairline | `#DCE2E9` | dividers, empty meter steps, field borders |
+| pressed | pressed | `#E4EAF1` | ripple and highlight |
+| offlineBg | offlineDay | `#E6EBF1` | offline banner, "no live data" disc, sample pill |
+| errorBg | errorDay | `#FBE4E2` | error banner, over-limit reading |
+| dangerInk | dangerInkDay | `#A3101A` | danger as text or outline (7.9:1 on card) |
+| brand / onBrand | brand / white | `#0B4F8A` / `#FFFFFF` | primary buttons, selected tab, links, the Call circle (8.4:1) |
+| brandSoft | brandSoft | `#E1ECF7` | tint behind brand icons, pills, selected tiles |
+| header / onHeader / onHeaderMuted | brand / white / `#C9DBEE` | band and its title and small line |
 
-### Night board
+### Night
 
-| Token | Palette name | Hex | Use |
+| Token | Palette name | Hex |
+|---|---|---|
+| ground | canvasNight | `#0B1220` |
+| surface | cardNight | `#152036` |
+| ink | inkNight | `#E8EDF4` |
+| inkMuted | inkMutedNight | `#A7B2C2` |
+| hairline | hairlineNight | `#2A3852` |
+| offlineBg / errorBg | offlineNight / errorNight | `#1A2639` / `#3B1A21` |
+| dangerInk | dangerInkNight | `#FF9A90` |
+| brand / onBrand | brandNight / onBrandNight | `#9CC8F7` / `#0B1220` |
+| brandSoft | brandSoftNight | `#1C3556` |
+| header | headerNight | `#0E3560` |
+
+Cards carry `cardShadow` by day (one 12 dp blur at 10% ink) and none at night.
+
+### Alert tiers (same fields in both modes)
+
+| Tier | Icon | Field / text on field | Tier as text, day / night |
 |---|---|---|---|
-| ground | charcoal | `#14130F` | screen background |
-| surface | charcoalRaised | `#1F1D18` | framed blocks, tiles, fields, sheets |
-| ink | paperInk | `#EFE8D8` | text, frames, primary button, selected state (15.2:1) |
-| inkMuted | paperInkMuted | `#B8B09F` | captions (8.6:1) |
-| hairline | ruleNight | `#6F6858` | quiet dividers (3.4:1) |
-| pressed | pressedNight | `#2E2B24` | ripple and highlight fill |
-| offlineBg | offlineNight | `#26241E` | offline notices |
-| errorBg | errorNight | `#3A1A17` | error notices, over-limit block |
-| dangerInk | dangerInkNight | `#FF9A90` | danger as text on the board (9.1:1) |
+| SAFE | check circle | `#1D6B3A` / `#FFFFFF` | `#1D6B3A` / `#86D49F` |
+| WATCH | eye | `#F2C200` / `#16140F` | `#6E5300` / `#F2C200` |
+| WARNING | warning triangle | `#B93D0B` / `#FFFFFF` | `#A33508` / `#FFA270` |
+| DANGER | octagon (`Icons.dangerous`) | `#B3121C` / `#FFFFFF` | dangerInk |
 
-### Alert tiers (same fields on both boards)
-
-| Tier | Icon | Field / text on field | Contrast | Tier as text on day / night board |
-|---|---|---|---|---|
-| SAFE | check circle | `#1D6B3A` / `#FFFFFF` | 6.5:1 | `#1D6B3A` / `#86D49F` |
-| WATCH | eye | `#F2C200` / `#16140F` | 10.9:1 | `#6E5300` / `#F2C200` |
-| WARNING | warning triangle | `#B93D0B` / `#FFFFFF` | 5.6:1 | `#A33508` / `#FFA270` |
-| DANGER | octagon (`Icons.dangerous`) | `#B3121C` / `#FFFFFF` | 7.0:1 | dangerInk of the board |
-
-`selection` (`#F2C200` at 40% alpha) is the text-selection highlight on both boards.
-
-Every pair above (tier field, tier on ground, tier on surface, ink and inkMuted on every tint, ground on ink, dangerInk on ground, surface and errorBg) is asserted at 4.5:1, and frames at 3:1, for both boards in `test/design_test.dart`.
+Every text pair that renders (tier fields, tier text on canvas and card, ink and inkMuted on every tint, brand pairs, header pairs) is asserted at 4.5:1, and brand marks at 3:1, for both modes in `test/design_test.dart`.
 
 ### Named Rules
 
-**The Ink-Is-The-Accent Rule.** There is no brand colour. Primary actions, selected tabs, selected tiles and tags are ink blocks with ground-coloured text.
+**The One-Blue Rule.** Brand blue is for actions, selection and the header. It is never an alert tier.
 
-**The Colour-Means-State Rule.** Green, yellow, orange and red appear only for an alert tier, SOS, over-limit or the first-aid call button; the one exception is the yellow text-selection highlighter. The base map's own colours are not UI. A new colour needs a state it explains.
+**The Colour-Means-State Rule.** Green, yellow, orange and red appear only for an alert tier, SOS, over-limit or the first-aid call. A new colour needs a state it explains.
 
-**The Calm Offline Rule.** Offline and "no data" use the quiet offlineBg tint with a hairline frame and a cloud or sensor-off icon. Never red.
+**The Loud-At-Danger Rule.** At WARNING and DANGER the Home band and water-level card take the tier colour (tested in `design_test.dart`, golden `home_danger_390x844.png`).
+
+**The Calm Offline Rule.** Offline and "no data" use the quiet offlineBg tint with a cloud or sensor-off icon. Never red.
 
 ## Typography
 
-**Font:** Sarabun (SIL OFL), bundled in `assets/fonts/`, weights 400 / 500 / 600 / 700. One family for everything; Thai first, English second.
+**Font:** Sarabun (SIL OFL), bundled, weights 400 / 500 / 600 / 700. Thai first, English second.
 
-**Character:** A printed notice: heavy 700 for anything you must read at a glance, plain 400 for reading.
+Every style is built by `AppTheme._style` with `leadingDistribution: TextLeadingDistribution.even` and line heights from 1.1 to 1.5, so Thai tone marks are never clipped (checked at 1.5x in `thai_sample_scale1.5.png` and `home_360x640_scale1.5.png`).
 
-Every style is built by `AppTheme._style` with `leadingDistribution: TextLeadingDistribution.even` and a line height of 1.1 to 1.5, so Thai tone marks and vowels above and below the line are never clipped. Checked at 1.5x text scale in `test/goldens/thai_sample_scale1.5.png` and `home_360x640_scale1.5.png`.
-
-### Hierarchy
-
-| Role | Size / weight / height | Use |
+| Role | Size / weight | Use |
 |---|---|---|
-| displayLarge | 48 / 700 / 1.1 | "SOS" in the SOS block |
-| displaySmall | 36 / 700 / 1.2 | level word, sensor value (tabular figures) |
-| headlineMedium | 28 / 700 / 1.25 | screen title in `ScreenHeader`, startup notice title |
-| headlineSmall | 24 / 700 / 1.3 | app bar title on pushed pages |
-| titleLarge | 22 / 700 / 1.3 | dialog title |
-| titleMedium | 18 / 700 / 1.4 | `SectionLabel`, guide step numbers |
-| titleSmall | 16 / 700 / 1.4 | row and tile titles, SOS hint |
-| bodyLarge | 18 / 400 / 1.5 | level advice (at 500), guide steps, dialog body |
-| bodyMedium | 16 / 400 / 1.5 | body, banners, field text |
-| bodySmall | 16 / 400 / 1.5, inkMuted | captions, source and "demo data" lines |
-| labelLarge | 16 / 700 / 1.4 | buttons |
-| labelMedium | 14 / 700 / 1.4 | nav labels, tags, bulletin strip, current meter step |
-| labelSmall | 14 / 500 / 1.4, inkMuted | other meter steps, map credit |
+| displayLarge | 48 / 700 | "SOS" (held at 1.0x so the hint keeps its room) |
+| displaySmall | 36 / 700 | numbers on the Call tab, sensor values |
+| headlineMedium | 28 / 700 | the level word on Home |
+| headlineSmall | 24 / 700 | header band title |
+| titleLarge | 22 / 700 | app bar title on pushed pages, dialog title |
+| titleMedium | 18 / 700 | card titles (`SectionLabel`), step numbers |
+| titleSmall | 16 / 700 | row titles, SOS hint |
+| bodyLarge | 18 / 400 | level advice (500), guide steps |
+| bodyMedium / bodySmall | 16 / 400 | body; captions in inkMuted |
+| labelLarge | 16 / 700 | buttons |
+| labelMedium / labelSmall | 14 / 700, 500 | nav labels, pills, meter steps, band's small line |
 
-displayMedium (40) and headlineSmall exist in the theme for completeness; the build uses the roles listed.
+**The 16 sp Floor Rule.** Body and caption text is 16 sp or more; only labels go to 14 sp, at 500 or 700.
 
-### Named Rules
-
-**The 16 sp Floor Rule.** Body and caption text is 16 sp or more. Only labels (nav, tags, meter steps, map credit) go to 14 sp, and always at 500 or 700.
-
-**The Even Leading Rule.** Never build a `TextStyle` by hand without `leadingDistribution.even`; go through the theme's text styles and `copyWith`.
-
-**The Shrink-Not-Break Rule.** A Thai word in a narrow cell (meter steps) scales down with `FittedBox` rather than breaking mid-syllable.
+**The Shrink-Not-Break Rule.** A Thai word in a narrow cell (meter steps, band title) scales down with `FittedBox` rather than breaking mid-syllable.
 
 ## Layout
 
-- **Spacing** (`AppSpace`), an 8 dp grid: xs 4 (the one half step, icon-to-text gaps), sm 8, md 16, lg 24, xl 32, xxl 48. Screen gutters are md 16.
-- **Shell:** 5 tabs (Home, Call, Map, Report, Guide) in an `IndexedStack` so every tab keeps its state. Settings (language, theme, About) opens from the gear in each `ScreenHeader`. Sensor readings live in the Map sheet.
-- **Navigation switch:** bottom `NavigationBar` (76 dp, labels always shown) when width < 600 dp or height < 480 dp; otherwise a labelled `NavigationRail` with a 3 dp ink rule beside it. The bottom bar wears a 3 dp ink rule on top, like the foot of a notice.
-- **Home (all sizes):** `ScreenHeader` and the SOS block stay pinned at the top (SOS 112 dp on screens 700 dp tall or more, 88 dp below, a 3 dp ink rule beneath); the level notice, nearest shelter and official notices scroll below, capped at the content width.
-- **Call:** one large `NoticeTile` per emergency number (number in displaySmall, service name below). A tap opens the dialer with the number filled in; the person still presses call.
-- **Map sheet:** a Shelters | Sensors `SegmentedButton` under the handle switches the sheet (or the wide side column) between the shelter list and the sensor readings.
-- **Map:** phones get the shelter list as a sheet over the map; wide screens a 340 dp side column.
-- **Limits:** content capped at 640 dp wide; the startup notice at 420 dp.
-- **Targets:** `AppSize.tapTarget` 48 dp minimum for every control, map markers included; primary buttons and segmented buttons 56 dp.
+- **Spacing** (`AppSpace`): xs 4, sm 8, md 16, lg 24, xl 32, xxl 48. Screen gutters md 16; cards md 16 apart.
+- **Shell:** 5 tabs in an `IndexedStack`: Home, Map, **Call** (centre), Report, Guide. Settings opens from the round gear on each header band.
+- **Navigation:** bottom `NavigationBar` (80 dp, white, soft top shadow) when width < 600 dp or height < 480 dp; otherwise a `NavigationRail`. The Call icon is a 44 dp brand circle. In the bottom bar it keeps the 24 dp icon box, so its label lines up, and is drawn lifted. In the rail it sits in place.
+- **Header band (`BrandHeader`):** paints behind the status bar (screens use `SafeArea(top: false)`), sets light or dark status-bar icons from the band colour, holds an optional small line above the title and a round action.
+- **Home:** the band shows the area line (dropped below 480 dp tall) and the app name. The SOS card overlaps the band's lower edge by 32 dp and stays pinned (112 dp on screens 700 dp tall or more, 88 dp below). Below it, scrolling and lined up with the SOS: water level, quick call, nearest shelter, official notices.
+- **Map:** a slim band, the map, and a rounded sheet (24) with a handle and a Shelters | Sensors switch; wide screens get a 340 dp side column.
+- **Limits:** content capped at 640 dp; the startup card at 420 dp.
+- **Targets:** 48 dp minimum for every control (`AppSize.tapTarget`); primary buttons 56 dp.
 
-## Elevation & Depth
+## Components (`lib/widgets/soft_ui.dart`)
 
-Flat. Depth is drawn with lines, not shadows: a 2 dp ink frame lifts a block off the board, a 3 dp rule ends a header or a sheet. Cards, app bar, nav bar and scrolled-under app bars all sit at elevation 0 with no surface tint. Only dialogs, bottom sheets and snackbars use `AppElevation.overlay` (3), and they still carry their frame or top rule.
+- **SoftCard:** white rounded card (16) with the soft shadow. An optional outline marks a state (over-limit: 2 dp dangerInk on errorBg) alongside its icon and words.
+- **SoftTile:** a SoftCard that is a button. Selected: brandSoft fill with a 2 dp brand outline. `flat` tiles (inside a card) use the canvas fill with no shadow.
+- **BrandHeader:** the band (see Layout). Home passes a tier colour at WARNING and DANGER.
+- **SectionLabel:** titleMedium card title with an optional trailing pill; `inCard` sits flush with the card's padding.
+- **StatusPill:** rounded label with optional icon, brandSoft and brand by default. Tier pills use the tier field and on-colour; "sample" pills use offlineBg and ink.
+- **AccentRow:** a 3 dp rounded bar in a state or brand colour, optional leading mark, bold title over a muted line, optional trailing pill or chevron. Tappable rows have a 48 dp minimum.
+- **RoundChip:** a 56 dp brandSoft circle with a brand icon and a label underneath. Used for Home's quick-call row.
+- **CollapsibleCard:** a SoftCard around an `ExpansionTile`, open by default. Used for the Guide.
+- **LevelMeter:** four rounded segments. Steps up to the level are filled in their tier colour, the current one full height and the others half height; empty steps are hairline. Words underneath shrink to fit.
+- **SegmentedGauge:** rounded segments in brand up to the value, an ink post at the safe limit, red past it.
+- **SosHoldButton:** rounded red card (24) with a surface ring and a red glow. "SOS" sits beside the hint, and a white pill fills along a faint track at its foot while held for 1.5 s. Haptics; a short tap does nothing; screen readers confirm with long-press.
+- **WarningBanner:** rounded tinted card with an icon. Info uses brandSoft; offline uses offlineBg; error uses errorBg with a dangerInk outline.
 
-### Stroke vocabulary (`AppStroke`)
-- **rule** (1 dp): dividers, empty meter cells, gauge cells.
-- **frame** (2 dp): every notice block, tile, field, outlined button, banner, section label rule, map marker border.
-- **heavy** (3 dp): under `ScreenHeader` and app bars, above the tab bar and sheets, around the level notice, the SOS block, the current meter step, a focused field, an over-limit reading.
+### Screens
 
-### Named Rules
+- **Water-level card (Home):** the title and a time pill, a 56 dp disc with the tier icon, "Level n of 4" and the level word in tier text colour, the advice, then the meter and source line. At WARNING and DANGER the card fills with the tier colour, and the meter sits in a white well so every step still reads. With no data: offlineBg disc, sensor-off icon, "No live data", "Do not assume it is safe". It is one live-region label.
+- **Call:** one SoftTile per number: a brandSoft disc with the service icon, the number in displaySmall, the service name, and a brand "Call" pill. A tap opens the dialer; the person still presses call.
+- **Report:** the form in one card. Category and attachment choices are flat tiles with brandSoft icon discs, and a selected tile shows a check on brand. Fields are filled with the canvas colour and rounded (12). The save button is a full-width pill.
+- **Guide:** two CollapsibleCards, "Urgent first aid" (red accent bars) and "Floods and earthquakes" (brand bars), with icon discs and chevrons. Topic pages have the steps on one card with numbers in brandSoft circles, and first-aid pages end with the red call pill.
+- **Settings:** one card for Language and Theme (pill segmented buttons), one AccentRow card for About.
+- **Map markers:** shelters are brand-filled rounded squares with a white ring; stations are white discs with a brand ring; "you are here" is a brand dot in a white ring on a soft halo. 48 dp tap areas and labels.
 
-**The Frames-Not-Shadows Rule.** A block is separated from the board by its ink frame. Do not add `BoxShadow` or elevation to anything that is not an overlay.
+## Motion
 
-## Shapes
-
-Square. `AppRadius.none` (0) is the only radius in use: buttons, tiles, fields, cards, dialogs, nav indicators, tooltips and snackbars all use a plain `RoundedRectangleBorder` or `BorderRadius.zero`. The two exceptions are functional: sensor markers on the map are ink discs (so they read apart from the square shelter markers), and the "you are here" mark is a dot inside rings.
-
-## Components
-
-### NoticeFrame
-The basic block: surface fill (or a given field colour), a 2 dp ink frame painted in front of the content so a filled strip never hides it, md 16 padding. Optional heavier or coloured frame (the over-limit reading uses a 3 dp dangerInk frame on errorBg).
-
-### NoticeTile
-A framed block that is a button: ink ripple inside the frame, at least 48 x 48 dp, semantic label. Selected turns it into an ink block with ground-coloured text and icons. Used for the Call tab, the nearest shelter, guide tiles and report category choices (two per row, equal height).
-
-### ScreenHeader and SectionLabel
-- **ScreenHeader:** tab title in headlineMedium, kept to one line (it shrinks to fit rather than wrapping), with an optional trailing action (the Settings gear), a 3 dp ink rule beneath. Marked as a header for screen readers.
-- **SectionLabel:** titleMedium label with a 2 dp ink rule running the full width behind it; the label sits on a patch of the board colour so a long Thai label is never squeezed. Sheets pass their surface colour.
-
-### NoticeTag
-A small ink block with ground-coloured labelMedium text (2 dp x 8 dp padding), for short status marks such as "nearest" or "sample, not a real shelter".
-
-### Level notice (Home)
-Three stacked parts inside one 3 dp ink frame: an ink bulletin strip (area and posted time in ground colour), the tier field (48 dp tier icon, "Level n of 4", the level word in displaySmall, advice in bodyLarge 500, all in the tier's on-colour), then a surface strip with the `LevelMeter` and the source line. With no data the field is offlineBg with a sensor-off icon, "No live data" and "Do not assume it is safe". Announced as one live-region label. The field colour change animates over `AppMotion.slow`.
-
-### LevelMeter and SegmentedGauge (signature)
-- **LevelMeter:** four equal 20 dp cells, sm 8 apart. Cells up to the current level are filled in their own tier colour; the rest are surface. The current cell has a 3 dp frame and its word in labelMedium; the others a 1 dp frame and labelSmall. Null level leaves every cell empty.
-- **SegmentedGauge:** the same cells for a measured value (10 by default): filled in ink up to the value, a heavy ink post at the safe limit, filled cells past the limit in danger red. Fill animates over `AppMotion.base`.
-
-### Reading block (Home)
-Title with icon, status word with check or octagon icon, the value in displaySmall with tabular figures, a `SegmentedGauge`, and the safe limit in words. Over the limit: errorBg, 3 dp dangerInk frame, value in dangerInk, live region. Demo readings say "Demo data, not live" with the update time. Live stations show as framed rows with a tier cell on the right (icon + word on the tier field, or an empty offlineBg cell with "–").
-
-### Guide pages
-First aid sits on top as large `NoticeTile`s, disaster topics below as rows. A topic page lists numbered steps: the number in a 32 dp ink square (titleMedium, ground colour) beside the step in bodyLarge. First-aid pages end with the red call button.
-
-### SOS block
-- **Shape:** full-width square block, danger red, 3 dp ink frame, "SOS" in displayLarge white with the hold hint in titleSmall beside it.
-- **Behaviour:** press and hold 1.5 s (`AppMotion.sosHold`); a 10 dp white bar fills across its foot. Medium haptic on press, heavy on completion; an early release empties the bar (instantly with reduce-motion). A short tap does nothing. While finding GPS the bar runs indeterminate and the hint reads "Finding your location…". Screen-reader users confirm with the long-press action.
-- **After:** a sheet puts calling first and the ready-made message second.
-
-### Buttons
-- **Filled (primary):** ink block, ground text, labelLarge, 56 dp tall, lg 24 side padding, square. Disabled: hairline fill, inkMuted text. The first-aid call button on Guide pages is the one filled button in danger red.
-- **Outlined:** 2 dp ink frame, ink text, 48 dp.
-- **Text:** ink, underlined at 2 dp thickness, 48 dp target.
-- **Segmented:** 56 dp, framed; selected segment is an ink block.
-
-### Inputs / Fields
-Filled with surface, square, 2 dp ink border, md 16 padding. Focus: 3 dp ink border. Error: dangerInk border (2 dp, 3 dp focused) and dangerInk message. Label in inkMuted, floating label in labelLarge.
-
-### Status banner (`WarningBanner`)
-Framed, icon + message + optional text action. Info: surface with ink frame. Offline: offlineBg with a hairline frame and cloud-off icon. Error: errorBg with a dangerInk frame and icon. Offline and error are live regions.
-
-### Navigation
-`NavigationBar` and `NavigationRail` on the ground colour, no elevation. Selected destination: a square ink indicator with a ground-coloured filled icon and a labelMedium 700 label. Unselected: ink outline icon, inkMuted label at 500.
-
-### Map
-The offline Protomaps map (OpenStreetMap data, bundled, no internet needed) using Protomaps' light style on both boards. Shelters are 40 dp framed surface squares with an ink icon; sensor stations are 40 dp ink discs; "you are here" is an ink dot in rings. Every marker has a 48 dp tap area and a label. A legend draws the two marker shapes; the credit is labelSmall. If the map pack cannot open, a calm offline banner with "Try again" shows.
-
-### Startup notice
-While the map pack is prepared on first launch: a 3 dp-framed notice (max 420 dp) with the app name, a 6 dp ink progress bar and "Preparing the offline map…".
-
-### States
-
-| View | Loading | Empty | Offline / no data | Error |
-|---|---|---|---|---|
-| Startup | framed startup notice with progress bar | n/a | n/a | app opens anyway; Map shows its own banner |
-| Home level | n/a (demo reading is immediate) | n/a | offlineBg field, "No live data", "Do not assume it is safe" | n/a |
-| Map sensor readings | n/a | n/a | offline banner: not connected / cannot reach / may be out of date | over-limit block (errorBg, dangerInk frame, octagon) |
-| Home SOS | indeterminate bar, "Finding your location…" | n/a | works offline | GPS failure dialog with saved-position fallback |
-| Map | startup notice covers first load | "No shelters are saved on this phone yet…" | calm offline banner + "Try again" | same banner |
-| Report | "Finding…" on the location button | "No reports yet…" | works offline | GPS and photo errors as banners or snackbar |
-| Guide | n/a | n/a | works offline | n/a |
-| Settings, About | n/a | n/a | works offline | n/a |
-
-### Motion
-`AppMotion` fast 150, base 200, slow 250 ms, and sosHold 1500 ms. Used for the level field colour, gauge fills, the SOS bar release and list expansion. Every duration goes through `context.motion(d)`, which returns zero when the phone's remove-animations setting is on.
+`AppMotion` fast 150, base 200, slow 250 ms, and sosHold 1500 ms. Used for the band and level colour changes, gauge fills, the SOS bar and folding cards. Every duration goes through `context.motion(d)`, which is zero when the phone's remove-animations setting is on.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** give every state icon + text + colour: SAFE check circle, WATCH eye, WARNING triangle, DANGER octagon, offline cloud-off, no data sensor-off.
-- **Do** read colours through `context.tokens` and sizes, spacing, strokes and durations from `AppSpace`, `AppStroke`, `AppSize`, `AppIconSize` and `AppMotion`. Add a token before adding a literal.
-- **Do** make every control at least 48 dp (`AppSize.tapTarget`) with a screen-reader label; primary actions 56 dp.
-- **Do** keep body text at 16 sp or more and build type from the theme so `leadingDistribution.even` is kept.
-- **Do** add every new colour pair to the day and night lists in `test/design_test.dart` (4.5:1 text, 3:1 UI).
-- **Do** reuse `LevelMeter` / `SegmentedGauge` for any new gauge, and `NoticeFrame` / `NoticeTile` for any new block.
-- **Do** pass durations through `context.motion()`.
-- **Do** say what is demo, stale or not connected, in the block itself.
-- **Do** use the packages already in `pubspec.yaml`; no new packages.
+- **Do** give every state icon + text + colour.
+- **Do** read colours from `context.tokens` and sizes from `AppSpace`, `AppRadius`, `AppStroke`, `AppSize`, `AppIconSize`, `AppMotion`.
+- **Do** build new blocks from `soft_ui.dart`; reuse `LevelMeter` / `SegmentedGauge` for gauges.
+- **Do** add every new colour pair to both lists in `test/design_test.dart`.
+- **Do** say what is demo, stale or not connected, in the card itself.
+- **Do** use only the packages already in `pubspec.yaml`.
 
 ### Don't:
-- **Don't** round corners, add shadows or gradients, or use pastel banners: blocks are square and framed.
-- **Don't** introduce a brand accent; ink is the accent.
-- **Don't** use red, orange, yellow or green in the UI for anything but an alert tier, SOS, over-limit, the first-aid call button or the selection highlighter, and never red for offline.
-- **Don't** let a short tap send SOS; it stays press and hold.
+- **Don't** use brand blue for a level, or a tier colour for decoration.
+- **Don't** let a short tap send SOS.
 - **Don't** reword safety, first-aid or disclaimer text: that wording belongs to the user.
 - **Don't** put raw hex outside `lib/theme/app_palette.dart`.
+- **Don't** stack shadows or add blur effects; one soft card shadow by day, none at night.
 
 ## Open items
 
-- **Fourth tier data:** WARNING exists in the model, tokens and copy; real alert and sensor sources do not feed it yet.
 - **Real data:** alert and sensor data are demo or not connected until the backend is live.
-- **Night map:** map tiles use the Protomaps light style on both boards; there is no night map style yet.
-- **Report:** delete and share for saved reports are not built.
-- **Sensor history:** only the latest reading is shown.
+- **Fourth tier data:** WARNING exists in the model and tokens; real sources do not feed it yet.
+- **Night map style** and saved-report delete/share are not built.

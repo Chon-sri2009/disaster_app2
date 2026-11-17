@@ -117,7 +117,10 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
 
   // Call sits in the middle as a filled brand circle: the most urgent tab after SOS.
-  List<(Widget, Widget, String)> _destinations(BuildContext context) => [
+  List<(Widget, Widget, String)> _destinations(
+    BuildContext context, {
+    required bool rail,
+  }) => [
     (
       const Icon(Icons.home_outlined),
       const Icon(Icons.home),
@@ -129,8 +132,8 @@ class _AppShellState extends State<AppShell> {
       context.tr(th: 'แผนที่', en: 'Map'),
     ),
     (
-      const _RaisedCall(),
-      const _RaisedCall(),
+      _RaisedCall(lifted: !rail),
+      _RaisedCall(lifted: !rail),
       context.tr(th: 'โทร', en: 'Call'),
     ),
     (
@@ -156,12 +159,12 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final destinations = _destinations(context);
     final size = MediaQuery.sizeOf(context);
     // A rail needs room for five labeled items, so short landscape phones keep the bottom bar.
     final wide =
         size.width >= AppSize.wideBreakpoint &&
         size.height >= AppSize.railMinHeight;
+    final destinations = _destinations(context, rail: wide);
     // IndexedStack keeps every screen alive, so form text and map position are not lost.
     final body = IndexedStack(
       index: _index,
@@ -287,14 +290,18 @@ class _StartupNotice extends StatelessWidget {
   }
 }
 
-// The Call tab's icon: a filled brand circle, so the emergency dialer stands out in the bar.
+// The Call tab's icon: a filled brand circle, so the emergency dialer stands out. In the bottom
+// bar it keeps the icon's 24 dp layout box (its label lines up with the others) and is drawn
+// larger and lifted; the rail has room for the full circle in place.
 class _RaisedCall extends StatelessWidget {
-  const _RaisedCall();
+  const _RaisedCall({required this.lifted});
+
+  final bool lifted;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return Container(
+    final circle = Container(
       width: AppSize.raisedNavIcon,
       height: AppSize.raisedNavIcon,
       decoration: BoxDecoration(
@@ -303,6 +310,18 @@ class _RaisedCall extends StatelessWidget {
         boxShadow: t.cardShadow,
       ),
       child: Icon(Icons.call, color: t.onBrand, size: AppIconSize.md),
+    );
+    if (!lifted) return circle;
+    return SizedBox.square(
+      dimension: AppIconSize.md,
+      child: OverflowBox(
+        maxWidth: AppSize.raisedNavIcon,
+        maxHeight: AppSize.raisedNavIcon,
+        child: Transform.translate(
+          offset: const Offset(0, -AppSpace.sm),
+          child: circle,
+        ),
+      ),
     );
   }
 }

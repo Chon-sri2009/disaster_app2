@@ -160,7 +160,9 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The header band paints behind the status bar, so the top is not inset.
     return SafeArea(
+      top: false,
       child: ListenableBuilder(
         listenable: widget.storage,
         builder: (context, _) {
@@ -176,7 +178,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpace.md,
-                    0,
+                    AppSpace.md,
                     AppSpace.md,
                     AppSpace.lg,
                   ),
@@ -185,7 +187,9 @@ class _ReportScreenState extends State<ReportScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Form(key: _formKey, child: _buildForm()),
+                          SoftCard(
+                            child: Form(key: _formKey, child: _buildForm()),
+                          ),
                           SectionLabel(
                             context.tr(
                               th: 'รายงานที่บันทึกไว้ (${reports.length})',
@@ -243,7 +247,10 @@ class _ReportScreenState extends State<ReportScreen> {
           builder: (field) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SectionLabel(context.tr(th: 'ประเภท', en: 'Category')),
+              SectionLabel(
+                context.tr(th: 'ประเภท', en: 'Category'),
+                inCard: true,
+              ),
               _TileGrid(
                 children: [
                   for (final c in _categories.entries)
@@ -416,7 +423,7 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 }
 
-// Two framed tiles per row, rows of equal height.
+// Two tiles per row, rows of equal height.
 class _TileGrid extends StatelessWidget {
   const _TileGrid({required this.children});
 
@@ -449,7 +456,8 @@ class _TileGrid extends StatelessWidget {
   }
 }
 
-// A framed tile with an icon over its label; a selected tile turns into an ink block.
+// A rounded tile with an icon disc over its label; a selected tile takes the brand tint, a
+// brand outline and a check mark.
 class _ChoiceTile extends StatelessWidget {
   const _ChoiceTile({
     required this.icon,
@@ -468,22 +476,31 @@ class _ChoiceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final fg = selected ? t.ground : t.ink;
+    final fg = selected ? t.brand : t.ink;
     return SoftTile(
+      flat: true,
       selected: selected,
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpace.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (busy)
-            const SizedBox.square(
-              dimension: AppIconSize.md,
-              child: CircularProgressIndicator(strokeWidth: AppStroke.frame),
-            )
-          else
-            Icon(selected ? Icons.check_box : icon, color: fg),
-          const SizedBox(height: AppSpace.xs),
+          Container(
+            width: AppSize.tapTarget - AppSpace.sm,
+            height: AppSize.tapTarget - AppSpace.sm,
+            padding: busy ? const EdgeInsets.all(AppSpace.sm) : null,
+            decoration: BoxDecoration(
+              color: selected ? t.brand : t.brandSoft,
+              shape: BoxShape.circle,
+            ),
+            child: busy
+                ? const CircularProgressIndicator(strokeWidth: AppStroke.frame)
+                : Icon(
+                    selected ? Icons.check : icon,
+                    color: selected ? t.onBrand : t.brand,
+                  ),
+          ),
+          const SizedBox(height: AppSpace.sm),
           Text(
             label,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(color: fg),
@@ -515,10 +532,20 @@ class _ReportTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox.square(
-            dimension: AppSize.thumb,
+          Container(
+            width: AppSize.thumb,
+            height: AppSize.thumb,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: context.tokens.brandSoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
             child: photo == null
-                ? Icon(category?.icon ?? Icons.report, size: AppIconSize.lg)
+                ? Icon(
+                    category?.icon ?? Icons.report,
+                    size: AppIconSize.lg,
+                    color: context.tokens.brand,
+                  )
                 : Image.file(
                     File(photo),
                     fit: BoxFit.cover,

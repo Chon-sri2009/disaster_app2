@@ -26,6 +26,9 @@ class SosHoldButton extends StatefulWidget {
 class _SosHoldButtonState extends State<SosHoldButton>
     with SingleTickerProviderStateMixin {
   static const double _bar = AppSize.sosBar;
+  static final BorderRadius _pill = BorderRadius.circular(AppRadius.pill);
+
+  Color get _track => context.tokens.onDanger.withValues(alpha: 0.3);
 
   late final AnimationController _hold = AnimationController(
     vsync: this,
@@ -120,12 +123,16 @@ class _SosHoldButtonState extends State<SosHoldButton>
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                   child: Row(
                     children: [
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          'SOS',
-                          style: theme.textTheme.displayLarge?.copyWith(
-                            color: t.onDanger,
+                      // The 48 sp word is large at any setting; holding it there leaves the
+                      // instruction room to stay whole when the phone's text is enlarged.
+                      MediaQuery.withNoTextScaling(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'SOS',
+                            style: theme.textTheme.displayLarge?.copyWith(
+                              color: t.onDanger,
+                            ),
                           ),
                         ),
                       ),
@@ -144,21 +151,34 @@ class _SosHoldButtonState extends State<SosHoldButton>
                   ),
                 ),
               ),
-              SizedBox(
-                height: _bar,
-                child: widget.busy
-                    ? LinearProgressIndicator(
-                        color: t.onDanger,
-                        backgroundColor: t.danger,
-                      )
-                    : AnimatedBuilder(
-                        animation: _hold,
-                        builder: (context, _) => LinearProgressIndicator(
-                          value: _hold.value,
+              // The hold bar: a white pill filling along a faint white track at the card's foot.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.md,
+                  0,
+                  AppSpace.md,
+                  AppSpace.sm + AppSpace.xs,
+                ),
+                child: SizedBox(
+                  height: _bar,
+                  child: widget.busy
+                      ? LinearProgressIndicator(
+                          minHeight: _bar,
                           color: t.onDanger,
-                          backgroundColor: t.danger,
+                          backgroundColor: _track,
+                          borderRadius: _pill,
+                        )
+                      : AnimatedBuilder(
+                          animation: _hold,
+                          builder: (context, _) => LinearProgressIndicator(
+                            value: _hold.value,
+                            minHeight: _bar,
+                            color: t.onDanger,
+                            backgroundColor: _track,
+                            borderRadius: _pill,
+                          ),
                         ),
-                      ),
+                ),
               ),
             ],
           ),

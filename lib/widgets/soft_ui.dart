@@ -53,6 +53,7 @@ class SoftTile extends StatelessWidget {
     required this.onTap,
     this.semanticLabel,
     this.selected = false,
+    this.flat = false,
     this.padding = const EdgeInsets.all(AppSpace.md),
   });
 
@@ -60,6 +61,9 @@ class SoftTile extends StatelessWidget {
   final VoidCallback? onTap;
   final String? semanticLabel;
   final bool selected;
+
+  // Flat tiles sit inside a white card: canvas-filled, no shadow.
+  final bool flat;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -79,10 +83,10 @@ class SoftTile extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: t.cardShadow,
+          boxShadow: flat ? null : t.cardShadow,
         ),
         child: Material(
-          color: selected ? t.brandSoft : t.surface,
+          color: selected ? t.brandSoft : (flat ? t.ground : t.surface),
           shape: shape,
           clipBehavior: Clip.antiAlias,
           child: InkWell(

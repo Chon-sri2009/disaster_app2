@@ -1,10 +1,13 @@
 import 'package:disaster_app2/data/mock_data.dart';
 import 'package:disaster_app2/main.dart';
+import 'package:disaster_app2/screens/home_screen.dart';
+import 'package:disaster_app2/services/location_service.dart';
 import 'package:disaster_app2/services/sensor_service.dart';
 import 'package:disaster_app2/services/storage_service.dart';
 import 'package:disaster_app2/theme/app_theme.dart';
 import 'package:disaster_app2/theme/app_tokens.dart';
 import 'package:disaster_app2/widgets/sensor_readings.dart';
+import 'package:disaster_app2/widgets/soft_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,7 +61,7 @@ void main() {
     mockPathProvider();
   });
 
-  const tabs = ['หน้าแรก', 'โทร', 'แผนที่', 'รายงาน', 'คู่มือ'];
+  const tabs = ['หน้าแรก', 'แผนที่', 'โทร', 'รายงาน', 'คู่มือ'];
   const sizes = {
     'phone-360x640': Size(360, 640),
     'phone-390x844': Size(390, 844),
@@ -100,8 +103,15 @@ void main() {
           'inkMuted/offlineBg': (t.inkMuted, t.offlineBg),
           'ink/errorBg': (t.ink, t.errorBg),
           'inkMuted/errorBg': (t.inkMuted, t.errorBg),
-          'ground/ink (selected)': (t.ground, t.ink),
+          'ground/ink (snackbar, tooltip)': (t.ground, t.ink),
           'onDanger/danger': (t.onDanger, t.danger),
+          'onBrand/brand': (t.onBrand, t.brand),
+          'brand/surface': (t.brand, t.surface),
+          'brand/brandSoft': (t.brand, t.brandSoft),
+          'ink/brandSoft': (t.ink, t.brandSoft),
+          'inkMuted/brandSoft': (t.inkMuted, t.brandSoft),
+          'onHeader/header': (t.onHeader, t.header),
+          'onHeaderMuted/header': (t.onHeaderMuted, t.header),
           'dangerInk/ground': (t.dangerInk, t.ground),
           'dangerInk/surface': (t.dangerInk, t.surface),
           'dangerInk/errorBg': (t.dangerInk, t.errorBg),
@@ -113,11 +123,12 @@ void main() {
             reason: name,
           );
         });
-        // Frames and meter cells are ink on the board. The SOS block's edge is its ink frame
-        // against the board, so it needs no separate red pair.
+        // Brand-filled marks (selected outline, shelter markers, the raised Call circle) and the
+        // gauge's limit post must stand out from the card and the canvas.
         final uiPairs = {
-          'frame/ground': (t.ink, t.ground),
-          'frame/surface': (t.ink, t.surface),
+          'brand/ground': (t.brand, t.ground),
+          'brand/surface': (t.brand, t.surface),
+          'limit post/surface': (t.ink, t.surface),
         };
         uiPairs.forEach((name, p) {
           expect(
@@ -188,7 +199,7 @@ void main() {
     // Flutter's text-contrast check samples screenshot pixels, and thin Thai glyphs fool it
     // (it reports 1.4:1 for dark ink on white). The English UI uses the same colors, so the
     // pixel check runs there; the exact color pairs are verified in the 'tokens' group.
-    const tabsEn = ['Home', 'Call', 'Map', 'Report', 'Guide'];
+    const tabsEn = ['Home', 'Map', 'Call', 'Report', 'Guide'];
     for (final tab in tabsEn) {
       testWidgets('$tab: text contrast (English)', (tester) async {
         _setScreen(tester, const Size(390, 844));
@@ -333,6 +344,46 @@ void main() {
         matchesGoldenFile('goldens/settings_390x844.png'),
       );
       await _teardownApp(tester);
+    });
+
+    testWidgets('Home at danger: band and level card take the tier color', (
+      tester,
+    ) async {
+      _setScreen(tester, const Size(390, 844));
+      SharedPreferences.setMockInitialValues({});
+      final storage = await StorageService.create();
+      final sensors = SensorService()..simulateWater(200);
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: HomeScreen(
+              sensors: sensors,
+              storage: storage,
+              location: LocationService(storage, lookup: (_, _) async => null),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      final danger = AppTokens.light.tier(AlertTier.danger);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is BrandHeader && w.color == danger.color,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate((w) => w is SoftCard && w.color == danger.color),
+        findsOneWidget,
+      );
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/home_danger_390x844.png'),
+      );
+      await tester.pumpWidget(const SizedBox());
+      sensors.dispose();
     });
 
     testWidgets('sensors over the limit', (tester) async {

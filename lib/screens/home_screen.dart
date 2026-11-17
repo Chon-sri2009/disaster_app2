@@ -100,12 +100,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
+        final tall = box.maxHeight >= AppSize.sosHeightTallScreen;
         final sos = SosHoldButton(
           busy: _locating,
           onConfirmed: _onSos,
-          height: box.maxHeight >= AppSize.sosHeightTallScreen
-              ? AppSize.sosHeight
-              : AppSize.sosHeightCompact,
+          height: tall ? AppSize.sosHeight : AppSize.sosHeightCompact,
         );
         // The header band and SOS stay put at the top; the cards scroll beneath them. The band
         // paints behind the status bar, so only the sides are inset here.
@@ -132,7 +131,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       level == AlertLevel.warning || level == AlertLevel.danger;
                   final style = loud ? context.tokens.styleFor(level!) : null;
                   return BrandHeader(
-                    eyebrow: widget.storage.lastPosition == null
+                    eyebrow: box.maxHeight < AppSize.railMinHeight
+                        ? null
+                        : widget.storage.lastPosition == null
                         ? context.tr(
                             th: 'ยังไม่ทราบพื้นที่',
                             en: 'Area not known yet',
@@ -154,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               Expanded(
                 child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                   child: ContentWidth(
                     child: _Board(
                       sensors: widget.sensors,
@@ -206,12 +208,7 @@ class _Board extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpace.md,
-        AppSpace.md,
-        AppSpace.md,
-        AppSpace.lg,
-      ),
+      padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

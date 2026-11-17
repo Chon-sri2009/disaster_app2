@@ -37,7 +37,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final t = context.tokens;
     return ListenableBuilder(
       listenable: storage,
       builder: (context, _) => Scaffold(
@@ -47,70 +47,85 @@ class SettingsScreen extends StatelessWidget {
         body: SafeArea(
           child: ContentWidth(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.md,
-                0,
-                AppSpace.md,
-                AppSpace.lg,
-              ),
+              padding: const EdgeInsets.all(AppSpace.md),
               children: [
-                SectionLabel(context.tr(th: 'ภาษา', en: 'Language')),
-                // Each option is written in its own language, so either reader can find it.
-                SegmentedButton<AppLang>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment(value: AppLang.th, label: Text('ภาษาไทย')),
-                    ButtonSegment(value: AppLang.en, label: Text('English')),
-                  ],
-                  selected: {storage.language},
-                  onSelectionChanged: (s) => storage.setLanguage(s.first),
-                ),
-                SectionLabel(context.tr(th: 'ธีม', en: 'Theme')),
-                SegmentedButton<ThemeMode>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(
-                      value: ThemeMode.system,
-                      icon: const Icon(Icons.brightness_auto),
-                      label: Text(context.tr(th: 'ตามเครื่อง', en: 'Phone')),
-                    ),
-                    ButtonSegment(
-                      value: ThemeMode.light,
-                      icon: const Icon(Icons.light_mode),
-                      label: Text(context.tr(th: 'สว่าง', en: 'Light')),
-                    ),
-                    ButtonSegment(
-                      value: ThemeMode.dark,
-                      icon: const Icon(Icons.dark_mode),
-                      label: Text(context.tr(th: 'มืด', en: 'Dark')),
-                    ),
-                  ],
-                  selected: {storage.themeMode},
-                  onSelectionChanged: (s) => storage.setThemeMode(s.first),
-                ),
-                SectionLabel(context.tr(th: 'เกี่ยวกับ', en: 'About')),
-                SoftTile(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const AboutScreen(),
-                    ),
-                  ),
-                  child: Row(
+                SoftCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.info_outline),
-                      const SizedBox(width: AppSpace.md),
-                      Expanded(
-                        child: Text(
-                          context.tr(
-                            th: 'เกี่ยวกับแอปและข้อสงวนสิทธิ์',
-                            en: 'About and disclaimer',
-                          ),
-                          style: theme.textTheme.titleSmall,
-                        ),
+                      SectionLabel(
+                        context.tr(th: 'ภาษา', en: 'Language'),
+                        inCard: true,
                       ),
-                      const Icon(Icons.chevron_right),
+                      // Each option is written in its own language, so either reader can find it.
+                      SegmentedButton<AppLang>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(
+                            value: AppLang.th,
+                            label: Text('ภาษาไทย'),
+                          ),
+                          ButtonSegment(
+                            value: AppLang.en,
+                            label: Text('English'),
+                          ),
+                        ],
+                        selected: {storage.language},
+                        onSelectionChanged: (s) => storage.setLanguage(s.first),
+                      ),
+                      const SizedBox(height: AppSpace.md),
+                      SectionLabel(
+                        context.tr(th: 'ธีม', en: 'Theme'),
+                        inCard: true,
+                      ),
+                      SegmentedButton<ThemeMode>(
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment(
+                            value: ThemeMode.system,
+                            icon: const Icon(Icons.brightness_auto),
+                            label: Text(
+                              context.tr(th: 'ตามเครื่อง', en: 'Phone'),
+                            ),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.light,
+                            icon: const Icon(Icons.light_mode),
+                            label: Text(context.tr(th: 'สว่าง', en: 'Light')),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.dark,
+                            icon: const Icon(Icons.dark_mode),
+                            label: Text(context.tr(th: 'มืด', en: 'Dark')),
+                          ),
+                        ],
+                        selected: {storage.themeMode},
+                        onSelectionChanged: (s) =>
+                            storage.setThemeMode(s.first),
+                      ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: AppSpace.md),
+                SoftCard(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpace.md,
+                    vertical: AppSpace.xs,
+                  ),
+                  child: AccentRow(
+                    accent: t.brand,
+                    leading: Icon(Icons.info_outline, color: t.brand),
+                    title: context.tr(
+                      th: 'เกี่ยวกับแอปและข้อสงวนสิทธิ์',
+                      en: 'About and disclaimer',
+                    ),
+                    trailing: Icon(Icons.chevron_right, color: t.inkMuted),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AboutScreen(),
+                      ),
+                    ),
                   ),
                 ),
               ],

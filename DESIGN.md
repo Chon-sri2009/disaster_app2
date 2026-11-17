@@ -187,7 +187,7 @@ components:
 
 # Design System: Disaster Alert & Rescue
 
-Surface: the whole app (Home, Map, Report, Guide, Settings, About, startup notice), Operate mode. Tokens live in `lib/theme/`: raw hex only in `app_palette.dart`, scales in `app_tokens.dart`, Material wiring in `app_theme.dart`. Screens read colors through `context.tokens` and type through `Theme.of(context).textTheme`. Hex values are given once, in the frontmatter above and in the tables below that mirror `AppPalette`.
+Surface: the whole app (Home, Call, Map, Report, Guide, Settings, About, startup notice), Operate mode. Tokens live in `lib/theme/`: raw hex only in `app_palette.dart`, scales in `app_tokens.dart`, Material wiring in `app_theme.dart`. Screens read colors through `context.tokens` and type through `Theme.of(context).textTheme`. Hex values are given once, in the frontmatter above and in the tables below that mirror `AppPalette`.
 
 ## Overview
 
@@ -195,7 +195,7 @@ Surface: the whole app (Home, Map, Report, Guide, Settings, About, startup notic
 
 The app is a public notice pinned to a board: square blocks framed in ink, ruled into sections, set in heavy Thai type. The level is a solid field of its tier color with its word and advice on it, and the same 4-step segmented scale is reused for every gauge. It deliberately is not soft rounded cards, pastel banners and a round red hero button.
 
-There are two boards and they follow the phone's setting (`ThemeMode.system`). Day: newsprint paper ground, ink-black 2 dp frames and rules. Night: the same board in charcoal with paper-coloured frames and text. Tier fields and the SOS red are the same on both boards; only the tier colours used as text on the board change. Selection anywhere is an ink block with ground-coloured text.
+There are two boards. By default they follow the phone's setting; Settings offers Phone / Light / Dark, saved on the phone (`StorageService.themeMode`). Day: newsprint paper ground, ink-black 2 dp frames and rules. Night: the same board in charcoal with paper-coloured frames and text. Tier fields and the SOS red are the same on both boards; only the tier colours used as text on the board change. Selection anywhere is an ink block with ground-coloured text.
 
 The scene it is built for: a frightened resident, one hand, often at night or in rain, low brightness, weak or no signal, who must find the level and the SOS in two seconds.
 
@@ -204,7 +204,7 @@ The scene it is built for: a frightened resident, one hand, often at night or in
 - One solid field per alert tier, always with icon and word.
 - Sarabun 700 for headings, values and labels; 400 for body.
 - The segmented level meter is the signature, reused for levels and measured values.
-- SOS is a full-width framed red block pinned above the tab bar, press and hold to confirm.
+- SOS is a full-width framed red block pinned at the top of Home under the title, press and hold to confirm.
 - Day and night boards, both contrast-tested.
 
 ## Colors
@@ -299,9 +299,11 @@ displayMedium (40) and headlineSmall exist in the theme for completeness; the bu
 ## Layout
 
 - **Spacing** (`AppSpace`), an 8 dp grid: xs 4 (the one half step, icon-to-text gaps), sm 8, md 16, lg 24, xl 32, xxl 48. Screen gutters are md 16.
-- **Shell:** 4 tabs (Home, Map, Report, Guide) in an `IndexedStack` so every tab keeps its state. Settings (language, About) opens from the gear in each `ScreenHeader`. Sensors live on Home.
+- **Shell:** 5 tabs (Home, Call, Map, Report, Guide) in an `IndexedStack` so every tab keeps its state. Settings (language, theme, About) opens from the gear in each `ScreenHeader`. Sensor readings live in the Map sheet.
 - **Navigation switch:** bottom `NavigationBar` (76 dp, labels always shown) when width < 600 dp or height < 480 dp; otherwise a labelled `NavigationRail` with a 3 dp ink rule beside it. The bottom bar wears a 3 dp ink rule on top, like the foot of a notice.
-- **Home (phone):** `ScreenHeader`, then the level notice, emergency call tiles in a row, nearest shelter, official notices, sensor readings; the SOS block is pinned at the bottom above the tab bar (112 dp on screens 700 dp tall or more, 88 dp below). **Home (wide, >= 600 dp):** the board scrolls on the left; calls and the SOS (30% of height, 112 to 224 dp) sit in a 340 dp side column behind a 3 dp ink rule.
+- **Home (all sizes):** `ScreenHeader` and the SOS block stay pinned at the top (SOS 112 dp on screens 700 dp tall or more, 88 dp below, a 3 dp ink rule beneath); the level notice, nearest shelter and official notices scroll below, capped at the content width.
+- **Call:** one large `NoticeTile` per emergency number (number in displaySmall, service name below). A tap opens the dialer with the number filled in; the person still presses call.
+- **Map sheet:** a Shelters | Sensors `SegmentedButton` under the handle switches the sheet (or the wide side column) between the shelter list and the sensor readings.
 - **Map:** phones get the shelter list as a sheet over the map; wide screens a 340 dp side column.
 - **Limits:** content capped at 640 dp wide; the startup notice at 420 dp.
 - **Targets:** `AppSize.tapTarget` 48 dp minimum for every control, map markers included; primary buttons and segmented buttons 56 dp.
@@ -329,10 +331,10 @@ Square. `AppRadius.none` (0) is the only radius in use: buttons, tiles, fields, 
 The basic block: surface fill (or a given field colour), a 2 dp ink frame painted in front of the content so a filled strip never hides it, md 16 padding. Optional heavier or coloured frame (the over-limit reading uses a 3 dp dangerInk frame on errorBg).
 
 ### NoticeTile
-A framed block that is a button: ink ripple inside the frame, at least 48 x 48 dp, semantic label. Selected turns it into an ink block with ground-coloured text and icons. Used for call tiles, the nearest shelter, guide tiles and report category choices (two per row, equal height).
+A framed block that is a button: ink ripple inside the frame, at least 48 x 48 dp, semantic label. Selected turns it into an ink block with ground-coloured text and icons. Used for the Call tab, the nearest shelter, guide tiles and report category choices (two per row, equal height).
 
 ### ScreenHeader and SectionLabel
-- **ScreenHeader:** tab title in headlineMedium with an optional trailing action (the Settings gear), a 3 dp ink rule beneath. Marked as a header for screen readers.
+- **ScreenHeader:** tab title in headlineMedium, kept to one line (it shrinks to fit rather than wrapping), with an optional trailing action (the Settings gear), a 3 dp ink rule beneath. Marked as a header for screen readers.
 - **SectionLabel:** titleMedium label with a 2 dp ink rule running the full width behind it; the label sits on a patch of the board colour so a long Thai label is never squeezed. Sheets pass their surface colour.
 
 ### NoticeTag
@@ -383,7 +385,7 @@ While the map pack is prepared on first launch: a 3 dp-framed notice (max 420 dp
 |---|---|---|---|---|
 | Startup | framed startup notice with progress bar | n/a | n/a | app opens anyway; Map shows its own banner |
 | Home level | n/a (demo reading is immediate) | n/a | offlineBg field, "No live data", "Do not assume it is safe" | n/a |
-| Home readings | n/a | n/a | offline banner: not connected / cannot reach / may be out of date | over-limit block (errorBg, dangerInk frame, octagon) |
+| Map sensor readings | n/a | n/a | offline banner: not connected / cannot reach / may be out of date | over-limit block (errorBg, dangerInk frame, octagon) |
 | Home SOS | indeterminate bar, "Finding your location…" | n/a | works offline | GPS failure dialog with saved-position fallback |
 | Map | startup notice covers first load | "No shelters are saved on this phone yet…" | calm offline banner + "Try again" | same banner |
 | Report | "Finding…" on the location button | "No reports yet…" | works offline | GPS and photo errors as banners or snackbar |

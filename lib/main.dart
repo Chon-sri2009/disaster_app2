@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:vector_map_tiles/vector_map_tiles.dart';
 
 import 'data/mock_data.dart';
 import 'l10n/l10n.dart';
@@ -16,7 +15,7 @@ import 'services/sensor_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_tokens.dart';
-import 'widgets/notice.dart';
+import 'widgets/soft_ui.dart';
 
 // Starts the app: opens local storage, caches the shelter list, then shows the UI.
 Future<void> main() async {
@@ -76,20 +75,20 @@ class _MapGate extends StatefulWidget {
 }
 
 class _MapGateState extends State<_MapGate> {
-  late final Future<VectorTileProvider> _ready = widget.loadMap();
+  late final Future<String> _ready = widget.loadMap();
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<VectorTileProvider>(
+    return FutureBuilder<String>(
       future: _ready,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
           return const _StartupNotice();
         }
-        final provider = snap.data;
+        final style = snap.data;
         return AppShell(
           storage: widget.storage,
-          loadMap: provider == null ? widget.loadMap : () async => provider,
+          loadMap: style == null ? widget.loadMap : () async => style,
         );
       },
     );
@@ -117,23 +116,36 @@ class _AppShellState extends State<AppShell> {
   late final LocationService _location = LocationService(widget.storage);
   int _index = 0;
 
-  List<(IconData, IconData, String)> _destinations(BuildContext context) => [
-    (Icons.home_outlined, Icons.home, context.tr(th: 'หน้าแรก', en: 'Home')),
-    (Icons.call_outlined, Icons.call, context.tr(th: 'โทร', en: 'Call')),
-    (Icons.map_outlined, Icons.map, context.tr(th: 'แผนที่', en: 'Map')),
+  // Call sits in the middle as a filled brand circle: the most urgent tab after SOS.
+  List<(Widget, Widget, String)> _destinations(BuildContext context) => [
     (
-      Icons.edit_note_outlined,
-      Icons.edit_note,
+      const Icon(Icons.home_outlined),
+      const Icon(Icons.home),
+      context.tr(th: 'หน้าแรก', en: 'Home'),
+    ),
+    (
+      const Icon(Icons.map_outlined),
+      const Icon(Icons.map),
+      context.tr(th: 'แผนที่', en: 'Map'),
+    ),
+    (
+      const _RaisedCall(),
+      const _RaisedCall(),
+      context.tr(th: 'โทร', en: 'Call'),
+    ),
+    (
+      const Icon(Icons.edit_note_outlined),
+      const Icon(Icons.edit_note),
       context.tr(th: 'รายงาน', en: 'Report'),
     ),
     (
-      Icons.menu_book_outlined,
-      Icons.menu_book,
+      const Icon(Icons.menu_book_outlined),
+      const Icon(Icons.menu_book),
       context.tr(th: 'คู่มือ', en: 'Guide'),
     ),
   ];
 
-  static const _mapTab = 2;
+  static const _mapTab = 1;
 
   @override
   void dispose() {
@@ -161,12 +173,12 @@ class _AppShellState extends State<AppShell> {
           storage: widget.storage,
           onOpenMap: () => setState(() => _index = _mapTab),
         ),
-        CallsScreen(storage: widget.storage),
         MapScreen(
           storage: widget.storage,
           sensors: _sensors,
           loadMap: widget.loadMap,
         ),
+        CallsScreen(storage: widget.storage),
         ReportScreen(storage: widget.storage, location: _location),
         GuideScreen(storage: widget.storage),
       ],
@@ -184,18 +196,14 @@ class _AppShellState extends State<AppShell> {
                 destinations: [
                   for (final d in destinations)
                     NavigationRailDestination(
-                      icon: Icon(d.$1),
-                      selectedIcon: Icon(d.$2),
+                      icon: d.$1,
+                      selectedIcon: d.$2,
                       label: Text(d.$3),
                     ),
                 ],
               ),
             ),
-            VerticalDivider(
-              width: AppStroke.heavy,
-              thickness: AppStroke.heavy,
-              color: context.tokens.ink,
-            ),
+            VerticalDivider(color: context.tokens.hairline),
             Expanded(child: body),
           ],
         ),
@@ -204,12 +212,13 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       body: body,
-      // The tab bar is ruled off from the board like the foot of a notice.
+      // A white bar lifted off the canvas by a soft shadow (a hairline at night).
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: context.tokens.ink, width: AppStroke.heavy),
-          ),
+          border: context.tokens.cardShadow.isEmpty
+              ? Border(top: BorderSide(color: context.tokens.hairline))
+              : null,
+          boxShadow: context.tokens.cardShadow,
         ),
         child: NavigationBar(
           selectedIndex: _index,
@@ -217,8 +226,8 @@ class _AppShellState extends State<AppShell> {
           destinations: [
             for (final d in destinations)
               NavigationDestination(
-                icon: Icon(d.$1),
-                selectedIcon: Icon(d.$2),
+                icon: d.$1,
+                selectedIcon: d.$2,
                 label: d.$3,
               ),
           ],
@@ -228,7 +237,7 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-// The first-launch screen while the map pack is copied: the app's name on a framed notice.
+// The first-launch screen while the map pack is copied: the app's name on a soft card.
 class _StartupNotice extends StatelessWidget {
   const _StartupNotice();
 
@@ -244,8 +253,7 @@ class _StartupNotice extends StatelessWidget {
               constraints: const BoxConstraints(
                 maxWidth: AppSize.noticeMaxWidth,
               ),
-              child: NoticeFrame(
-                borderWidth: AppStroke.heavy,
+              child: SoftCard(
                 padding: const EdgeInsets.all(AppSpace.lg),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -259,9 +267,7 @@ class _StartupNotice extends StatelessWidget {
                       style: theme.textTheme.headlineMedium,
                     ),
                     const SizedBox(height: AppSpace.md),
-                    const LinearProgressIndicator(
-                      minHeight: AppStroke.heavy * 2,
-                    ),
+                    const LinearProgressIndicator(minHeight: AppSpace.sm),
                     const SizedBox(height: AppSpace.md),
                     Text(
                       context.tr(
@@ -277,6 +283,26 @@ class _StartupNotice extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// The Call tab's icon: a filled brand circle, so the emergency dialer stands out in the bar.
+class _RaisedCall extends StatelessWidget {
+  const _RaisedCall();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      width: AppSize.raisedNavIcon,
+      height: AppSize.raisedNavIcon,
+      decoration: BoxDecoration(
+        color: t.brand,
+        shape: BoxShape.circle,
+        boxShadow: t.cardShadow,
+      ),
+      child: Icon(Icons.call, color: t.onBrand, size: AppIconSize.md),
     );
   }
 }

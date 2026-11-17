@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vector_map_tiles/vector_map_tiles.dart';
 
 // Loads the bundled Sarabun and Material Icons fonts: tests otherwise draw every glyph in the
 // wide Ahem test font, which hides real layout and makes screenshots unreadable.
@@ -19,11 +18,10 @@ Future<void> loadAppFonts() async {
 }
 
 // Stands in for the 43 MB map pack, which tests must not copy: the map just stays on "loading".
-Future<VectorTileProvider> neverLoadMap() =>
-    Completer<VectorTileProvider>().future;
+Future<String> neverLoadMap() => Completer<String>().future;
 
 // Stands in for a map file that cannot be opened, so the calm error banner shows.
-Future<VectorTileProvider> failingLoadMap() =>
+Future<String> failingLoadMap() =>
     Future.error(const FileSystemException('offline map missing'));
 
 // path_provider asks the platform for a folder; answer with a temp one. for a folder; answer with a temp one.

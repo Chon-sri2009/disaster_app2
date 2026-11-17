@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:disaster_app2/data/mock_data.dart';
 import 'package:disaster_app2/main.dart';
 import 'package:disaster_app2/services/offline_map.dart';
 import 'package:disaster_app2/services/storage_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -39,8 +42,11 @@ void main() {
   });
 
   testWidgets('the icon sheet has the emergency icons', (tester) async {
-    final sprites = await tester.runAsync(loadMapSprites);
-    final names = sprites!.index.spriteByName;
+    final json = jsonDecode(
+      await tester.runAsync(
+        () => rootBundle.loadString('assets/maps/sprites/sprites.json'),
+      ) as String,
+    ) as Map<String, dynamic>;
     for (final kind in [
       'hospital',
       'pharmacy',
@@ -48,7 +54,22 @@ void main() {
       'fire_station',
       'school',
     ]) {
-      expect(names, contains(kind));
+      expect(json, contains(kind));
+    }
+  });
+
+  test('the style names only files on the phone and the bundled glyph set', () {
+    final style = offlineMapStyle(
+      packUri: 'file:///data/bangkok.pmtiles',
+      spriteUri: 'file:///data/sprites',
+      glyphsUri: 'file:///data/glyphs/{fontstack}/{range}.pbf',
+    );
+    expect(jsonEncode(style), isNot(contains('http')));
+    final layers = style['layers'] as List;
+    expect(layers.length, lessThan(60));
+    for (final layer in layers.cast<Map<String, Object>>()) {
+      final font = (layer['layout'] as Map?)?['text-font'];
+      if (font != null) expect(font, ['NotoSans']);
     }
   });
 }

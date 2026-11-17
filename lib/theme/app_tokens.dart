@@ -13,17 +13,20 @@ abstract final class AppSpace {
   static const double xxl = 48;
 }
 
-// Corner radii. A notice board has square corners; `sm` only softens photos.
+// Corner radii: photos and small marks, tiles and inputs, cards, sheets, and fully round pills.
 abstract final class AppRadius {
-  static const double none = 0;
-  static const double sm = 2;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 24;
+  static const double pill = 999;
 }
 
-// Line weights: hairline rules, the 2 dp frame every block wears, and the heavy rule under titles.
+// Line weights: hairline dividers, the selected outline, and the accent bar at a row's start.
 abstract final class AppStroke {
   static const double rule = 1;
   static const double frame = 2;
-  static const double heavy = 3;
+  static const double accent = 3;
 }
 
 // Icon sizes.
@@ -34,7 +37,7 @@ abstract final class AppIconSize {
   static const double xl = 48;
 }
 
-// Elevation: the board is flat; only dialogs, sheets and snackbars lift.
+// Elevation: cards carry a soft token shadow instead; dialogs, sheets and snackbars lift.
 abstract final class AppElevation {
   static const double none = 0;
   static const double overlay = 3;
@@ -63,7 +66,8 @@ abstract final class AppSize {
   static const double meterHeight = 20;
   static const double marker = 40;
   static const double toolbar = 64;
-  static const double navBar = 76;
+  static const double navBar = 80;
+  static const double raisedNavIcon = 44;
   static const double sosBar = 10;
   static const Size dragHandle = Size(40, 4);
   static const double levelCell = 96;
@@ -109,20 +113,27 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required this.onDanger,
     required this.dangerInk,
     required this.selection,
+    required this.brand,
+    required this.onBrand,
+    required this.brandSoft,
+    required this.header,
+    required this.onHeader,
+    required this.onHeaderMuted,
+    required this.cardShadow,
     required this.levels,
   });
 
   final Brightness brightness;
 
-  // The board itself and the raised paper of blocks on it.
+  // The page canvas and the cards that sit on it.
   final Color ground;
   final Color surface;
 
-  // Text, icons, frames and the selected state (an ink block with ground-colored text).
+  // Text and icons.
   final Color ink;
   final Color inkMuted;
 
-  // Quiet rules between list rows and the empty cells of a meter.
+  // Dividers between list rows and the empty cells of a meter.
   final Color hairline;
 
   // Pressed and hovered fill.
@@ -138,6 +149,21 @@ class AppTokens extends ThemeExtension<AppTokens> {
   final Color dangerInk;
 
   final Color selection;
+
+  // The brand blue: primary buttons, the selected tab, links; onBrand is text on it, brandSoft a
+  // quiet tint behind brand-colored icons and numbers.
+  final Color brand;
+  final Color onBrand;
+  final Color brandSoft;
+
+  // The header band at the top of each tab, with its text colors. Never used as an alert tier.
+  final Color header;
+  final Color onHeader;
+  final Color onHeaderMuted;
+
+  // The soft shadow under cards (empty at night: cards are lighter than the canvas instead).
+  final List<BoxShadow> cardShadow;
+
   final Map<AlertTier, LevelStyle> levels;
 
   static const _labels = {
@@ -183,14 +209,14 @@ class AppTokens extends ThemeExtension<AppTokens> {
     ),
   };
 
-  // The day board.
+  // Day.
   static final light = AppTokens(
     brightness: Brightness.light,
-    ground: AppPalette.paper,
-    surface: AppPalette.paperRaised,
+    ground: AppPalette.canvas,
+    surface: AppPalette.card,
     ink: AppPalette.ink,
     inkMuted: AppPalette.inkMuted,
-    hairline: AppPalette.rule,
+    hairline: AppPalette.hairline,
     pressed: AppPalette.pressed,
     offlineBg: AppPalette.offlineDay,
     errorBg: AppPalette.errorDay,
@@ -198,6 +224,15 @@ class AppTokens extends ThemeExtension<AppTokens> {
     onDanger: AppPalette.onDanger,
     dangerInk: AppPalette.dangerInkDay,
     selection: AppPalette.selection,
+    brand: AppPalette.brand,
+    onBrand: AppPalette.white,
+    brandSoft: AppPalette.brandSoft,
+    header: AppPalette.brand,
+    onHeader: AppPalette.white,
+    onHeaderMuted: AppPalette.onHeaderMuted,
+    cardShadow: const [
+      BoxShadow(color: AppPalette.shadow, blurRadius: 12, offset: Offset(0, 2)),
+    ],
     levels: _tiers(
       safeInk: AppPalette.safeInkDay,
       watchInk: AppPalette.watchInkDay,
@@ -206,21 +241,28 @@ class AppTokens extends ThemeExtension<AppTokens> {
     ),
   );
 
-  // The night board: charcoal ground, paper-colored ink and frames.
+  // Night: deep navy canvas, lighter navy cards, a light blue brand.
   static final dark = AppTokens(
     brightness: Brightness.dark,
-    ground: AppPalette.charcoal,
-    surface: AppPalette.charcoalRaised,
-    ink: AppPalette.paperInk,
-    inkMuted: AppPalette.paperInkMuted,
-    hairline: AppPalette.ruleNight,
+    ground: AppPalette.canvasNight,
+    surface: AppPalette.cardNight,
+    ink: AppPalette.inkNight,
+    inkMuted: AppPalette.inkMutedNight,
+    hairline: AppPalette.hairlineNight,
     pressed: AppPalette.pressedNight,
     offlineBg: AppPalette.offlineNight,
     errorBg: AppPalette.errorNight,
     danger: AppPalette.danger,
     onDanger: AppPalette.onDanger,
     dangerInk: AppPalette.dangerInkNight,
-    selection: AppPalette.selection,
+    selection: AppPalette.selectionNight,
+    brand: AppPalette.brandNight,
+    onBrand: AppPalette.onBrandNight,
+    brandSoft: AppPalette.brandSoftNight,
+    header: AppPalette.headerNight,
+    onHeader: AppPalette.white,
+    onHeaderMuted: AppPalette.onHeaderMuted,
+    cardShadow: const [],
     levels: _tiers(
       safeInk: AppPalette.safeInkNight,
       watchInk: AppPalette.watchInkNight,
@@ -239,9 +281,6 @@ class AppTokens extends ThemeExtension<AppTokens> {
     AlertLevel.warning => tier(AlertTier.warning),
     AlertLevel.danger => tier(AlertTier.danger),
   };
-
-  // The 2 dp ink frame every notice block wears.
-  BorderSide get frame => BorderSide(color: ink, width: AppStroke.frame);
 
   @override
   AppTokens copyWith() => this;

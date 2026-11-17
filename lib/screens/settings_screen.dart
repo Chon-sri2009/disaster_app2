@@ -5,7 +5,7 @@ import '../l10n/l10n.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
-import '../widgets/notice.dart';
+import '../widgets/soft_ui.dart';
 import 'about_screen.dart';
 
 // The gear in every tab's header: opens Settings.
@@ -89,7 +89,7 @@ class SettingsScreen extends StatelessWidget {
                   onSelectionChanged: (s) => storage.setThemeMode(s.first),
                 ),
                 SectionLabel(context.tr(th: 'เกี่ยวกับ', en: 'About')),
-                NoticeTile(
+                SoftTile(
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute<void>(

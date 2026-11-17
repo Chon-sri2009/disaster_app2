@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../data/emergency_numbers.dart';
 import '../data/mock_data.dart';
+import '../models/alert_level.dart';
 import '../l10n/l10n.dart';
 import '../services/alert_rules.dart';
 import '../services/alert_service.dart';
@@ -15,13 +16,14 @@ import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
 import '../widgets/level_meter.dart';
-import '../widgets/notice.dart';
+import '../widgets/soft_ui.dart';
 import '../widgets/sos_hold_button.dart';
 import '../widgets/warning_banner.dart';
+import 'calls_screen.dart';
 import 'settings_screen.dart';
 
-// Home: the press-and-hold SOS block pinned at the top, then the level notice, the nearest
-// shelter and official notices.
+// Home: the header band with the press-and-hold SOS card pinned over its edge, then the water
+// level, quick calls, the nearest shelter and official notices.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -98,39 +100,57 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
-        final t = context.tokens;
-        // Header and SOS stay put at the top; everything else scrolls beneath them.
+        final sos = SosHoldButton(
+          busy: _locating,
+          onConfirmed: _onSos,
+          height: box.maxHeight >= AppSize.sosHeightTallScreen
+              ? AppSize.sosHeight
+              : AppSize.sosHeightCompact,
+        );
+        // The header band and SOS stay put at the top; the cards scroll beneath them. The band
+        // paints behind the status bar, so only the sides are inset here.
         return SafeArea(
+          top: false,
           bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ScreenHeader(
-                title: context.tr(
-                  th: 'แจ้งภัยและช่วยเหลือ',
-                  en: 'Disaster Alert',
-                ),
-                trailing: SettingsButton(storage: widget.storage),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: t.ground,
-                  border: Border(
-                    bottom: BorderSide(color: t.ink, width: AppStroke.heavy),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpace.sm),
-                  child: ContentWidth(
-                    child: SosHoldButton(
-                      busy: _locating,
-                      onConfirmed: _onSos,
-                      height: box.maxHeight >= AppSize.sosHeightTallScreen
-                          ? AppSize.sosHeight
-                          : AppSize.sosHeightCompact,
+              ListenableBuilder(
+                listenable: Listenable.merge([
+                  widget.sensors,
+                  ?widget.alerts,
+                  widget.storage,
+                ]),
+                builder: (context, _) {
+                  final level = homeLevel(
+                    widget.sensors,
+                    widget.alerts,
+                    widget.storage,
+                  ).level;
+                  // At warning and danger the whole band takes the tier color.
+                  final loud =
+                      level == AlertLevel.warning || level == AlertLevel.danger;
+                  final style = loud ? context.tokens.styleFor(level!) : null;
+                  return BrandHeader(
+                    eyebrow: widget.storage.lastPosition == null
+                        ? context.tr(
+                            th: 'ยังไม่ทราบพื้นที่',
+                            en: 'Area not known yet',
+                          )
+                        : context.tr(
+                            th: 'พื้นที่ตำแหน่งล่าสุดของคุณ',
+                            en: 'Your last known area',
+                          ),
+                    title: context.tr(
+                      th: 'แจ้งภัยและช่วยเหลือ',
+                      en: 'Disaster Alert',
                     ),
-                  ),
-                ),
+                    trailing: SettingsButton(storage: widget.storage),
+                    color: style?.color,
+                    onColor: style?.onColor,
+                    below: ContentWidth(child: sos),
+                  );
+                },
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -152,8 +172,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// The scrolling board: level notice, nearest shelter and official notices. Calls have their own
-// tab, and sensor readings live on the Map.
+// The level Home shows: the sensors' level and the official alert for the last known area,
+// whichever is worse. fromOfficial says the official alert decided it.
+({AlertLevel? level, bool fromOfficial}) homeLevel(
+  SensorService sensors,
+  AlertService? alerts,
+  StorageService storage,
+) {
+  final LatLng? p = storage.lastPosition;
+  final official = alerts != null && alerts.hasSnapshot && p != null
+      ? alerts.levelAt(p)
+      : null;
+  final level = AlertRules.combine(sensors.level, official);
+  final fromOfficial =
+      level != null && level == official && level != sensors.level;
+  return (level: level, fromOfficial: fromOfficial);
+}
+
+// The scrolling cards: water level, quick calls, nearest shelter and official notices.
 class _Board extends StatelessWidget {
   const _Board({
     required this.sensors,
@@ -179,7 +215,9 @@ class _Board extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _LevelNotice(sensors: sensors, alerts: alerts, storage: storage),
+          _LevelCard(sensors: sensors, alerts: alerts, storage: storage),
+          const SizedBox(height: AppSpace.md),
+          const _QuickCalls(),
           _NearestShelter(storage: storage, onOpenMap: onOpenMap),
           if (alerts != null) _OfficialAlerts(alerts: alerts!),
         ],
@@ -188,14 +226,11 @@ class _Board extends StatelessWidget {
   }
 }
 
-// The level notice: a heavy-framed block in the tier's color (icon + word + advice, never color
-// alone), the 4-step scale beneath it, and where the level came from.
-class _LevelNotice extends StatelessWidget {
-  const _LevelNotice({
-    required this.sensors,
-    required this.storage,
-    this.alerts,
-  });
+// The water-level card: the tier's icon, step and word (never color alone), the advice, the
+// 4-step meter and where the level came from. At warning and danger the whole card fills with
+// the tier color; below that it is a white card with tier-colored marks.
+class _LevelCard extends StatelessWidget {
+  const _LevelCard({required this.sensors, required this.storage, this.alerts});
 
   final SensorService sensors;
   final StorageService storage;
@@ -207,17 +242,11 @@ class _LevelNotice extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([sensors, ?alerts]),
       builder: (context, _) {
-        final LatLng? p = storage.lastPosition;
-        final official = alerts != null && alerts!.hasSnapshot && p != null
-            ? alerts!.levelAt(p)
-            : null;
-        final level = AlertRules.combine(sensors.level, official);
-        final fromOfficial =
-            level != null && level == official && level != sensors.level;
+        final (:level, :fromOfficial) = homeLevel(sensors, alerts, storage);
+        final p = storage.lastPosition;
         final t = context.tokens;
         final style = level == null ? null : t.styleFor(level);
-        final field = style?.color ?? t.offlineBg;
-        final onField = style?.onColor ?? t.ink;
+        final loud = level == AlertLevel.warning || level == AlertLevel.danger;
         final at = sensors.fetchedAt;
         final String source;
         if (fromOfficial) {
@@ -265,8 +294,8 @@ class _LevelNotice extends StatelessWidget {
                 th: 'ระดับ ${level.index + 1} จาก 4',
                 en: 'Level ${level.index + 1} of 4',
               );
-        // The notice's posting line: where it applies and when it was posted. It never shows a
-        // bare time for data that is not live.
+        // Where the level applies and when it was posted. Never a bare time for data that is
+        // not live.
         final area = p == null
             ? context.tr(th: 'ยังไม่ทราบพื้นที่', en: 'Area not known yet')
             : context.tr(
@@ -281,109 +310,107 @@ class _LevelNotice extends StatelessWidget {
             : at == null
             ? context.tr(th: 'ไม่มีข้อมูลสด', en: 'No live data')
             : context.stamp(at);
+
+        // Loud: everything in the tier's on-color over its field. Calm: ink on white, with the
+        // tier color on the icon disc and the level word.
+        final fg = loud ? style!.onColor : t.ink;
+        final wordColor = loud ? style!.onColor : (style?.onGround ?? t.ink);
+        final discColor = loud
+            ? style!.onColor.withValues(alpha: 0.18)
+            : (style?.color ?? t.offlineBg);
+        final discIcon = loud ? style!.onColor : (style?.onColor ?? t.inkMuted);
         return Semantics(
           container: true,
           liveRegion: true,
           label: '$area, $posted. $label. ${step ?? ''} $advice. $source',
           child: ExcludeSemantics(
-            child: DecoratedBox(
-              // In front of the tier field, so the frame shows on every edge.
-              position: DecorationPosition.foreground,
-              decoration: BoxDecoration(
-                border: Border.all(color: t.ink, width: AppStroke.heavy),
-              ),
+            child: SoftCard(
+              color: loud ? style!.color : null,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    color: t.ink,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpace.md,
-                      vertical: AppSpace.xs,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.place_outlined,
-                          size: AppIconSize.sm,
-                          color: t.ground,
-                        ),
-                        const SizedBox(width: AppSpace.xs),
-                        Expanded(
-                          child: Text(
-                            area,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: t.ground,
-                            ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          context.tr(th: 'ระดับน้ำ', en: 'Water level'),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: fg,
                           ),
                         ),
-                        const SizedBox(width: AppSpace.sm),
-                        Text(
-                          posted,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: t.ground,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AnimatedContainer(
-                    duration: context.motion(AppMotion.slow),
-                    color: field,
-                    padding: const EdgeInsets.all(AppSpace.md),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          style?.icon ?? Icons.sensors_off,
-                          size: AppIconSize.xl,
-                          color: onField,
-                        ),
-                        const SizedBox(width: AppSpace.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (step != null)
-                                Text(
-                                  step,
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: onField,
-                                  ),
-                                ),
-                              Text(
-                                label,
-                                style: theme.textTheme.displaySmall?.copyWith(
-                                  color: onField,
-                                ),
-                              ),
-                              Text(
-                                advice,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: onField,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: t.surface,
-                      border: Border(
-                        top: BorderSide(color: t.ink, width: AppStroke.heavy),
                       ),
+                      Flexible(
+                        child: StatusPill(
+                          posted,
+                          icon: Icons.schedule,
+                          color: loud ? t.surface : t.ground,
+                          onColor: loud ? t.ink : t.inkMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpace.md),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedContainer(
+                        duration: context.motion(AppMotion.slow),
+                        width: AppSize.primaryButton,
+                        height: AppSize.primaryButton,
+                        decoration: BoxDecoration(
+                          color: discColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          style?.icon ?? Icons.sensors_off,
+                          size: AppIconSize.lg,
+                          color: discIcon,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpace.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (step != null)
+                              Text(
+                                step,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: loud ? fg : t.inkMuted,
+                                ),
+                              ),
+                            Text(
+                              label,
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                color: wordColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpace.sm),
+                  Text(
+                    advice,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: fg,
+                      fontWeight: FontWeight.w500,
                     ),
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpace.md,
-                      AppSpace.md,
-                      AppSpace.md,
-                      AppSpace.sm,
-                    ),
+                  ),
+                  const SizedBox(height: AppSpace.md),
+                  // The meter keeps its own white well on a loud card, so every step's color
+                  // still reads.
+                  Container(
+                    padding: loud
+                        ? const EdgeInsets.all(AppSpace.sm + AppSpace.xs)
+                        : EdgeInsets.zero,
+                    decoration: loud
+                        ? BoxDecoration(
+                            color: t.surface,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          )
+                        : null,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -403,6 +430,43 @@ class _LevelNotice extends StatelessWidget {
   }
 }
 
+// A row of round shortcuts, one per emergency number; a tap opens the dialer (as on the Call tab).
+class _QuickCalls extends StatelessWidget {
+  const _QuickCalls();
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionLabel(
+            context.tr(th: 'โทรด่วน', en: 'Quick call'),
+            inCard: true,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              for (final n in EmergencyNumbers.sos)
+                Flexible(
+                  child: RoundChip(
+                    icon: emergencyIcon(n),
+                    label: n.number,
+                    semanticLabel: context.tr(
+                      th: 'โทร ${n.number} ${context.serviceName(n)}',
+                      en: 'Call ${n.number}, ${context.serviceName(n)}',
+                    ),
+                    onTap: () => EmergencyLauncher.call(n.number),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // The nearest shelter with directions, or (position unknown) a way into the shelter map.
 class _NearestShelter extends StatelessWidget {
   const _NearestShelter({required this.storage, this.onOpenMap});
@@ -412,124 +476,97 @@ class _NearestShelter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return ListenableBuilder(
       listenable: storage,
       builder: (context, _) {
         final shelters = storage.shelters;
         if (shelters.isEmpty) return const SizedBox.shrink();
+        final t = context.tokens;
         final from = storage.lastPosition;
+        // Sample shelters must never pass for real ones (PRODUCT principle 5).
+        final sample = MockData.isDemoShelterList(shelters)
+            ? StatusPill(
+                context.tr(th: 'ตัวอย่าง', en: 'Sample'),
+                icon: Icons.science_outlined,
+                color: t.offlineBg,
+                onColor: t.ink,
+              )
+            : null;
         final title = SectionLabel(
           from == null
               ? context.tr(th: 'ศูนย์พักพิง', en: 'Shelters')
               : context.tr(th: 'ศูนย์พักพิงใกล้สุด', en: 'Nearest shelter'),
+          trailing: sample,
+          inCard: true,
         );
-        // Sample shelters must never pass for real ones (PRODUCT principle 5).
-        final heading = MockData.isDemoShelterList(shelters)
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  title,
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                    child: NoticeTag(
-                      context.tr(
-                        th: 'ตัวอย่าง ไม่ใช่ศูนย์พักพิงจริง',
-                        en: 'Sample, not real shelters',
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : title;
+        final note = sample == null
+            ? null
+            : Text(
+                context.tr(
+                  th: 'ตัวอย่าง ไม่ใช่ศูนย์พักพิงจริง',
+                  en: 'Sample, not real shelters',
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
+              );
+        final Widget body;
         if (from == null) {
-          return Column(
+          body = AccentRow(
+            accent: t.brand,
+            leading: Icon(Icons.home_work, color: t.brand),
+            title: context.tr(
+              th: '${shelters.length} แห่งในเครื่องนี้',
+              en: '${shelters.length} saved on this phone',
+            ),
+            subtitle: context.tr(
+              th: 'ยังไม่ทราบตำแหน่งของคุณ ดูบนแผนที่',
+              en: 'Your position is not known yet. See the map.',
+            ),
+            trailing: Icon(Icons.chevron_right, color: t.inkMuted),
+            onTap: onOpenMap,
+          );
+        } else {
+          final s = Nearby.sorted(shelters, from).first;
+          body = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              heading,
-              NoticeTile(
-                onTap: onOpenMap,
-                child: Row(
-                  children: [
-                    const Icon(Icons.home_work, size: AppIconSize.lg),
-                    const SizedBox(width: AppSpace.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.tr(
-                              th: '${shelters.length} แห่งในเครื่องนี้',
-                              en: '${shelters.length} saved on this phone',
-                            ),
-                            style: theme.textTheme.titleSmall,
-                          ),
-                          Text(
-                            context.tr(
-                              th: 'ยังไม่ทราบตำแหน่งของคุณ ดูบนแผนที่',
-                              en: 'Your position is not known yet. See the map.',
-                            ),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right),
-                  ],
+              AccentRow(
+                accent: t.brand,
+                leading: Icon(Icons.home_work, color: t.brand),
+                title: s.name,
+                titleStyle: Theme.of(context).textTheme.titleMedium,
+                subtitle: context.shelterCapacity(s.capacity),
+                trailing: StatusPill(
+                  context.distance(Nearby.metersTo(from, s)),
+                  icon: Icons.near_me,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              FilledButton.icon(
+                onPressed: () => EmergencyLauncher.navigate(s.lat, s.lng),
+                icon: const Icon(Icons.directions),
+                label: Text(
+                  context.tr(th: 'นำทางไปที่นี่', en: 'Get directions'),
                 ),
               ),
             ],
           );
         }
-        final s = Nearby.sorted(shelters, from).first;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            heading,
-            NoticeFrame(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.home_work, size: AppIconSize.lg),
-                      const SizedBox(width: AppSpace.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(s.name, style: theme.textTheme.titleMedium),
-                            Text(
-                              '${context.distance(Nearby.metersTo(from, s))} · '
-                              '${context.shelterCapacity(s.capacity)}',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpace.sm),
-                  FilledButton.icon(
-                    onPressed: () => EmergencyLauncher.navigate(s.lat, s.lng),
-                    icon: const Icon(Icons.directions),
-                    label: Text(
-                      context.tr(th: 'นำทางไปที่นี่', en: 'Get directions'),
-                    ),
-                  ),
-                ],
-              ),
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpace.md),
+          child: SoftCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [title, ?note, body],
             ),
-          ],
+          ),
         );
       },
     );
   }
 }
 
-// Official notices with sender and time. With no backend yet it says so plainly instead of
-// showing an invented warning.
+// Official notices with level, sender and time. With no backend yet it says so plainly instead
+// of showing an invented warning.
 class _OfficialAlerts extends StatelessWidget {
   const _OfficialAlerts({required this.alerts});
 
@@ -544,7 +581,10 @@ class _OfficialAlerts extends StatelessWidget {
       builder: (context, _) {
         final at = alerts.fetchedAt;
         final children = <Widget>[
-          SectionLabel(context.tr(th: 'ประกาศทางการ', en: 'Official notices')),
+          SectionLabel(
+            context.tr(th: 'ประกาศทางการ', en: 'Official notices'),
+            inCard: true,
+          ),
         ];
         if (at == null) {
           children.add(
@@ -588,75 +628,29 @@ class _OfficialAlerts extends StatelessWidget {
               ),
             );
           }
-          for (final a in shown) {
+          for (final (i, a) in shown.indexed) {
             final style = t.styleFor(a.level);
             final headline =
                 a.headline[context.isThai ? 'th' : 'en'] ??
                 a.headline['th'] ??
                 a.headline.values.first;
+            if (i > 0) children.add(const Divider());
             children.add(
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpace.sm),
-                child: Semantics(
-                  container: true,
-                  label:
-                      '${context.levelLabel(a.level)}. $headline. '
-                      '${a.sender}, ${context.stamp(a.sent)}',
-                  child: ExcludeSemantics(
-                    child: NoticeFrame(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Container(
-                            color: style.color,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpace.md,
-                              vertical: AppSpace.sm,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  style.icon,
-                                  size: AppIconSize.sm,
-                                  color: style.onColor,
-                                ),
-                                const SizedBox(width: AppSpace.sm),
-                                Expanded(
-                                  child: Text(
-                                    context.levelLabel(a.level),
-                                    style: theme.textTheme.labelLarge?.copyWith(
-                                      color: style.onColor,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  context.stamp(a.sent),
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: style.onColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(AppSpace.md),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  headline,
-                                  style: theme.textTheme.titleSmall,
-                                ),
-                                Text(
-                                  a.sender,
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+              Semantics(
+                container: true,
+                label:
+                    '${context.levelLabel(a.level)}. $headline. '
+                    '${a.sender}, ${context.stamp(a.sent)}',
+                child: ExcludeSemantics(
+                  child: AccentRow(
+                    accent: style.color,
+                    title: headline,
+                    subtitle: '${a.sender} · ${context.stamp(a.sent)}',
+                    trailing: StatusPill(
+                      context.levelLabel(a.level),
+                      icon: style.icon,
+                      color: style.color,
+                      onColor: style.onColor,
                     ),
                   ),
                 ),
@@ -664,9 +658,14 @@ class _OfficialAlerts extends StatelessWidget {
             );
           }
         }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpace.md),
+          child: SoftCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
         );
       },
     );
@@ -754,9 +753,8 @@ class _SosSheet extends StatelessWidget {
           if (text != null) ...[
             SectionLabel(
               context.tr(th: 'ส่งตำแหน่งของคุณ', en: 'Send your location'),
-              background: t.surface,
             ),
-            NoticeFrame(
+            SoftCard(
               color: t.ground,
               child: SelectableText(text, style: theme.textTheme.bodyMedium),
             ),
@@ -782,10 +780,7 @@ class _SosSheet extends StatelessWidget {
               ],
             ),
           ],
-          SectionLabel(
-            context.tr(th: 'เบอร์อื่น', en: 'Other numbers'),
-            background: t.surface,
-          ),
+          SectionLabel(context.tr(th: 'เบอร์อื่น', en: 'Other numbers')),
           for (final n in others)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.sm),

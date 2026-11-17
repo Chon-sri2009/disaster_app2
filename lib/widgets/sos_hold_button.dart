@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import '../l10n/l10n.dart';
 import '../theme/app_tokens.dart';
 
-// The SOS block: a framed red notice. Hold it about 1.5 s while a white bar fills across its
-// foot, with haptic feedback, to confirm. A short tap does nothing.
+// The SOS card: a rounded red card with a soft red glow. Hold it about 1.5 s while a white bar
+// fills across its foot, with haptic feedback, to confirm. A short tap does nothing.
 class SosHoldButton extends StatefulWidget {
   const SosHoldButton({
     super.key,
@@ -99,9 +99,19 @@ class _SosHoldButtonState extends State<SosHoldButton>
         onPointerCancel: (_) => _release(),
         child: Container(
           height: widget.height,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: t.danger,
-            border: Border.all(color: t.ink, width: AppStroke.heavy),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            // A surface ring keeps the card apart from a red header band at danger level.
+            border: Border.all(color: t.surface, width: AppStroke.frame),
+            boxShadow: [
+              BoxShadow(
+                color: t.danger.withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             children: [

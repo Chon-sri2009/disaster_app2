@@ -5,9 +5,9 @@ import '../theme/app_tokens.dart';
 // The calm status kinds a notice can show: information, offline, or an error.
 enum BannerKind { info, offline, error }
 
-// A framed status notice with an icon, optional action, and screen-reader support.
-// Info sits on plain paper, offline on a quiet grey tint with a light rule (offline is normal,
-// never an alarm), and errors on a red tint with a danger frame.
+// A rounded status card with an icon, optional action, and screen-reader support.
+// Info sits on the brand tint, offline on a quiet grey tint (offline is normal, never an alarm),
+// and errors on a red tint with a danger outline.
 class WarningBanner extends StatelessWidget {
   const WarningBanner({
     super.key,
@@ -26,8 +26,8 @@ class WarningBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final (background, border, icon) = switch (kind) {
-      BannerKind.info => (t.surface, t.ink, Icons.info_outline),
-      BannerKind.offline => (t.offlineBg, t.hairline, Icons.cloud_off),
+      BannerKind.info => (t.brandSoft, null, Icons.info_outline),
+      BannerKind.offline => (t.offlineBg, null, Icons.cloud_off),
       BannerKind.error => (t.errorBg, t.dangerInk, Icons.error_outline),
     };
     final action = onAction;
@@ -38,7 +38,10 @@ class WarningBanner extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpace.md),
         decoration: BoxDecoration(
           color: background,
-          border: Border.all(color: border, width: AppStroke.frame),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: border == null
+              ? null
+              : Border.all(color: border, width: AppStroke.rule),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

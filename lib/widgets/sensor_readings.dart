@@ -7,7 +7,7 @@ import '../models/alert_level.dart';
 import '../services/sensor_service.dart';
 import '../theme/app_tokens.dart';
 import 'level_meter.dart';
-import 'notice.dart';
+import 'soft_ui.dart';
 import 'warning_banner.dart';
 
 // Sensor readings for Home: the demo water and vibration gauges, or the live stations.
@@ -78,13 +78,8 @@ class _DemoReadings extends StatelessWidget {
         if (kDebugMode)
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.sm),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: context.tokens.hairline,
-                  width: AppStroke.frame,
-                ),
-              ),
+            child: SoftCard(
+              padding: EdgeInsets.zero,
               child: ExpansionTile(
                 leading: const Icon(Icons.tune),
                 title: Text(
@@ -135,7 +130,7 @@ class _DemoReadings extends StatelessWidget {
 }
 
 // One measured value on the board: title and status, the value, its segmented gauge with the
-// limit post, and the limit in words. Over the limit the block takes a danger frame and tint.
+// limit post, and the limit in words. Over the limit the card takes a danger outline and tint.
 class ReadingBlock extends StatelessWidget {
   const ReadingBlock({
     super.key,
@@ -178,10 +173,9 @@ class ReadingBlock extends StatelessWidget {
         en: '$title $shown $spokenUnit, safe limit $limitText $spokenUnit, $status',
       ),
       child: ExcludeSemantics(
-        child: NoticeFrame(
+        child: SoftCard(
           color: over ? t.errorBg : t.surface,
-          borderColor: over ? t.dangerInk : t.ink,
-          borderWidth: over ? AppStroke.heavy : AppStroke.frame,
+          borderColor: over ? t.dangerInk : null,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -276,7 +270,7 @@ class _LiveStations extends StatelessWidget {
         for (final s in sensors.stations)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpace.sm),
-            child: NoticeFrame(
+            child: SoftCard(
               padding: EdgeInsets.zero,
               child: IntrinsicHeight(
                 child: Row(
@@ -339,9 +333,9 @@ class _StationLevel extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: style?.color ?? tokens.offlineBg,
-        border: Border(
-          left: BorderSide(color: tokens.ink, width: AppStroke.frame),
-        ),
+        borderRadius: const BorderRadiusDirectional.horizontal(
+          end: Radius.circular(AppRadius.lg),
+        ).resolve(Directionality.of(context)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

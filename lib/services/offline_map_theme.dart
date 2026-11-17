@@ -1,9 +1,8 @@
 // The stock v4 layer list is only exported from inside the package, so it is imported by path.
 // ignore: implementation_imports
 import 'package:vector_map_tiles_pmtiles/src/themes/v4/_package.dart' as v4;
-import 'package:vector_map_tiles_pmtiles/vector_map_tiles_pmtiles.dart';
 
-// Protomaps' light style (v4, built into the app, needs no internet), tuned to read like a
+// Protomaps' light style (v4, built into the app, needs no internet) as MapLibre layers, tuned to read like a
 // consumer map:
 // - each label is the place's own name (Thai in Thailand), falling back to English, because the
 //   stock rule uses features this renderer may not evaluate;
@@ -11,10 +10,9 @@ import 'package:vector_map_tiles_pmtiles/vector_map_tiles_pmtiles.dart';
 // - places get their icon and name: emergency places first, landmarks next, everyday shops and
 //   food only when zoomed in close (so panning stays smooth). The zoom limits are set per
 //   layer: this renderer reads the data's own min_zoom wrongly, which hid every place.
-// Icons come from the sprite sheet loaded by loadMapSprites(). No sprite URL is set here on
-// purpose: the renderer only reads one when it loads a style over the network, which this app
-// never does, so the theme names nothing that could need a connection.
-final offlineMapTheme = const ProtomapsThemes().build([
+// Icons come from the bundled sprite sheet; offline_map.dart adds its file path when it writes
+// the style, so nothing here names a web address.
+final offlineMapLayers = <Map<String, Object>>[
   for (final layer in v4.themeLight)
     if (_dropped.contains(layer['id']) ||
         (layer['id'] as String).startsWith('roads_tunnels') ||
@@ -26,7 +24,7 @@ final offlineMapTheme = const ProtomapsThemes().build([
       _placeLayer('pois_minor', _minorKinds, minzoom: 16),
     ] else
       _tuned(layer),
-]);
+];
 
 // Layers that add little to a rescue map but cost drawing time on every tile (drawing runs on the
 // UI thread, so each layer counts toward drag smoothness). Tunnels and bridges are skipped too:
@@ -103,6 +101,9 @@ const _minorKinds = [
   'toilets',
 ];
 
+// The one glyph set bundled for labels (Latin and Thai), so every label uses it.
+const _font = ['NotoSans'];
+
 const _name = [
   'coalesce',
   ['get', 'name'],
@@ -131,7 +132,7 @@ Map<String, Object> _placeLayer(
   'layout': {
     'icon-image': ['get', 'kind'],
     'text-field': _name,
-    'text-font': ['Noto Sans Regular'],
+    'text-font': _font,
     'text-size': 11,
     'text-max-width': 7,
     'text-anchor': 'top',
@@ -154,6 +155,7 @@ Map<String, Object> _tuned(Map<String, Object> layer) {
     'layout': {
       ...layout.cast<String, Object>(),
       'text-field': _name,
+      'text-font': _font,
       if (isStreet && size is num) 'text-size': size + 2,
     },
   };

@@ -44,6 +44,7 @@ dependencies:
   vector_tile_renderer: ^6.1.0
   vector_map_tiles_pmtiles: ^1.5.2
   path_provider: ^2.1.5
+  maplibre: ^0.3.7+1
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +72,7 @@ flutter:
   assets:
     - assets/maps/
     - assets/maps/sprites/
+    - assets/maps/glyphs/NotoSans/
 
   # Bundled Thai-first font (Sarabun, SIL OFL, see assets/fonts/OFL.txt).
   fonts:

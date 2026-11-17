@@ -10,7 +10,7 @@ import '../services/location_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
-import '../widgets/notice.dart';
+import '../widgets/soft_ui.dart';
 import '../widgets/warning_banner.dart';
 import 'settings_screen.dart';
 
@@ -168,7 +168,7 @@ class _ReportScreenState extends State<ReportScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ScreenHeader(
+              BrandHeader(
                 title: context.tr(th: 'แจ้งความเสียหาย', en: 'Report damage'),
                 trailing: SettingsButton(storage: widget.storage),
               ),
@@ -336,7 +336,7 @@ class _ReportScreenState extends State<ReportScreen> {
         if (photo != null)
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.sm),
-            child: NoticeFrame(
+            child: SoftCard(
               padding: EdgeInsets.zero,
               child: Row(
                 children: [
@@ -469,7 +469,7 @@ class _ChoiceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final fg = selected ? t.ground : t.ink;
-    return NoticeTile(
+    return SoftTile(
       selected: selected,
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpace.sm),
@@ -511,7 +511,7 @@ class _ReportTile extends StatelessWidget {
     final theme = Theme.of(context);
     final photo = report.photoPath;
     final category = _ReportScreenState._categories[report.category];
-    return NoticeFrame(
+    return SoftCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

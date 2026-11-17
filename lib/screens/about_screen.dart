@@ -4,7 +4,7 @@ import '../data/emergency_numbers.dart';
 import '../l10n/l10n.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
-import '../widgets/notice.dart';
+import '../widgets/soft_ui.dart';
 
 // About: disclaimer (content required by DEVELOPMENT_PLAN.md 9.4) and data sources (9.2, 5.7).
 // DRAFT wording: the owner must rewrite it and Thai counsel must review it before release.
@@ -98,8 +98,8 @@ class AboutScreen extends StatelessWidget {
             ),
             children: [
               SectionLabel(context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer')),
-              NoticeFrame(
-                borderWidth: AppStroke.heavy,
+              SoftCard(
+                borderWidth: AppStroke.accent,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -122,7 +122,7 @@ class AboutScreen extends StatelessWidget {
               for (final s in sources)
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                  child: NoticeFrame(
+                  child: SoftCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

@@ -8,7 +8,7 @@ import '../services/emergency_launcher.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
-import '../widgets/notice.dart';
+import '../widgets/soft_ui.dart';
 import 'settings_screen.dart';
 
 // Guide: offline first aid on top as large tiles (the urgent shelf), disaster topics below as
@@ -37,7 +37,7 @@ class GuideScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ScreenHeader(
+          BrandHeader(
             title: context.tr(th: 'คู่มือออฟไลน์', en: 'Offline guide'),
             trailing: SettingsButton(storage: storage),
           ),
@@ -67,7 +67,7 @@ class GuideScreen extends StatelessWidget {
                                 if (topic != firstAid[i])
                                   const SizedBox(width: AppSpace.sm),
                                 Expanded(
-                                  child: NoticeTile(
+                                  child: SoftTile(
                                     onTap: () => _open(context, topic),
                                     padding: const EdgeInsets.all(AppSpace.sm),
                                     child: Row(
@@ -98,7 +98,7 @@ class GuideScreen extends StatelessWidget {
                       for (final topic in disaster)
                         Padding(
                           padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                          child: NoticeTile(
+                          child: SoftTile(
                             onTap: () => _open(context, topic),
                             child: Row(
                               children: [

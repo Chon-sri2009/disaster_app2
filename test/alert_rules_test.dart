@@ -108,15 +108,24 @@ void combineTests() {
   group('AlertRules.combine', () {
     test('an official alert escalates a missing or lower sensor level', () {
       expect(AlertRules.combine(null, AlertLevel.danger), AlertLevel.danger);
-      expect(AlertRules.combine(AlertLevel.safe, AlertLevel.watch), AlertLevel.watch);
+      expect(
+        AlertRules.combine(AlertLevel.safe, AlertLevel.watch),
+        AlertLevel.watch,
+      );
     });
     test('official "no alert here" never creates or lowers a level', () {
       expect(AlertRules.combine(null, AlertLevel.safe), isNull);
-      expect(AlertRules.combine(AlertLevel.danger, AlertLevel.safe), AlertLevel.danger);
+      expect(
+        AlertRules.combine(AlertLevel.danger, AlertLevel.safe),
+        AlertLevel.danger,
+      );
       expect(AlertRules.combine(AlertLevel.warning, null), AlertLevel.warning);
     });
     test('the worse level wins', () {
-      expect(AlertRules.combine(AlertLevel.danger, AlertLevel.watch), AlertLevel.danger);
+      expect(
+        AlertRules.combine(AlertLevel.danger, AlertLevel.watch),
+        AlertLevel.danger,
+      );
     });
   });
 }

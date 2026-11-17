@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app_tokens.dart';
 
-// Builds the day and night boards: Sarabun type, square ink-framed controls, 48 dp targets.
+// Builds the day and night themes: Sarabun type, rounded soft controls, 48 dp targets.
 abstract final class AppTheme {
   static const String fontFamily = 'Sarabun';
 
@@ -30,22 +31,22 @@ abstract final class AppTheme {
   static ThemeData _build(AppTokens t) {
     final scheme = ColorScheme(
       brightness: t.brightness,
-      primary: t.ink,
-      onPrimary: t.ground,
-      secondary: t.ink,
-      onSecondary: t.ground,
+      primary: t.brand,
+      onPrimary: t.onBrand,
+      secondary: t.brand,
+      onSecondary: t.onBrand,
       error: t.danger,
       onError: t.onDanger,
       surface: t.surface,
       onSurface: t.ink,
       onSurfaceVariant: t.inkMuted,
-      outline: t.ink,
+      outline: t.hairline,
       outlineVariant: t.hairline,
-      primaryContainer: t.pressed,
+      primaryContainer: t.brandSoft,
       onPrimaryContainer: t.ink,
-      secondaryContainer: t.ink,
-      onSecondaryContainer: t.ground,
-      surfaceContainerLowest: t.ground,
+      secondaryContainer: t.brandSoft,
+      onSecondaryContainer: t.ink,
+      surfaceContainerLowest: t.surface,
       surfaceContainerLow: t.surface,
       surfaceContainer: t.surface,
       surfaceContainerHigh: t.surface,
@@ -53,7 +54,7 @@ abstract final class AppTheme {
       surfaceTint: Colors.transparent,
     );
 
-    // Headings and values in 700 like a printed notice, body in 400.
+    // Headings and values in 700, body in 400.
     final text = TextTheme(
       displayLarge: _style(48, FontWeight.w700, t.ink, 1.1),
       displayMedium: _style(40, FontWeight.w700, t.ink, 1.15),
@@ -71,12 +72,13 @@ abstract final class AppTheme {
       labelSmall: _style(14, FontWeight.w500, t.inkMuted, 1.4),
     );
 
-    const square = RoundedRectangleBorder();
-    final framed = RoundedRectangleBorder(side: t.frame);
+    RoundedRectangleBorder rounded(double r) =>
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(r));
+    const stadium = StadiumBorder();
     const tap = Size(AppSize.tapTarget, AppSize.tapTarget);
-    final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.zero,
-      borderSide: BorderSide(color: t.ink, width: AppStroke.frame),
+    OutlineInputBorder field(Color color, double width) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: BorderSide(color: color, width: width),
     );
 
     return ThemeData(
@@ -94,31 +96,32 @@ abstract final class AppTheme {
       highlightColor: t.pressed,
       splashColor: t.pressed,
       textSelectionTheme: TextSelectionThemeData(
-        cursorColor: t.ink,
+        cursorColor: t.brand,
         selectionColor: t.selection,
-        selectionHandleColor: t.ink,
+        selectionHandleColor: t.brand,
       ),
       iconTheme: IconThemeData(color: t.ink, size: AppIconSize.md),
+      // Pushed pages (Settings, About, guide topics) wear the header band as their app bar.
       appBarTheme: AppBarTheme(
-        backgroundColor: t.ground,
-        foregroundColor: t.ink,
+        backgroundColor: t.header,
+        foregroundColor: t.onHeader,
         elevation: AppElevation.none,
         scrolledUnderElevation: AppElevation.none,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: text.headlineSmall,
+        titleTextStyle: text.titleLarge?.copyWith(color: t.onHeader),
+        iconTheme: IconThemeData(color: t.onHeader),
+        actionsIconTheme: IconThemeData(color: t.onHeader),
         toolbarHeight: AppSize.toolbar,
-        shape: Border(
-          bottom: BorderSide(color: t.ink, width: AppStroke.heavy),
-        ),
+        systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: t.ink,
-          foregroundColor: t.ground,
+          backgroundColor: t.brand,
+          foregroundColor: t.onBrand,
           disabledBackgroundColor: t.hairline,
           disabledForegroundColor: t.inkMuted,
           minimumSize: const Size(AppSize.tapTarget, AppSize.primaryButton),
-          shape: square,
+          shape: stadium,
           textStyle: text.labelLarge,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
         ),
@@ -126,9 +129,9 @@ abstract final class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: tap,
-          shape: square,
-          foregroundColor: t.ink,
-          side: t.frame,
+          shape: stadium,
+          foregroundColor: t.brand,
+          side: BorderSide(color: t.hairline, width: AppStroke.frame),
           textStyle: text.labelLarge,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
         ),
@@ -136,29 +139,26 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           minimumSize: tap,
-          shape: square,
-          foregroundColor: t.ink,
-          textStyle: text.labelLarge?.copyWith(
-            decoration: TextDecoration.underline,
-            decorationThickness: 2,
-          ),
+          shape: stadium,
+          foregroundColor: t.brand,
+          textStyle: text.labelLarge,
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           minimumSize: tap,
-          shape: square,
-          foregroundColor: t.ink,
+          shape: const CircleBorder(),
         ),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
-          minimumSize: const Size(AppSize.tapTarget, AppSize.primaryButton),
-          shape: square,
-          side: t.frame,
+          minimumSize: tap,
+          shape: stadium,
+          side: BorderSide(color: t.hairline, width: AppStroke.rule),
+          backgroundColor: t.surface,
           foregroundColor: t.ink,
-          selectedForegroundColor: t.ground,
-          selectedBackgroundColor: t.ink,
+          selectedForegroundColor: t.onBrand,
+          selectedBackgroundColor: t.brand,
           textStyle: text.labelLarge,
         ),
       ),
@@ -167,27 +167,18 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
         color: t.surface,
         surfaceTintColor: Colors.transparent,
-        shape: framed,
+        shape: rounded(AppRadius.lg),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: t.surface,
-        border: fieldBorder,
-        enabledBorder: fieldBorder,
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(color: t.ink, width: AppStroke.heavy),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(color: t.dangerInk, width: AppStroke.frame),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(color: t.dangerInk, width: AppStroke.heavy),
-        ),
+        fillColor: t.ground,
+        border: field(t.hairline, AppStroke.rule),
+        enabledBorder: field(t.hairline, AppStroke.rule),
+        focusedBorder: field(t.brand, AppStroke.frame),
+        errorBorder: field(t.dangerInk, AppStroke.frame),
+        focusedErrorBorder: field(t.dangerInk, AppStroke.frame),
         labelStyle: text.bodyMedium?.copyWith(color: t.inkMuted),
-        floatingLabelStyle: text.labelLarge,
+        floatingLabelStyle: text.labelLarge?.copyWith(color: t.brand),
         errorStyle: text.bodyMedium?.copyWith(color: t.dangerInk),
         contentPadding: const EdgeInsets.all(AppSpace.md),
       ),
@@ -195,19 +186,20 @@ abstract final class AppTheme {
         iconColor: t.ink,
         textColor: t.ink,
         minVerticalPadding: AppSpace.sm,
-        shape: square,
+        shape: rounded(AppRadius.md),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: AppSize.navBar,
         elevation: AppElevation.none,
-        backgroundColor: t.ground,
+        backgroundColor: t.surface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: t.ink,
-        indicatorShape: square,
+        shadowColor: Colors.transparent,
+        indicatorColor: t.brandSoft,
+        indicatorShape: stadium,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? text.labelMedium
+              ? text.labelMedium?.copyWith(color: t.brand)
               : text.labelMedium?.copyWith(
                   color: t.inkMuted,
                   fontWeight: FontWeight.w500,
@@ -216,42 +208,45 @@ abstract final class AppTheme {
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
             size: AppIconSize.md,
-            color: states.contains(WidgetState.selected) ? t.ground : t.ink,
+            color: states.contains(WidgetState.selected) ? t.brand : t.inkMuted,
           ),
         ),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: t.ground,
-        indicatorColor: t.ink,
-        indicatorShape: square,
+        backgroundColor: t.surface,
+        indicatorColor: t.brandSoft,
+        indicatorShape: stadium,
         labelType: NavigationRailLabelType.all,
-        selectedLabelTextStyle: text.labelMedium,
+        selectedLabelTextStyle: text.labelMedium?.copyWith(color: t.brand),
         unselectedLabelTextStyle: text.labelMedium?.copyWith(
           color: t.inkMuted,
           fontWeight: FontWeight.w500,
         ),
-        selectedIconTheme: IconThemeData(size: AppIconSize.md, color: t.ground),
-        unselectedIconTheme: IconThemeData(size: AppIconSize.md, color: t.ink),
+        selectedIconTheme: IconThemeData(size: AppIconSize.md, color: t.brand),
+        unselectedIconTheme: IconThemeData(
+          size: AppIconSize.md,
+          color: t.inkMuted,
+        ),
       ),
       sliderTheme: SliderThemeData(
         trackHeight: 8,
-        activeTrackColor: t.ink,
+        activeTrackColor: t.brand,
         inactiveTrackColor: t.hairline,
-        thumbColor: t.ink,
+        thumbColor: t.brand,
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: t.ink,
-        linearTrackColor: t.hairline,
-        circularTrackColor: t.hairline,
+        color: t.brand,
+        linearTrackColor: t.brandSoft,
+        circularTrackColor: t.brandSoft,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: t.ink,
         contentTextStyle: text.bodyMedium?.copyWith(color: t.ground),
         actionTextColor: t.ground,
-        shape: square,
+        shape: rounded(AppRadius.md),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: t.surface,
@@ -259,17 +254,19 @@ abstract final class AppTheme {
         modalBackgroundColor: t.surface,
         elevation: AppElevation.overlay,
         modalElevation: AppElevation.overlay,
-        dragHandleColor: t.ink,
+        dragHandleColor: t.hairline,
         dragHandleSize: AppSize.dragHandle,
-        shape: Border(
-          top: BorderSide(color: t.ink, width: AppStroke.heavy),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: t.surface,
         surfaceTintColor: Colors.transparent,
         elevation: AppElevation.overlay,
-        shape: framed,
+        shape: rounded(AppRadius.xl),
         titleTextStyle: text.titleLarge,
         contentTextStyle: text.bodyLarge,
       ),
@@ -277,8 +274,8 @@ abstract final class AppTheme {
         shape: const Border(),
         collapsedShape: const Border(),
         tilePadding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-        iconColor: t.ink,
-        collapsedIconColor: t.ink,
+        iconColor: t.inkMuted,
+        collapsedIconColor: t.inkMuted,
         textColor: t.ink,
         collapsedTextColor: t.ink,
       ),
@@ -288,7 +285,10 @@ abstract final class AppTheme {
         space: AppStroke.rule,
       ),
       tooltipTheme: TooltipThemeData(
-        decoration: BoxDecoration(color: t.ink),
+        decoration: BoxDecoration(
+          color: t.ink,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
         textStyle: text.labelMedium?.copyWith(color: t.ground),
       ),
     );

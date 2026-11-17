@@ -4,8 +4,8 @@ import '../l10n/l10n.dart';
 import '../models/alert_level.dart';
 import '../theme/app_tokens.dart';
 
-// The board's signature: the 4-step level scale. Steps up to the current level are solid in
-// their own tier color; the rest are empty cells. The current step carries its word in bold.
+// The 4-step level scale as rounded segments. Steps up to the current level are solid in their
+// own tier color; the rest are empty. The current step is taller and carries its word in bold.
 class LevelMeter extends StatelessWidget {
   const LevelMeter({super.key, required this.level});
 
@@ -27,17 +27,20 @@ class LevelMeter extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
+                  SizedBox(
                     height: AppSize.meterHeight,
-                    decoration: BoxDecoration(
-                      color: step.index <= current
-                          ? t.styleFor(step).color
-                          : t.surface,
-                      border: Border.all(
-                        color: t.ink,
-                        width: step.index == current
-                            ? AppStroke.heavy
-                            : AppStroke.rule,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        height: step.index == current
+                            ? AppSize.meterHeight
+                            : AppSize.meterHeight / 2,
+                        decoration: BoxDecoration(
+                          color: step.index <= current
+                              ? t.styleFor(step).color
+                              : t.hairline,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
                       ),
                     ),
                   ),
@@ -63,8 +66,8 @@ class LevelMeter extends StatelessWidget {
   }
 }
 
-// The same cell scale for a measured value: filled cells up to the value, a heavy ink post at
-// the safe limit, and filled cells past the limit in the danger color.
+// The same segment scale for a measured value: filled segments up to the value, an ink post at
+// the safe limit, and filled segments past the limit in the danger color.
 class SegmentedGauge extends StatelessWidget {
   const SegmentedGauge({
     super.key,
@@ -92,11 +95,14 @@ class SegmentedGauge extends StatelessWidget {
             for (var i = 0; i < cells; i++) ...[
               if (i == limitCell)
                 Container(
-                  width: AppStroke.heavy + AppStroke.rule,
+                  width: AppStroke.accent,
                   margin: const EdgeInsets.symmetric(
-                    horizontal: AppStroke.rule,
+                    horizontal: AppStroke.frame,
                   ),
-                  color: t.ink,
+                  decoration: BoxDecoration(
+                    color: t.ink,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
                 )
               else if (i > 0)
                 const SizedBox(width: AppStroke.frame),
@@ -106,9 +112,9 @@ class SegmentedGauge extends StatelessWidget {
                   height: AppSize.meterHeight,
                   decoration: BoxDecoration(
                     color: i < filled
-                        ? (i >= limitCell ? t.danger : t.ink)
-                        : t.surface,
-                    border: Border.all(color: t.ink, width: AppStroke.rule),
+                        ? (i >= limitCell ? t.danger : t.brand)
+                        : t.hairline,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                 ),
               ),

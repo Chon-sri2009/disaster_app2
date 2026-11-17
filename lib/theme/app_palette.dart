@@ -1,31 +1,42 @@
 import 'dart:ui';
 
 // The only place raw hex colors live; everything else reads them through AppTokens.
-// "Public notice": newsprint paper and ink by day, the same board in charcoal at night.
+// "Soft cards": a navy header band over a cool grey canvas of white rounded cards by day, and
+// the same layout on deep navy at night.
 abstract final class AppPalette {
-  // Day board.
-  static const paper = Color(0xFFF2EDE2);
-  static const paperRaised = Color(0xFFFBF8F1);
-  static const ink = Color(0xFF16140F);
-  static const inkMuted = Color(0xFF4A463D);
-  static const rule = Color(0xFFBDB4A1);
-  static const pressed = Color(0xFFE3DBCA);
-  static const offlineDay = Color(0xFFE6E0D2);
-  static const errorDay = Color(0xFFF6DEDA);
+  // Day.
+  static const canvas = Color(0xFFEEF2F6);
+  static const card = Color(0xFFFFFFFF);
+  static const ink = Color(0xFF0F1B2D);
+  static const inkMuted = Color(0xFF515C6B);
+  static const hairline = Color(0xFFDCE2E9);
+  static const pressed = Color(0xFFE4EAF1);
+  static const offlineDay = Color(0xFFE6EBF1);
+  static const errorDay = Color(0xFFFBE4E2);
+  static const brand = Color(0xFF0B4F8A);
+  static const brandSoft = Color(0xFFE1ECF7);
+  static const shadow = Color(0x1A0F1B2D);
   static const dangerInkDay = Color(0xFFA3101A);
 
-  // Night board.
-  static const charcoal = Color(0xFF14130F);
-  static const charcoalRaised = Color(0xFF1F1D18);
-  static const paperInk = Color(0xFFEFE8D8);
-  static const paperInkMuted = Color(0xFFB8B09F);
-  static const ruleNight = Color(0xFF6F6858);
-  static const pressedNight = Color(0xFF2E2B24);
-  static const offlineNight = Color(0xFF26241E);
-  static const errorNight = Color(0xFF3A1A17);
+  // Night.
+  static const canvasNight = Color(0xFF0B1220);
+  static const cardNight = Color(0xFF152036);
+  static const inkNight = Color(0xFFE8EDF4);
+  static const inkMutedNight = Color(0xFFA7B2C2);
+  static const hairlineNight = Color(0xFF2A3852);
+  static const pressedNight = Color(0xFF1F2D47);
+  static const offlineNight = Color(0xFF1A2639);
+  static const errorNight = Color(0xFF3B1A21);
+  static const brandNight = Color(0xFF9CC8F7);
+  static const onBrandNight = Color(0xFF0B1220);
+  static const brandSoftNight = Color(0xFF1C3556);
+  static const headerNight = Color(0xFF0E3560);
   static const dangerInkNight = Color(0xFFFF9A90);
 
-  // Alert tiers: solid fields, same in both boards. Each pair is at least 4.5:1.
+  static const white = Color(0xFFFFFFFF);
+  static const onHeaderMuted = Color(0xFFC9DBEE);
+
+  // Alert tiers: solid fields, same in both modes. Each pair is at least 4.5:1.
   static const safe = Color(0xFF1D6B3A);
   static const onSafe = Color(0xFFFFFFFF);
   static const watch = Color(0xFFF2C200);
@@ -35,7 +46,7 @@ abstract final class AppPalette {
   static const danger = Color(0xFFB3121C);
   static const onDanger = Color(0xFFFFFFFF);
 
-  // Tier colors used as text or icons on the board itself (4.5:1 on paper / charcoal).
+  // Tier colors used as text or icons on cards and canvas (4.5:1 on both).
   static const safeInkDay = Color(0xFF1D6B3A);
   static const watchInkDay = Color(0xFF6E5300);
   static const warningInkDay = Color(0xFFA33508);
@@ -43,6 +54,7 @@ abstract final class AppPalette {
   static const watchInkNight = Color(0xFFF2C200);
   static const warningInkNight = Color(0xFFFFA270);
 
-  // Text selection: a highlighter stroke of the watch yellow.
-  static const selection = Color(0x66F2C200);
+  // Text selection.
+  static const selection = Color(0x660B4F8A);
+  static const selectionNight = Color(0x669CC8F7);
 }

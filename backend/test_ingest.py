@@ -42,6 +42,9 @@ class AuthTests(Base):
     def test_bad_signature(self):
         self.assertEqual(self.send(0, 100, sig="0" * 64)[0], 401)
 
+    def test_non_ascii_signature_is_401_not_a_crash(self):
+        self.assertEqual(self.send(0, 100, sig="é" * 64)[0], 401)
+
     def test_unknown_device(self):
         raw = body("nope", 1, 0, 100)
         self.assertEqual(self.store.ingest("nope", sign(KEY, raw), raw)[0], 401)

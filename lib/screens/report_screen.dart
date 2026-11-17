@@ -287,7 +287,9 @@ class _ReportScreenState extends State<ReportScreen> {
         TextFormField(
           controller: _noteController,
           maxLines: 3,
+          maxLength: 500,
           decoration: InputDecoration(
+            counterText: '',
             labelText: context.tr(
               th: 'หมายเหตุ (ไม่บังคับ)',
               en: 'Note (optional)',
@@ -379,7 +381,9 @@ class _ReportScreenState extends State<ReportScreen> {
           textInputAction: TextInputAction.done,
           maxLines: 2,
           minLines: 1,
+          maxLength: 200,
           decoration: InputDecoration(
+            counterText: '',
             labelText: context.tr(
               th: 'ที่อยู่ (แก้ไขได้ หรือพิมพ์เอง)',
               en: 'Address (edit it or type your own)',

@@ -6,6 +6,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="Disaster Alert"
+        android:allowBackup="false"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

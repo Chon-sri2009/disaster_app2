@@ -22,6 +22,17 @@ void main() {
         }),
         '12 ถนนจรัญสนิทวงศ์, บางขุนศรี, บางกอกน้อย, กรุงเทพมหานคร',
       );
+      // What Nominatim really returns in Bangkok: both the แขวง and the เขต must survive.
+      expect(
+        formatAddress({
+          'house_number': '74',
+          'road': 'ถนนจักรพงษ์',
+          'quarter': 'แขวงตลาดยอด',
+          'suburb': 'เขตพระนคร',
+          'city': 'กรุงเทพมหานคร',
+        }),
+        '74 ถนนจักรพงษ์, แขวงตลาดยอด, เขตพระนคร, กรุงเทพมหานคร',
+      );
       expect(formatAddress({}), isNull);
       expect(formatAddress(null), isNull);
     },

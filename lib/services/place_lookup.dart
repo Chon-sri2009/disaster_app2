@@ -72,7 +72,10 @@ String? formatAddress(Map<String, dynamic>? a) {
   ].whereType<String>().join(' ');
   final parts = <String>{
     if (street.isNotEmpty) street,
-    ?pick(['neighbourhood', 'suburb', 'quarter']),
+    ?pick(['neighbourhood']),
+    // Bangkok gives the sub-district (แขวง) as quarter and the district (เขต) as suburb.
+    ?pick(['quarter']),
+    ?pick(['suburb']),
     ?pick(['city_district', 'district', 'county']),
     ?pick(['city', 'town', 'village', 'municipality']),
     ?pick(['state']),

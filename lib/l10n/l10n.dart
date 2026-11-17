@@ -39,6 +39,20 @@ extension AppL10n on BuildContext {
     ),
   };
 
+  // "850 m" / "1.2 km", rounded to what a walker can use.
+  String distance(double meters) => meters < 1000
+      ? tr(
+          th: '${(meters / 10).round() * 10} ม.',
+          en: '${(meters / 10).round() * 10} m',
+        )
+      : tr(
+          th: '${(meters / 1000).toStringAsFixed(1)} กม.',
+          en: '${(meters / 1000).toStringAsFixed(1)} km',
+        );
+
+  String shelterCapacity(int people) =>
+      tr(th: 'รองรับได้ประมาณ $people คน', en: 'Holds about $people people');
+
   String serviceName(EmergencyNumber n) => tr(th: n.serviceTh, en: n.service);
 
   String locationError(LocationIssue issue) => switch (issue) {

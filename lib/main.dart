@@ -8,7 +8,6 @@ import 'screens/guide_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/report_screen.dart';
-import 'screens/sensors_screen.dart';
 import 'services/alert_service.dart';
 import 'services/location_service.dart';
 import 'services/offline_map.dart';
@@ -16,6 +15,7 @@ import 'services/sensor_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_tokens.dart';
+import 'widgets/notice.dart';
 
 // Starts the app: opens local storage, caches the shelter list, then shows the UI.
 Future<void> main() async {
@@ -27,7 +27,7 @@ Future<void> main() async {
   runApp(DisasterApp(storage: storage));
 }
 
-// The root widget: the light theme and the main shell.
+// The root widget: day and night boards (following the phone) and the main shell.
 class DisasterApp extends StatelessWidget {
   const DisasterApp({
     super.key,
@@ -50,6 +50,8 @@ class DisasterApp extends StatelessWidget {
         ),
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ThemeMode.system,
         locale: Locale(storage.language.code),
         supportedLocales: const [Locale('th'), Locale('en')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -81,24 +83,7 @@ class _MapGateState extends State<_MapGate> {
       future: _ready,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: AppSpace.md),
-                  Text(
-                    context.tr(
-                      th: 'กำลังเตรียมแผนที่ออฟไลน์…',
-                      en: 'Preparing the offline map…',
-                    ),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
-            ),
-          );
+          return const _StartupNotice();
         }
         final provider = snap.data;
         return AppShell(
@@ -110,7 +95,7 @@ class _MapGateState extends State<_MapGate> {
   }
 }
 
-// Holds the services and the navigation that switches between the 5 screens.
+// Holds the services and the navigation that switches between the 4 tabs.
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.storage, required this.loadMap});
 
@@ -133,11 +118,6 @@ class _AppShellState extends State<AppShell> {
 
   List<(IconData, IconData, String)> _destinations(BuildContext context) => [
     (Icons.home_outlined, Icons.home, context.tr(th: 'หน้าแรก', en: 'Home')),
-    (
-      Icons.sensors_outlined,
-      Icons.sensors,
-      context.tr(th: 'เซนเซอร์', en: 'Sensors'),
-    ),
     (Icons.map_outlined, Icons.map, context.tr(th: 'แผนที่', en: 'Map')),
     (
       Icons.edit_note_outlined,
@@ -151,6 +131,8 @@ class _AppShellState extends State<AppShell> {
     ),
   ];
 
+  static const _mapTab = 1;
+
   @override
   void dispose() {
     _sensors.dispose();
@@ -162,7 +144,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final destinations = _destinations(context);
     final size = MediaQuery.sizeOf(context);
-    // A rail needs room for five labeled items, so short landscape phones keep the bottom bar.
+    // A rail needs room for four labeled items, so short landscape phones keep the bottom bar.
     final wide =
         size.width >= AppSize.wideBreakpoint &&
         size.height >= AppSize.railMinHeight;
@@ -170,8 +152,13 @@ class _AppShellState extends State<AppShell> {
     final body = IndexedStack(
       index: _index,
       children: [
-        HomeScreen(sensors: _sensors, location: _location, alerts: _alerts),
-        SensorsScreen(sensors: _sensors),
+        HomeScreen(
+          sensors: _sensors,
+          location: _location,
+          alerts: _alerts,
+          storage: widget.storage,
+          onOpenMap: () => setState(() => _index = _mapTab),
+        ),
         MapScreen(storage: widget.storage, loadMap: widget.loadMap),
         ReportScreen(storage: widget.storage, location: _location),
         GuideScreen(storage: widget.storage),
@@ -197,7 +184,11 @@ class _AppShellState extends State<AppShell> {
                 ],
               ),
             ),
-            VerticalDivider(width: 1, color: context.tokens.hairline),
+            VerticalDivider(
+              width: AppStroke.heavy,
+              thickness: AppStroke.heavy,
+              color: context.tokens.ink,
+            ),
             Expanded(child: body),
           ],
         ),
@@ -206,17 +197,78 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          for (final d in destinations)
-            NavigationDestination(
-              icon: Icon(d.$1),
-              selectedIcon: Icon(d.$2),
-              label: d.$3,
+      // The tab bar is ruled off from the board like the foot of a notice.
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: context.tokens.ink, width: AppStroke.heavy),
+          ),
+        ),
+        child: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: (i) => setState(() => _index = i),
+          destinations: [
+            for (final d in destinations)
+              NavigationDestination(
+                icon: Icon(d.$1),
+                selectedIcon: Icon(d.$2),
+                label: d.$3,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// The first-launch screen while the map pack is copied: the app's name on a framed notice.
+class _StartupNotice extends StatelessWidget {
+  const _StartupNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.lg),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppSize.noticeMaxWidth,
+              ),
+              child: NoticeFrame(
+                borderWidth: AppStroke.heavy,
+                padding: const EdgeInsets.all(AppSpace.lg),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      context.tr(
+                        th: 'แจ้งภัยและช่วยเหลือ',
+                        en: 'Disaster Alert & Rescue',
+                      ),
+                      style: theme.textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    const LinearProgressIndicator(
+                      minHeight: AppStroke.heavy * 2,
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    Text(
+                      context.tr(
+                        th: 'กำลังเตรียมแผนที่ออฟไลน์…',
+                        en: 'Preparing the offline map…',
+                      ),
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                  ],
+                ),
+              ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }

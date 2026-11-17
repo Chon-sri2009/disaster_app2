@@ -4,6 +4,7 @@ import '../data/emergency_numbers.dart';
 import '../l10n/l10n.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
+import '../widgets/notice.dart';
 
 // About: disclaimer (content required by DEVELOPMENT_PLAN.md 9.4) and data sources (9.2, 5.7).
 // DRAFT wording: the owner must rewrite it and Thai counsel must review it before release.
@@ -13,10 +14,6 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    Widget heading(String text) => Padding(
-      padding: const EdgeInsets.only(top: AppSpace.lg, bottom: AppSpace.sm),
-      child: Text(text, style: theme.textTheme.titleLarge),
-    );
     final disclaimer = [
       context.tr(
         th: 'แอปนี้ไม่ใช่ช่องทางแจ้งเตือนภัยอย่างเป็นทางการของรัฐ',
@@ -93,27 +90,47 @@ class AboutScreen extends StatelessWidget {
       body: SafeArea(
         child: ContentWidth(
           child: ListView(
-            padding: const EdgeInsets.all(AppSpace.md),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.md,
+              0,
+              AppSpace.md,
+              AppSpace.lg,
+            ),
             children: [
-              heading(context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer')),
-              for (final line in disclaimer)
+              SectionLabel(context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer')),
+              NoticeFrame(
+                borderWidth: AppStroke.heavy,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final line in disclaimer)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                        child: Text(line, style: theme.textTheme.bodyLarge),
+                      ),
+                    Text(
+                      context.tr(
+                        th: 'ในเหตุฉุกเฉิน โทร $numbers',
+                        en: 'In an emergency call $numbers.',
+                      ),
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+              ),
+              SectionLabel(context.tr(th: 'แหล่งข้อมูล', en: 'Data sources')),
+              for (final s in sources)
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                  child: Text(line, style: theme.textTheme.bodyLarge),
-                ),
-              Text(
-                context.tr(
-                  th: 'ในเหตุฉุกเฉิน โทร $numbers',
-                  en: 'In an emergency call $numbers.',
-                ),
-                style: theme.textTheme.bodyLarge,
-              ),
-              heading(context.tr(th: 'แหล่งข้อมูล', en: 'Data sources')),
-              for (final s in sources)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(s.$1),
-                  subtitle: Text(s.$2),
+                  child: NoticeFrame(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(s.$1, style: theme.textTheme.titleSmall),
+                        Text(s.$2, style: theme.textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
                 ),
             ],
           ),

@@ -10,9 +10,11 @@ import '../services/location_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
+import '../widgets/notice.dart';
 import '../widgets/warning_banner.dart';
+import 'settings_screen.dart';
 
-// Report screen: a damage-report form (photo, GPS, category, note) and the saved reports.
+// Report screen: a damage-report form (category, note, photo, GPS) and the saved reports.
 class ReportScreen extends StatefulWidget {
   const ReportScreen({
     super.key,
@@ -31,10 +33,18 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   // Reports store the key, so a report keeps its meaning if the language is switched later.
   static const _categories = {
-    'flooded_road': (th: 'ถนนน้ำท่วม', en: 'Flooded road'),
-    'damaged_building': (th: 'อาคารเสียหาย', en: 'Damaged building'),
-    'no_power': (th: 'ไฟฟ้าดับ', en: 'No power'),
-    'no_water': (th: 'น้ำประปาไม่ไหล', en: 'No water'),
+    'flooded_road': (th: 'ถนนน้ำท่วม', en: 'Flooded road', icon: Icons.flood),
+    'damaged_building': (
+      th: 'อาคารเสียหาย',
+      en: 'Damaged building',
+      icon: Icons.domain_disabled,
+    ),
+    'no_power': (th: 'ไฟฟ้าดับ', en: 'No power', icon: Icons.power_off),
+    'no_water': (
+      th: 'น้ำประปาไม่ไหล',
+      en: 'No water',
+      icon: Icons.format_color_reset,
+    ),
   };
 
   final _formKey = GlobalKey<FormState>();
@@ -120,6 +130,7 @@ class _ReportScreenState extends State<ReportScreen> {
     await widget.storage.addReport(report);
     if (!mounted) return;
     _formKey.currentState!.reset();
+    _noteController.clear();
     setState(() {
       _category = null;
       _photoPath = null;
@@ -136,82 +147,130 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return SafeArea(
-      child: ContentWidth(
-        child: ListenableBuilder(
-          listenable: widget.storage,
-          builder: (context, _) {
-            final reports = widget.storage.reports;
-            return ListView(
-              padding: const EdgeInsets.all(AppSpace.md),
-              children: [
-                Text(
-                  context.tr(th: 'แจ้งความเสียหาย', en: 'Report damage'),
-                  style: theme.textTheme.headlineMedium,
-                ),
-                const SizedBox(height: AppSpace.md),
-                Form(key: _formKey, child: _buildForm()),
-                const SizedBox(height: AppSpace.lg),
-                Text(
-                  context.tr(
-                    th: 'รายงานที่บันทึกไว้ (${reports.length})',
-                    en: 'Saved reports (${reports.length})',
+      child: ListenableBuilder(
+        listenable: widget.storage,
+        builder: (context, _) {
+          final reports = widget.storage.reports;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ScreenHeader(
+                title: context.tr(th: 'แจ้งความเสียหาย', en: 'Report damage'),
+                trailing: SettingsButton(storage: widget.storage),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.md,
+                    0,
+                    AppSpace.md,
+                    AppSpace.lg,
                   ),
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpace.sm),
-                if (reports.isEmpty)
-                  WarningBanner(
-                    message: context.tr(
-                      th:
-                          'ยังไม่มีรายงาน รายงานที่บันทึกจะเก็บไว้ในเครื่องนี้เท่านั้น '
-                          'ใช้ได้โดยไม่ต้องมีอินเทอร์เน็ต และยังไม่ได้ส่งให้ใคร',
-                      en:
-                          'No reports yet. Reports you save stay on this phone only, '
-                          'work without internet, and are not sent to anyone yet.',
+                  children: [
+                    ContentWidth(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Form(key: _formKey, child: _buildForm()),
+                          SectionLabel(
+                            context.tr(
+                              th: 'รายงานที่บันทึกไว้ (${reports.length})',
+                              en: 'Saved reports (${reports.length})',
+                            ),
+                          ),
+                          if (reports.isEmpty)
+                            WarningBanner(
+                              message: context.tr(
+                                th:
+                                    'ยังไม่มีรายงาน รายงานที่บันทึกจะเก็บไว้ในเครื่องนี้เท่านั้น '
+                                    'ใช้ได้โดยไม่ต้องมีอินเทอร์เน็ต และยังไม่ได้ส่งให้ใคร',
+                                en:
+                                    'No reports yet. Reports you save stay on this phone only, '
+                                    'work without internet, and are not sent to anyone yet.',
+                              ),
+                            ),
+                          for (final r in reports)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpace.sm,
+                              ),
+                              child: _ReportTile(report: r),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                for (final r in reports)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                    child: _ReportTile(report: r),
-                  ),
-              ],
-            );
-          },
-        ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  // Builds the form fields and buttons.
+  // Builds the form: category tiles, note, attachments, save.
   Widget _buildForm() {
+    final theme = Theme.of(context);
+    final t = context.tokens;
     final point = _point;
     final message = _locationMessage;
+    final photo = _photoPath;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<String>(
-          decoration: InputDecoration(
-            labelText: context.tr(th: 'ประเภท', en: 'Category'),
-          ),
-          items: [
-            for (final c in _categories.entries)
-              DropdownMenuItem(
-                value: c.key,
-                child: Text(context.tr(th: c.value.th, en: c.value.en)),
-              ),
-          ],
-          onChanged: (value) => _category = value,
+        FormField<String>(
           validator: (value) => value == null
               ? context.tr(
                   th: 'กรุณาเลือกประเภท',
                   en: 'Please choose a category',
                 )
               : null,
+          builder: (field) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionLabel(context.tr(th: 'ประเภท', en: 'Category')),
+              _TileGrid(
+                children: [
+                  for (final c in _categories.entries)
+                    _ChoiceTile(
+                      icon: c.value.icon,
+                      label: context.tr(th: c.value.th, en: c.value.en),
+                      selected: field.value == c.key,
+                      onTap: () {
+                        field.didChange(c.key);
+                        setState(() => _category = c.key);
+                      },
+                    ),
+                ],
+              ),
+              if (field.errorText != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpace.sm),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: t.dangerInk,
+                        size: AppIconSize.sm,
+                      ),
+                      const SizedBox(width: AppSpace.xs),
+                      Expanded(
+                        child: Text(
+                          field.errorText!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: t.dangerInk,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpace.md),
+        SectionLabel(context.tr(th: 'รายละเอียด', en: 'Details')),
         TextFormField(
           controller: _noteController,
           maxLines: 3,
@@ -223,56 +282,81 @@ class _ReportScreenState extends State<ReportScreen> {
             alignLabelWithHint: true,
           ),
         ),
-        const SizedBox(height: AppSpace.md),
-        Wrap(
-          spacing: AppSpace.sm,
-          runSpacing: AppSpace.sm,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () => _pickPhoto(ImageSource.camera),
-              icon: const Icon(Icons.photo_camera),
-              label: Text(context.tr(th: 'ถ่ายรูป', en: 'Camera')),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => _pickPhoto(ImageSource.gallery),
-              icon: const Icon(Icons.photo_library),
-              label: Text(context.tr(th: 'เลือกจากคลังภาพ', en: 'Gallery')),
-            ),
-            OutlinedButton.icon(
-              onPressed: _locating ? null : _useLocation,
-              icon: _locating
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.my_location),
-              label: Text(
-                _locating
-                    ? context.tr(th: 'กำลังหาตำแหน่ง…', en: 'Finding location…')
-                    : context.tr(th: 'เพิ่มตำแหน่ง', en: 'Add location'),
-              ),
-            ),
-          ],
-        ),
-        if (_photoPath != null)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpace.md),
-            child: Semantics(
-              image: true,
-              label: context.tr(
-                th: 'รูปที่แนบกับรายงานนี้',
-                en: 'Photo attached to this report',
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: Image.file(
-                  File(_photoPath!),
-                  height: 160,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stack) =>
-                      const Icon(Icons.broken_image, size: 48),
+        const SizedBox(height: AppSpace.sm),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _ChoiceTile(
+                  icon: Icons.photo_camera,
+                  label: context.tr(th: 'ถ่ายรูป', en: 'Camera'),
+                  onTap: () => _pickPhoto(ImageSource.camera),
                 ),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: _ChoiceTile(
+                  icon: Icons.photo_library,
+                  label: context.tr(th: 'คลังภาพ', en: 'Gallery'),
+                  onTap: () => _pickPhoto(ImageSource.gallery),
+                ),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: _ChoiceTile(
+                  icon: point != null ? Icons.check : Icons.my_location,
+                  label: _locating
+                      ? context.tr(th: 'กำลังหา…', en: 'Finding…')
+                      : point != null
+                      ? context.tr(th: 'มีตำแหน่งแล้ว', en: 'Location added')
+                      : context.tr(th: 'เพิ่มตำแหน่ง', en: 'Add location'),
+                  busy: _locating,
+                  onTap: _locating ? null : _useLocation,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (photo != null)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.sm),
+            child: NoticeFrame(
+              padding: EdgeInsets.zero,
+              child: Row(
+                children: [
+                  Semantics(
+                    image: true,
+                    label: context.tr(
+                      th: 'รูปที่แนบกับรายงานนี้',
+                      en: 'Photo attached to this report',
+                    ),
+                    child: Image.file(
+                      File(photo),
+                      width: AppSize.photoPreview,
+                      height: AppSize.photoPreview * 0.75,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => const SizedBox(
+                        width: AppSize.photoPreview,
+                        child: Icon(Icons.broken_image, size: AppIconSize.xl),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpace.sm),
+                      child: Text(
+                        context.tr(th: 'แนบรูปแล้ว', en: 'Photo attached'),
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: context.tr(th: 'เอารูปออก', en: 'Remove photo'),
+                    onPressed: () => setState(() => _photoPath = null),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ),
             ),
           ),
@@ -282,6 +366,7 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Text(
               '${context.tr(th: 'ตำแหน่ง', en: 'Location')}: '
               '${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}',
+              style: theme.textTheme.bodySmall,
             ),
           ),
         if (message != null)
@@ -293,15 +378,90 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
           ),
         const SizedBox(height: AppSpace.md),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: _save,
-            icon: const Icon(Icons.save),
-            label: Text(context.tr(th: 'บันทึกรายงาน', en: 'Save report')),
-          ),
+        FilledButton.icon(
+          onPressed: _save,
+          icon: const Icon(Icons.save),
+          label: Text(context.tr(th: 'บันทึกรายงาน', en: 'Save report')),
         ),
       ],
+    );
+  }
+}
+
+// Two framed tiles per row, rows of equal height.
+class _TileGrid extends StatelessWidget {
+  const _TileGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < children.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: AppSpace.sm),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: children[i]),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: i + 1 < children.length
+                      ? children[i + 1]
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// A framed tile with an icon over its label; a selected tile turns into an ink block.
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+    this.busy = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool selected;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final fg = selected ? t.ground : t.ink;
+    return NoticeTile(
+      selected: selected,
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (busy)
+            const SizedBox.square(
+              dimension: AppIconSize.md,
+              child: CircularProgressIndicator(strokeWidth: AppStroke.frame),
+            )
+          else
+            Icon(selected ? Icons.check_box : icon, color: fg),
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(color: fg),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -320,39 +480,48 @@ class _ReportTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
+    final theme = Theme.of(context);
     final photo = report.photoPath;
     final hasLocation = report.lat != null && report.lng != null;
-    final lines = [
-      if (report.note.isNotEmpty) report.note,
-      context.stamp(report.createdAt),
-      if (hasLocation)
-        '${report.lat!.toStringAsFixed(5)}, ${report.lng!.toStringAsFixed(5)}',
-    ];
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(AppSpace.md),
-        leading: photo == null
-            ? Icon(Icons.report, size: 40, color: t.accent)
-            : SizedBox(
-                width: 56,
-                height: 56,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: Image.file(
+    final category = _ReportScreenState._categories[report.category];
+    return NoticeFrame(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox.square(
+            dimension: AppSize.thumb,
+            child: photo == null
+                ? Icon(category?.icon ?? Icons.report, size: AppIconSize.lg)
+                : Image.file(
                     File(photo),
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stack) =>
-                        const Icon(Icons.broken_image, size: 40),
+                        const Icon(Icons.broken_image, size: AppIconSize.lg),
                   ),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _label(context, report.category),
+                  style: theme.textTheme.titleSmall,
                 ),
-              ),
-        title: Text(
-          _label(context, report.category),
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        subtitle: Text(lines.join('\n')),
-        isThreeLine: lines.length > 1,
+                if (report.note.isNotEmpty)
+                  Text(report.note, style: theme.textTheme.bodyMedium),
+                Text(
+                  [
+                    context.stamp(report.createdAt),
+                    if (hasLocation)
+                      '${report.lat!.toStringAsFixed(5)}, ${report.lng!.toStringAsFixed(5)}',
+                  ].join(' · '),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

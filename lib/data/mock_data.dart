@@ -23,6 +23,10 @@ class MockData {
   // Map centre (Bangkok, as an example area).
   static const LatLng areaCenter = LatLng(13.7563, 100.5018);
 
+  // True while the saved list is still this sample list, so screens can label it as such.
+  static bool isDemoShelterList(List<Shelter> list) =>
+      list.isNotEmpty && list.every((s) => shelters.any((m) => m.id == s.id));
+
   static const List<Shelter> shelters = [
     Shelter(
       id: 's1',

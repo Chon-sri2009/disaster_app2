@@ -13,7 +13,7 @@ void main() {
     mockPathProvider();
   });
 
-  testWidgets('all five screens are reachable', (tester) async {
+  testWidgets('all four tabs are reachable', (tester) async {
     // A phone-sized portrait screen shows the bottom NavigationBar (wider screens get a rail).
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
@@ -28,9 +28,8 @@ void main() {
 
     expect(find.text('SOS'), findsOneWidget);
 
-    // Thai is the default language.
-    await tester.tap(find.text('เซนเซอร์'));
-    await tester.pump();
+    // Thai is the default language. Sensor readings live on Home now.
+    expect(find.text('ระดับน้ำ'), findsOneWidget);
     expect(find.text('ทดลอง: จำลองระดับน้ำ'), findsOneWidget);
 
     await tester.tap(find.text('แผนที่'));
@@ -63,11 +62,17 @@ void main() {
     // The loading screen gives way to the app once the map has failed to open.
     await tester.pump();
 
-    await tester.tap(find.text('คู่มือ'));
-    await tester.pump();
+    // The language lives in Settings, behind the gear on every tab.
+    await tester.tap(find.byTooltip('ตั้งค่า').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('English'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text('Settings'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Guide'));
+    await tester.pump();
     expect(find.text('Offline guide'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(storage.language.code, 'en');

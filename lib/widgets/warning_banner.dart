@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
 
-// The calm status kinds a banner can show: information, offline, or an error.
+// The calm status kinds a notice can show: information, offline, or an error.
 enum BannerKind { info, offline, error }
 
-// A full-width status message with an icon, optional action button, and screen-reader support.
+// A framed status notice with an icon, optional action, and screen-reader support.
+// Info sits on plain paper, offline on a quiet grey tint with a light rule (offline is normal,
+// never an alarm), and errors on a red tint with a danger frame.
 class WarningBanner extends StatelessWidget {
   const WarningBanner({
     super.key,
@@ -23,10 +25,10 @@ class WarningBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final (background, icon) = switch (kind) {
-      BannerKind.info => (t.infoBg, Icons.info),
-      BannerKind.offline => (t.offlineBg, Icons.cloud_off),
-      BannerKind.error => (t.errorBg, Icons.error),
+    final (background, border, icon) = switch (kind) {
+      BannerKind.info => (t.surface, t.ink, Icons.info_outline),
+      BannerKind.offline => (t.offlineBg, t.hairline, Icons.cloud_off),
+      BannerKind.error => (t.errorBg, t.dangerInk, Icons.error_outline),
     };
     final action = onAction;
     return Semantics(
@@ -36,12 +38,17 @@ class WarningBanner extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpace.md),
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: border, width: AppStroke.frame),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ExcludeSemantics(child: Icon(icon, color: t.ink)),
+            ExcludeSemantics(
+              child: Icon(
+                icon,
+                color: kind == BannerKind.error ? t.dangerInk : t.ink,
+              ),
+            ),
             const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(
@@ -52,6 +59,7 @@ class WarningBanner extends StatelessWidget {
                     Align(
                       alignment: AlignmentDirectional.centerStart,
                       child: TextButton(
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         onPressed: action,
                         child: Text(actionLabel!),
                       ),

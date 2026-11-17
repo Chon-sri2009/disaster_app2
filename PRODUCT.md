@@ -26,7 +26,7 @@ Registers: product (Operate mode). Portrait first, one-handed use. Sensor and al
 
 - Flutter, Dart 3, Material 3. Packages: flutter_map, latlong2, geolocator, image_picker, share_plus, shared_preferences. No new packages.
 - State with ChangeNotifier and ListenableBuilder only.
-- Out of scope: login, push notifications, Firebase, dark-mode switching.
+- Out of scope: login, push notifications, Firebase, an in-app theme switch (the day and night boards follow the phone setting).
 - Safety and first-aid wording is content owned by the user: not reworded without asking.
 - Open product decision: a fourth alert level, "Warning", is requested by design but the data model and sensor service only emit Safe / Watch / Danger.
 - Open product decision: Thai translations of all copy do not exist yet.

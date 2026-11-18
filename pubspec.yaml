@@ -73,6 +73,7 @@ flutter:
     - assets/maps/
     - assets/maps/sprites/
     - assets/maps/glyphs/NotoSans/
+    - assets/boundaries/
 
   # Bundled Thai-first font (Sarabun, SIL OFL, see assets/fonts/OFL.txt).
   fonts:

@@ -5,14 +5,19 @@ class Shelter {
     required this.name,
     required this.lat,
     required this.lng,
-    required this.capacity,
+    this.capacity,
+    this.phone,
   });
 
   final String id;
   final String name;
   final double lat;
   final double lng;
-  final int capacity;
+  // How many people it holds, or null when not published.
+  final int? capacity;
+
+  // A number to ask about space, or null.
+  final String? phone;
 
   // Builds a shelter from a decoded JSON map.
   factory Shelter.fromJson(Map<String, dynamic> json) => Shelter(
@@ -20,7 +25,8 @@ class Shelter {
     name: json['name'] as String,
     lat: (json['lat'] as num).toDouble(),
     lng: (json['lng'] as num).toDouble(),
-    capacity: json['capacity'] as int,
+    capacity: json['capacity'] as int?,
+    phone: json['phone'] as String?,
   );
 
   // Converts the shelter to a JSON-friendly map.
@@ -30,5 +36,6 @@ class Shelter {
     'lat': lat,
     'lng': lng,
     'capacity': capacity,
+    'phone': phone,
   };
 }

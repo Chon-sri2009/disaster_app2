@@ -531,7 +531,9 @@ class _NearestShelter extends StatelessWidget {
                 leading: Icon(Icons.home_work, color: t.brand),
                 title: s.name,
                 titleStyle: Theme.of(context).textTheme.titleMedium,
-                subtitle: context.shelterCapacity(s.capacity),
+                subtitle: s.capacity == null
+                    ? null
+                    : context.shelterCapacity(s.capacity!),
                 trailing: StatusPill(
                   context.distance(Nearby.metersTo(from, s)),
                   icon: Icons.near_me,

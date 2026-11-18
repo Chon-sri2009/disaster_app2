@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'data/bangkok_shelters.dart';
 import 'data/mock_data.dart';
 import 'l10n/l10n.dart';
 import 'screens/calls_screen.dart';
@@ -23,7 +24,10 @@ Future<void> main() async {
   final storage = await StorageService.create();
   // Stand-in for "download shelters when online". Seed only an empty cache: a real
   // downloaded list must survive a restart.
-  if (storage.shelters.isEmpty) await storage.saveShelters(MockData.shelters);
+  if (storage.shelters.isEmpty ||
+      MockData.isDemoShelterList(storage.shelters)) {
+    await storage.saveShelters(bangkokShelters);
+  }
   runApp(DisasterApp(storage: storage));
 }
 

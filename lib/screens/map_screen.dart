@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:maplibre/maplibre.dart';
 
@@ -12,6 +13,7 @@ import '../services/offline_map.dart';
 import '../services/sensor_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
+import '../widgets/desktop_vector_map.dart';
 import '../widgets/soft_ui.dart';
 import '../widgets/sensor_readings.dart';
 import '../widgets/warning_banner.dart';
@@ -44,6 +46,9 @@ class _MapScreenState extends State<MapScreen> {
   static const double _sheetStart = 0.4;
 
   MapController? _mapController;
+  // Desktop builds draw the same map with flutter_map; this drives its camera.
+  final _desktopController = fm.MapController();
+  bool _desktopReady = false;
   late Future<String> _tiles = widget.loadMap();
   Object? _loadError;
 
@@ -59,11 +64,26 @@ class _MapScreenState extends State<MapScreen> {
   List<Geographic> _fitPoints = const [];
   EdgeInsets _fitPadding = EdgeInsets.zero;
 
-  void _fitMarkers() => _mapController?.fitBounds(
-    bounds: LngLatBounds.fromPoints(_fitPoints),
-    padding: _fitPadding,
-    nativeDuration: Duration.zero,
-  );
+  void _fitMarkers() {
+    if (_useDesktopMap) {
+      if (!_desktopReady || _fitPoints.isEmpty) return;
+      _desktopController.fitCamera(
+        fm.CameraFit.bounds(
+          bounds: fm.LatLngBounds.fromPoints([
+            for (final g in _fitPoints) LatLng(g.lat, g.lon),
+          ]),
+          padding: _fitPadding,
+          maxZoom: _startZoom + _desktopZoomShift,
+        ),
+      );
+      return;
+    }
+    _mapController?.fitBounds(
+      bounds: LngLatBounds.fromPoints(_fitPoints),
+      padding: _fitPadding,
+      nativeDuration: Duration.zero,
+    );
+  }
 
   // Shows the name of a tapped sensor marker in a snack bar.
   void _showName(String name) {
@@ -94,7 +114,7 @@ class _MapScreenState extends State<MapScreen> {
             const SizedBox(height: AppSpace.xs),
             Text(
               [
-                context.shelterCapacity(s.capacity),
+                if (s.capacity != null) context.shelterCapacity(s.capacity!),
                 if (from != null)
                   context.tr(
                     th: 'ห่างจากคุณ ${context.distance(Nearby.metersTo(from, s))}',
@@ -111,6 +131,14 @@ class _MapScreenState extends State<MapScreen> {
                 context.tr(th: 'นำทางไปที่นี่', en: 'Get directions'),
               ),
             ),
+            if (s.phone != null) ...[
+              const SizedBox(height: AppSpace.sm),
+              OutlinedButton.icon(
+                onPressed: () => EmergencyLauncher.call(s.phone!),
+                icon: const Icon(Icons.call),
+                label: Text(s.phone!),
+              ),
+            ],
             const SizedBox(height: AppSpace.sm),
             OutlinedButton.icon(
               onPressed: () {
@@ -138,12 +166,17 @@ class _MapScreenState extends State<MapScreen> {
     zoom: _startZoom,
   );
 
-  void _moveTo(LatLng p, {double zoom = _focusZoom}) =>
-      _mapController?.animateCamera(
-        center: Geographic(lon: p.longitude, lat: p.latitude),
-        zoom: zoom,
-        nativeDuration: const Duration(milliseconds: 600),
-      );
+  void _moveTo(LatLng p, {double zoom = _focusZoom}) {
+    if (_useDesktopMap) {
+      if (_desktopReady) _desktopController.move(p, zoom + _desktopZoomShift);
+      return;
+    }
+    _mapController?.animateCamera(
+      center: Geographic(lon: p.longitude, lat: p.latitude),
+      zoom: zoom,
+      nativeDuration: const Duration(milliseconds: 600),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +268,7 @@ class _MapScreenState extends State<MapScreen> {
 
   // Builds a map marker with a 48 dp tap area, a screen-reader label and a shape per kind:
   // shelters are brand-filled rounded squares, sensor stations white discs with a brand ring.
-  Marker _marker({
+  _Pin _marker({
     required LatLng point,
     required String label,
     required IconData icon,
@@ -243,10 +276,10 @@ class _MapScreenState extends State<MapScreen> {
     required VoidCallback onTap,
   }) {
     final t = context.tokens;
-    return Marker(
-      point: Geographic(lon: point.longitude, lat: point.latitude),
-      size: const Size.square(AppSize.tapTarget),
-      child: Semantics(
+    return _Pin(
+      point,
+      AppSize.tapTarget,
+      Semantics(
         button: true,
         label: label,
         excludeSemantics: true,
@@ -324,6 +357,60 @@ class _MapScreenState extends State<MapScreen> {
                       }
                       final style = snap.data;
                       if (style == null) return const SizedBox.expand();
+                      final pins = [
+                        for (final s in shelters)
+                          _marker(
+                            point: LatLng(s.lat, s.lng),
+                            label: '$shelterWord: ${s.name}',
+                            icon: Icons.home_work,
+                            square: true,
+                            onTap: () => _showShelter(s),
+                          ),
+                        for (final st in MockData.stations)
+                          _marker(
+                            point: LatLng(st.lat, st.lng),
+                            label: '$stationWord: ${st.name}',
+                            icon: Icons.sensors,
+                            square: false,
+                            onTap: () => _showName('$stationWord: ${st.name}'),
+                          ),
+                        if (from != null)
+                          _Pin(
+                            from,
+                            AppIconSize.lg,
+                            Semantics(
+                              label: context.tr(
+                                th: 'ตำแหน่งล่าสุดของคุณ',
+                                en: 'Your last known position',
+                              ),
+                              child: _YouAreHere(tokens: t),
+                            ),
+                          ),
+                      ];
+                      if (_useDesktopMap) {
+                        // Desktop builds: the same pack and style, drawn by flutter_map.
+                        return DesktopVectorMap(
+                          key: ValueKey(style),
+                          styleFile: style,
+                          controller: _desktopController,
+                          center: MockData.areaCenter,
+                          zoom: _startZoom + _desktopZoomShift,
+                          background: t.offlineBg,
+                          onReady: () {
+                            _desktopReady = true;
+                            _fitMarkers();
+                          },
+                          markers: [
+                            for (final p in pins)
+                              fm.Marker(
+                                point: p.point,
+                                width: p.size,
+                                height: p.size,
+                                child: p.child,
+                              ),
+                          ],
+                        );
+                      }
                       if (!_mapSupported) return _unsupportedPlatform(t);
                       // The map is drawn by the phone's GPU from files on the phone, so it
                       // works with no signal and drags without waiting on Dart.
@@ -346,37 +433,14 @@ class _MapScreenState extends State<MapScreen> {
                         children: [
                           WidgetLayer(
                             markers: [
-                              for (final s in shelters)
-                                _marker(
-                                  point: LatLng(s.lat, s.lng),
-                                  label: '$shelterWord: ${s.name}',
-                                  icon: Icons.home_work,
-                                  square: true,
-                                  onTap: () => _showShelter(s),
-                                ),
-                              for (final st in MockData.stations)
-                                _marker(
-                                  point: LatLng(st.lat, st.lng),
-                                  label: '$stationWord: ${st.name}',
-                                  icon: Icons.sensors,
-                                  square: false,
-                                  onTap: () =>
-                                      _showName('$stationWord: ${st.name}'),
-                                ),
-                              if (from != null)
+                              for (final p in pins)
                                 Marker(
                                   point: Geographic(
-                                    lon: from.longitude,
-                                    lat: from.latitude,
+                                    lon: p.point.longitude,
+                                    lat: p.point.latitude,
                                   ),
-                                  size: const Size.square(AppIconSize.lg),
-                                  child: Semantics(
-                                    label: context.tr(
-                                      th: 'ตำแหน่งล่าสุดของคุณ',
-                                      en: 'Your last known position',
-                                    ),
-                                    child: _YouAreHere(tokens: t),
-                                  ),
+                                  size: Size.square(p.size),
+                                  child: p.child,
                                 ),
                             ],
                           ),
@@ -434,12 +498,21 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // MapLibre draws on phones and the web only; on a desktop dev build the list and sheets still
-  // work, and this stands in for the map.
+  // MapLibre draws on phones and the web only; Windows, macOS and Linux builds use flutter_map
+  // over the same bundled pack (DesktopVectorMap), so the map is there when testing on a PC.
   static bool get _mapSupported =>
       kIsWeb ||
       defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS;
+
+  static bool get _useDesktopMap =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.linux);
+
+  // flutter_map counts zoom on 256 px tiles, one level above MapLibre's 512 px scale.
+  static const double _desktopZoomShift = 1;
 
   Widget _unsupportedPlatform(AppTokens t) => ColoredBox(
     color: t.offlineBg,
@@ -639,7 +712,8 @@ class _MapScreenState extends State<MapScreen> {
                             [
                               if (from != null)
                                 context.distance(Nearby.metersTo(from, s)),
-                              context.shelterCapacity(s.capacity),
+                              if (s.capacity != null)
+                                context.shelterCapacity(s.capacity!),
                             ].join(' · '),
                             style: theme.textTheme.bodySmall,
                           ),
@@ -724,4 +798,13 @@ class _YouAreHere extends StatelessWidget {
       ),
     );
   }
+}
+
+// A marker both renderers can place: where it is, its box size and what it shows.
+class _Pin {
+  const _Pin(this.point, this.size, this.child);
+
+  final LatLng point;
+  final double size;
+  final Widget child;
 }

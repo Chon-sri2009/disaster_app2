@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC: hand-written, NOT published by TMD. Covers an unparseable <expires>,
+     a shape TMD has not yet been seen to publish (see docs/CAP_FIELDS.md). -->
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>TMDSYNTH_BADEXP_1-en</identifier>
+  <sender>TMD</sender>
+  <sent>2026-11-18T09:00:00+07:00</sent>
+  <status>Actual</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>en-US</language>
+    <event>Heavy Rain</event>
+    <severity>Severe</severity>
+    <expires>tomorrow evening</expires>
+    <headline>Heavy Rain Risk Area</headline>
+    <area>
+      <areaDesc>Bangkok</areaDesc>
+      <polygon>13.7,100.5 13.7,100.6 13.8,100.6 13.7,100.5</polygon>
+    </area>
+  </info>
+</alert>

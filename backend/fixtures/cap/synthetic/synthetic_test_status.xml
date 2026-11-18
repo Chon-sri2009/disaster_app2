@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC: hand-written, NOT published by TMD. Covers status Test and severity
+     Minor, shapes TMD has not yet been seen to publish (see docs/CAP_FIELDS.md). -->
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>TMDSYNTH_TEST_1-en</identifier>
+  <sender>TMD</sender>
+  <sent>2026-11-18T09:00:00+07:00</sent>
+  <status>Test</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>en-US</language>
+    <category>Met</category>
+    <event>Heavy Rain</event>
+    <urgency>Expected</urgency>
+    <severity>Minor</severity>
+    <certainty>Possible</certainty>
+    <expires>2026-11-18T21:00:00+07:00</expires>
+    <headline>Test message</headline>
+    <area>
+      <areaDesc>Bangkok</areaDesc>
+      <polygon>13.7,100.5 13.7,100.6 13.8,100.6 13.7,100.5</polygon>
+    </area>
+  </info>
+</alert>

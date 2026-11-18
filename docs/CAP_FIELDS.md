@@ -85,8 +85,24 @@ Thai index can lag the English one. Poll both or prefer English.
 | Other events (storm, flood, cold, ...), other severities | **not seen** | none; every file is `Heavy Rain` / `Severe` |
 | Multiple `<info>` or multiple `<area>` | **not seen** | none |
 
-No synthetic files were added. If Task 2 needs the unseen kinds it should hand-write
-`backend/fixtures/cap/synthetic/synthetic_*.xml` and label them as synthetic here.
+The unseen kinds are covered by hand-written synthetic files (next section), not by real data.
+
+## Synthetic fixtures
+
+`backend/fixtures/cap/synthetic/synthetic_*.xml` are **invented** (Task 2) to cover shapes
+TMD has not yet been seen to publish. Each carries an XML comment saying so. They are small,
+unsigned, LF-only, and must never be read as evidence of what TMD sends.
+
+| File | Covers |
+|---|---|
+| `synthetic_cancel_no_info.xml` | `msgType` Cancel with `references` and no `<info>` (legal in CAP 1.2) |
+| `synthetic_test_status.xml` | `status` Test, severity Minor |
+| `synthetic_no_expires.xml` | no `<expires>`, severity Extreme, event Storm |
+| `synthetic_bad_expires.xml` | unparseable `<expires>` text |
+| `synthetic_geocode_only.xml` | `<area>` with geocodes and no `<polygon>` |
+| `synthetic_multi_info.xml` | 3 `<info>` (en/th/en, Moderate/Extreme/Minor), 2 `<area>`, duplicate ring, 2-point ring, ring with a non-number, a malformed reference triple |
+
+Replace each with a real capture once TMD publishes that kind.
 
 ## Closing the DEVELOPMENT_PLAN section 7.2 `[unverified]`
 

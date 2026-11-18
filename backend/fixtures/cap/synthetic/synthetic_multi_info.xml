@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC: hand-written, NOT published by TMD. Covers several <info> blocks with
+     mixed severity and languages, several <area> elements, a duplicate ring, bad rings,
+     and a malformed reference triple: shapes TMD has not yet been seen to publish
+     (see docs/CAP_FIELDS.md). -->
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>TMDSYNTH_MULTI_1</identifier>
+  <sender>TMD</sender>
+  <sent>2026-11-18T09:00:00+07:00</sent>
+  <status>Actual</status>
+  <msgType>Update</msgType>
+  <scope>Public</scope>
+  <references>TMD,TMDSYNTH_OLD_1-en,2026-11-17T09:00:00+07:00 garbage TMD,TMDSYNTH_OLD_2,2026-11-17T10:00:00+07:00</references>
+  <info>
+    <language>en-US</language>
+    <event>Heavy Rain</event>
+    <severity>Moderate</severity>
+    <expires>2026-11-18T21:00:00+07:00</expires>
+    <headline>Rain Watch</headline>
+    <area>
+      <areaDesc>A</areaDesc>
+      <polygon>13.7,100.5 13.7,100.6 13.8,100.6 13.7,100.5</polygon>
+      <polygon>13.7,100.5 13.7,100.6</polygon>
+    </area>
+    <area>
+      <areaDesc>B</areaDesc>
+      <polygon>14.0,101.0 14.0,101.1 14.1,101.1 abc,101.0</polygon>
+      <polygon>14.0,101.0 14.0,101.1 14.1,101.1 14.0,101.0</polygon>
+    </area>
+  </info>
+  <info>
+    <language>th-TH</language>
+    <event>Heavy Rain</event>
+    <severity>Extreme</severity>
+    <expires>2026-11-18T21:00:00+07:00</expires>
+    <headline>พื้นที่เสี่ยงภัย</headline>
+    <area>
+      <areaDesc>A</areaDesc>
+      <polygon>13.7,100.5 13.7,100.6 13.8,100.6 13.7,100.5</polygon>
+    </area>
+  </info>
+  <info>
+    <language>en-US</language>
+    <event>Heavy Rain</event>
+    <severity>Minor</severity>
+    <headline>Second English headline, must not win</headline>
+  </info>
+</alert>

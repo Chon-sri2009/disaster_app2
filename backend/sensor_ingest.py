@@ -309,16 +309,20 @@ def flood_history(query, lookup=gistda.flood_recurrence):
         return 503, {"error": "flood history unavailable"}
     if not rows:
         return 200, {"found": False, "source": "GISTDA"}
-    r = rows[0]
-    years = [{"year": int(d["year"]), "freq": int(d["freq"])} for d in r.get("detail", [])]
-    return 200, {
-        "found": True,
-        "source": "GISTDA",
-        "subdistrict": r.get("subdistrict_name"),
-        "district": r.get("district_name"),
-        "province": r.get("province_name"),
-        "years": sorted(years, key=lambda y: y["year"]),
-    }
+    try:
+        r = rows[0]
+        years = [{"year": int(d["year"]), "freq": int(d["freq"])} for d in r.get("detail", [])]
+        body = {
+            "found": True,
+            "source": "GISTDA",
+            "subdistrict": r.get("subdistrict_name"),
+            "district": r.get("district_name"),
+            "province": r.get("province_name"),
+            "years": sorted(years, key=lambda y: y["year"]),
+        }
+    except (KeyError, ValueError, TypeError, IndexError, AttributeError):
+        return 503, {"error": "flood history unavailable"}
+    return 200, body
 
 
 def main():

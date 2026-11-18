@@ -65,6 +65,11 @@ class FloodHistoryEndpoint(unittest.TestCase):
             raise gistda.GistdaError("x")
         self.assertEqual(self.call({"lat": ["1"], "lng": ["2"]}, boom)[0], 503)
 
+    def test_malformed_payload_is_503(self):
+        bad_row = lambda **kw: dict(self.ROW, detail=[kw])
+        for payload in ({"error": "boom"}, [bad_row(year="2020")], [bad_row(year="abc", freq=1)]):
+            code, body = self.call({"lat": ["1"], "lng": ["2"]}, lambda a, b, p=payload: p)
+            self.assertEqual((code, body), (503, {"error": "flood history unavailable"}))
 
 if __name__ == "__main__":
     unittest.main()

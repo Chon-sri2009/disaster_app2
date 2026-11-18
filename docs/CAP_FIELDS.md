@@ -110,6 +110,33 @@ Verified: polygons and ISO 3166-2 province geocodes are both present in every re
 times carry `+07:00`, and the Update/`references` shape is as above. Still unverified:
 Cancel, Test, missing `expires`, missing polygon, non-rain events.
 
+## Do the polygons cover the listed provinces? (Task 8 data check, 2026-11-18)
+
+Decides the app's matching rule. Method: for each real file, parse it with `tmd_cap.parse_cap`;
+for each province in its `areaCodes`, lay a 0.02-degree grid (~2.2 km) over the province's
+bounding box in `assets/boundaries/th_provinces.json`, keep the grid points inside the province
+(even-odd over all its rings), and count the share that falls inside any of the alert's
+polygons (union). English and Thai twins give identical results.
+
+| File (en and th) | Polygons | Provinces | Min covered | Mean covered | Below 90 % |
+|---|---|---|---|---|---|
+| `CAPTMD20261116051107_2` | 68 | 9 | 0.888 | 0.969 | TH-93 (0.888) |
+| `CAPTMD20261116155515_2` | 44 | 7 | 0.880 | 0.961 | TH-93 (0.880) |
+| `CAPTMD20261117053453_2` | 10 | 4 | 0.922 | 0.974 | none |
+| `CAPTMD20261117161100_2` | 17 | 6 | 0.883 | 0.961 | TH-93 (0.883) |
+| `CAPTMD20261118060419_2` | 17 | 6 | 0.883 | 0.961 | TH-93 (0.883) |
+| `CAPTMD20261118155021_2` | 36 | 7 | 0.883 | 0.966 | TH-93 (0.883) |
+
+Worst case: Phatthalung (TH-93), 88.0 % covered. Its uncovered points are mostly one
+cluster at about 100.2-100.4 E, 7.4-7.7 N, plausibly Thale Luang / Songkhla Lake (not
+verified); the rest are scattered border points from the ~330 m simplification.
+
+Result: every listed province is substantially covered, so the provisional rule stands:
+an alert with polygons is matched by its polygons only; province codes count only for an
+alert with no polygons (`AlertRules.matches`). Open for the owner: under this rule a person
+in the uncovered part of a listed province (up to ~12 % of TH-93) gets no level from that
+alert; polygon-or-province would include them.
+
 ## Fixture files
 
 `backend/fixtures/cap/`: `feed_en.rss.xml`, `feed_th.rss.xml` (RSS indexes),

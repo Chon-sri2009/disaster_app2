@@ -24,20 +24,31 @@ abstract final class AlertRules {
     ];
   }
 
-  // Highest level among visible alerts whose polygon contains the point, else safe.
+  // Highest level among visible alerts that match the point, else safe.
   static AlertLevel levelAt(
     List<OfficialAlert> alerts,
     LatLng point,
-    DateTime now,
-  ) {
+    DateTime now, {
+    String? provinceCode,
+  }) {
     var best = AlertLevel.safe;
     for (final a in visible(alerts, now)) {
-      if (a.polygons.any((ring) => contains(ring, point)) &&
-          a.level.index > best.index) {
+      if (matches(a, point, provinceCode) && a.level.index > best.index) {
         best = a.level;
       }
     }
     return best;
+  }
+
+  // Does the alert apply to this person? Polygons are finer than provinces, so when an alert
+  // has them they decide alone (provisional rule: real TMD polygons cover >= 88% of every
+  // province they list, docs/CAP_FIELDS.md). Province codes count only for alerts without
+  // polygons, and only when the user's province is known.
+  static bool matches(OfficialAlert a, LatLng point, String? provinceCode) {
+    if (a.polygons.isNotEmpty) {
+      return a.polygons.any((ring) => contains(ring, point));
+    }
+    return provinceCode != null && a.areaCodes.contains(provinceCode);
   }
 
   // The level Home shows: the worse of the sensor level and an official alert at the user's

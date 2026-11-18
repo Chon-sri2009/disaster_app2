@@ -229,4 +229,23 @@ void main() {
     await s.refresh();
     expect(s.hasSnapshot, isFalse);
   });
+
+  test('levelAt passes the province to geocode-only alerts', () async {
+    const geo =
+        '{"generatedAt":"2026-11-12T01:55:00Z","alerts":[{"id":"g",'
+        '"sender":"TMD","status":"Actual","msgType":"Alert","level":"danger",'
+        '"headline":{"th":"x"},"sent":"2026-11-12T01:00:00Z",'
+        '"expires":"2026-11-12T05:00:00Z","areaCodes":["TH-83"],"polygons":[]}]}';
+    final s = AlertService(
+      storage,
+      snapshotUrl: url,
+      fetcher: (_) async => geo,
+      clock: () => now,
+    );
+    await s.refresh();
+    final phuket = LatLng(7.89, 98.39);
+    expect(s.levelAt(phuket, provinceCode: 'TH-83'), AlertLevel.danger);
+    expect(s.levelAt(phuket, provinceCode: 'TH-10'), AlertLevel.safe);
+    expect(s.levelAt(phuket), AlertLevel.safe);
+  });
 }

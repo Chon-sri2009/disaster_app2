@@ -334,11 +334,11 @@ Owner go-ahead 2026-11-18 ("develop the app in phase B"); owner chose "assistant
 - Consumes: Task 6 asset, Task 7 snapshot (`areaCodes`, absent in old caches → empty).
 - Produces: `OfficialAlert.areaCodes: List<String>`; **one matching function** `AlertRules.matches(OfficialAlert a, LatLng point, String? provinceCode) -> bool` used by both `levelAt` and Task 9's area tag: it matches when the alert has polygons and one contains the point, **or** it has no polygons and `provinceCode != null` and `areaCodes` contains it (provisional rule, see Step 1). `AlertRules.levelAt(alerts, point, now, {String? provinceCode})` calls `matches`. `ProvinceBoundaries.parse(String json)` (pure, for tests) and `ProvinceBoundaries.load()` (asset). Point-in-province uses `AlertRules.contains` over all rings with even-odd (hole = outside).
 
-- [ ] **Step 1: Data check first (decides the rule):** for every real fixture in `backend/fixtures/cap/`, test whether the polygon(s) cover each listed province (using the Task 6 bundle). Record the result in `docs/CAP_FIELDS.md`. If a listed province is not covered by the polygons, stop and report to the controller: the owner picks polygon-only or polygon-or-province. Do not guess.\n- [ ] **Step 1b: Failing tests:** codeAt for Bangkok, Phuket, a point in the Gulf (null), a point on the 102°E line inside Nakhon Ratchasima; a province with a hole (synthetic) excludes the hole; `levelAt` escalates for a geocode-only alert when `provinceCode` matches, not when it differs, not when `provinceCode` is null; an alert **with** polygons ignores `areaCodes`; old JSON without `areaCodes` parses; contract test reads `areaCodes` from the regenerated fixture.
-- [ ] **Step 2: Run** the listed test files. Expected: FAIL.
-- [ ] **Step 3: Implement** as specified. A bundle that fails to load must leave `codeAt` returning null (never throw into the UI).
-- [ ] **Step 4: Run** `flutter analyze` and the CI test set. Expected: clean, PASS.
-- [ ] **Step 5: Commit** `feat(app): match province-only alerts to the user's province`.
+- [x] **Step 1: Data check first (decides the rule):** for every real fixture in `backend/fixtures/cap/`, test whether the polygon(s) cover each listed province (using the Task 6 bundle). Record the result in `docs/CAP_FIELDS.md`. If a listed province is not covered by the polygons, stop and report to the controller: the owner picks polygon-only or polygon-or-province. Do not guess.\n- [x] **Step 1b: Failing tests:** codeAt for Bangkok, Phuket, a point in the Gulf (null), a point on the 102°E line inside Nakhon Ratchasima; a province with a hole (synthetic) excludes the hole; `levelAt` escalates for a geocode-only alert when `provinceCode` matches, not when it differs, not when `provinceCode` is null; an alert **with** polygons ignores `areaCodes`; old JSON without `areaCodes` parses; contract test reads `areaCodes` from the regenerated fixture.
+- [x] **Step 2: Run** the listed test files. Expected: FAIL.
+- [x] **Step 3: Implement** as specified. A bundle that fails to load must leave `codeAt` returning null (never throw into the UI).
+- [x] **Step 4: Run** `flutter analyze` and the CI test set. Expected: clean, PASS.
+- [x] **Step 5: Commit** `feat(app): match province-only alerts to the user's province`.
 
 ### Task 9: Home uses the province and labels each notice's area
 

@@ -11,7 +11,8 @@ OfficialAlert alert(
   AlertLevel level = AlertLevel.warning,
   DateTime? expires,
   List<String> references = const [],
-  String poly = '13,100 13,101 14,101 14,100',
+  String? poly = '13,100 13,101 14,101 14,100',
+  List<String> areaCodes = const [],
 }) => OfficialAlert(
   id: id,
   sender: 'TMD',
@@ -22,7 +23,8 @@ OfficialAlert alert(
   sent: DateTime.utc(2026, 11, 12, 1),
   expires: expires,
   references: references,
-  polygons: [AlertRules.parseCapPolygon(poly)],
+  polygons: poly == null ? const [] : [AlertRules.parseCapPolygon(poly)],
+  areaCodes: areaCodes,
 );
 
 void main() {
@@ -123,6 +125,76 @@ void main() {
       ],
     });
     expect(a.polygons.first.first, LatLng(13, 100));
+    // Snapshots and caches from before Task 7 have no areaCodes.
+    expect(a.areaCodes, isEmpty);
+  });
+
+  test('JSON snapshot areaCodes are read', () {
+    final a = OfficialAlert.fromJson({
+      'id': 'x',
+      'sender': 'TMD',
+      'status': 'Actual',
+      'msgType': 'Alert',
+      'level': 'warning',
+      'headline': {'th': 'x'},
+      'sent': '2026-11-12T01:00:00Z',
+      'areaCodes': ['TH-10', 'TH-83'],
+      'polygons': [],
+    });
+    expect(a.areaCodes, ['TH-10', 'TH-83']);
+  });
+
+  group('province matching', () {
+    final far = LatLng(7.9, 98.4); // outside the default test polygon
+    final geoOnly = alert('g', poly: null, areaCodes: ['TH-83', 'TH-99']);
+
+    test('a geocode-only alert escalates only in a listed province', () {
+      expect(
+        AlertRules.levelAt([geoOnly], far, now, provinceCode: 'TH-83'),
+        AlertLevel.warning,
+      );
+      expect(
+        AlertRules.levelAt([geoOnly], far, now, provinceCode: 'TH-10'),
+        AlertLevel.safe,
+      );
+      // No known province (no GPS, at sea, bundle failed): never matches by code.
+      expect(AlertRules.levelAt([geoOnly], far, now), AlertLevel.safe);
+      expect(AlertRules.matches(geoOnly, far, null), isFalse);
+    });
+
+    test('a code unknown to the bundle matches only that exact code', () {
+      expect(AlertRules.matches(geoOnly, far, 'TH-99'), isTrue);
+      expect(AlertRules.matches(geoOnly, far, 'TH-98'), isFalse);
+    });
+
+    test('an alert with polygons ignores its areaCodes', () {
+      final both = alert('b', areaCodes: ['TH-83']);
+      expect(AlertRules.matches(both, far, 'TH-83'), isFalse);
+      expect(
+        AlertRules.levelAt([both], far, now, provinceCode: 'TH-83'),
+        AlertLevel.safe,
+      );
+      expect(AlertRules.matches(both, inside, null), isTrue);
+      expect(AlertRules.matches(both, inside, 'TH-10'), isTrue);
+    });
+
+    test('an alert with neither polygons nor codes matches nothing', () {
+      final none = alert('n', poly: null);
+      expect(AlertRules.matches(none, inside, 'TH-10'), isFalse);
+    });
+
+    test('a hidden geocode-only alert does not escalate', () {
+      final expired = alert(
+        'e',
+        poly: null,
+        areaCodes: ['TH-83'],
+        expires: now.subtract(const Duration(minutes: 1)),
+      );
+      expect(
+        AlertRules.levelAt([expired], far, now, provinceCode: 'TH-83'),
+        AlertLevel.safe,
+      );
+    });
   });
 }
 

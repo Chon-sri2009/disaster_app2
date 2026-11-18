@@ -16,6 +16,7 @@ class OfficialAlert {
     this.expires,
     this.references = const [],
     this.polygons = const [],
+    this.areaCodes = const [],
   });
 
   final String id;
@@ -28,6 +29,8 @@ class OfficialAlert {
   final DateTime? expires;
   final List<String> references; // ids this message replaces or cancels
   final List<List<LatLng>> polygons;
+  // ISO 3166-2 province codes ("TH-10"); empty in snapshots from before they were sent.
+  final List<String> areaCodes;
 
   // Used when the agency gives no expiry; the UI must label such alerts.
   static const defaultLifetime = Duration(hours: 6);
@@ -47,6 +50,7 @@ class OfficialAlert {
         ? null
         : DateTime.parse(j['expires'] as String).toUtc(),
     references: List<String>.from(j['references'] as List? ?? const []),
+    areaCodes: List<String>.from(j['areaCodes'] as List? ?? const []),
     polygons: [
       for (final ring in (j['polygons'] as List? ?? const []))
         // Snapshot rings are GeoJSON-style [lon, lat] pairs.

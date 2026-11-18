@@ -40,5 +40,21 @@ void main() {
     // A Test-status Cancel must not hide a live alert.
     expect(ids, contains('SYN_LIVE'));
     expect(ids, isNot(contains('SYN_TESTCANCEL')));
+    // Task 7 province codes reach the app as sent.
+    final tmd = visible.firstWhere((a) => a.id == 'TMD20261118155021_2');
+    expect(tmd.areaCodes, [
+      'TH-80',
+      'TH-84',
+      'TH-90',
+      'TH-93',
+      'TH-94',
+      'TH-95',
+      'TH-96',
+    ]);
+    expect(tmd.polygons, isNotEmpty);
+    expect(
+      visible.firstWhere((a) => a.id == 'SYN_ALERT').areaCodes,
+      isEmpty,
+    );
   });
 }

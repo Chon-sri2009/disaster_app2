@@ -59,8 +59,13 @@ class AlertService extends ChangeNotifier {
   List<OfficialAlert> get visibleAlerts =>
       AlertRules.visible(_alerts, _clock().toUtc());
 
-  AlertLevel levelAt(LatLng point) =>
-      AlertRules.levelAt(_alerts, point, _clock().toUtc());
+  // [provinceCode] is the user's province, or null when unknown (then codes never match).
+  AlertLevel levelAt(LatLng point, {String? provinceCode}) => AlertRules.levelAt(
+    _alerts,
+    point,
+    _clock().toUtc(),
+    provinceCode: provinceCode,
+  );
 
   // Re-downloads every [every] while the app runs; a refresh still running is skipped.
   void startAutoRefresh({Duration every = const Duration(minutes: 2)}) {

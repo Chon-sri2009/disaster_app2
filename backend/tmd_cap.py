@@ -245,8 +245,10 @@ def _kept(alerts, now):
     return kept
 
 
-def build_snapshot(alerts, now):
-    """Parsed (and merged) alerts -> the snapshot the app reads. `now` must be aware."""
+def build_snapshot(alerts, now, skipped=0):
+    """Parsed (and merged) alerts -> the snapshot the app reads. `now` must be aware.
+    `skipped` counts listed alert files this poll could not read: the app shows the list as
+    possibly incomplete instead of as a clean "no alerts"."""
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")  # guessing a zone shifts every age
     kept = sorted(_kept(alerts, now), key=lambda a: (a["sent"], a["id"]), reverse=True)
@@ -255,6 +257,7 @@ def build_snapshot(alerts, now):
         "alerts": kept,
         # Visible count of alerts no area can match, so a gap is not silent.
         "noPolygon": sum(1 for a in kept if not a["polygons"]),
+        "skippedFiles": skipped,
     }
 
 

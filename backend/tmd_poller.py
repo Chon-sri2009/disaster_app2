@@ -21,7 +21,8 @@ import tmd_cap
 # English first: its index was seen to lead the Thai one (docs/CAP_FIELDS.md).
 FEED_URLS = ["https://www.tmd.go.th/en/api/xml/CAP", "https://www.tmd.go.th/api/xml/CAP"]
 MAX_FEED_SIZE = 300000
-_EMPTY = json.dumps({"alerts": []})  # no generatedAt: the app treats it as no snapshot
+# No generatedAt: the app rejects a live body without it, so this never reads as fresh data.
+_EMPTY = json.dumps({"alerts": []})
 
 
 def fetch_text(url):
@@ -111,10 +112,13 @@ class Poller:
             return
 
         alerts = tmd_cap.merge_languages([self._cache[u] for u in urls if u in self._cache])
-        snapshot = tmd_cap.build_snapshot(alerts, self._clock())
+        snapshot = tmd_cap.build_snapshot(alerts, self._clock(), skipped=skipped)
         text = json.dumps(snapshot, ensure_ascii=False)
         with self._lock:
             self._json = text
+        if skipped:
+            _log(f"WARNING: {skipped} listed files could not be read; the app is told "
+                 "the alert list may be incomplete")
         _log(f"poll ok: {len(snapshot['alerts'])} alerts, {snapshot['noPolygon']} without "
              f"polygon, {errors - skipped} feeds rejected, {skipped} files skipped")
 

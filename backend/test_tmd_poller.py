@@ -1,4 +1,5 @@
 import json
+import os
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,14 +24,14 @@ def _rss(*links):
 
 def _cap(ident, sent="2026-11-18T10:00:00+07:00", expires="2026-11-18T20:00:00+07:00",
          msg_type="Alert", refs="", lang="en-US", headline="Heavy Rain",
-         polygon="13.0,100.0 13.0,101.0 14.0,101.0 13.0,100.0"):
+         polygon="13.0,100.0 13.0,101.0 14.0,101.0 13.0,100.0", status="Actual"):
     ref_xml = f"<references>{refs}</references>" if refs else ""
     exp_xml = f"<expires>{expires}</expires>" if expires else ""
     poly_xml = f"<polygon>{polygon}</polygon>" if polygon else ""
     return (
         '<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">'
         f"<identifier>{ident}</identifier><sender>TMD</sender><sent>{sent}</sent>"
-        f"<status>Actual</status><msgType>{msg_type}</msgType><scope>Public</scope>{ref_xml}"
+        f"<status>{status}</status><msgType>{msg_type}</msgType><scope>Public</scope>{ref_xml}"
         f"<info><language>{lang}</language><severity>Severe</severity>"
         f"<headline>{headline}</headline>{exp_xml}"
         f"<area><areaDesc>x</areaDesc>{poly_xml}</area></info></alert>"
@@ -121,6 +122,40 @@ class PollerTest(unittest.TestCase):
         p, _ = self._poller({})
         self.assertEqual(_snap(p), {"alerts": []})
 
+    def test_clean_poll_reports_zero_skipped_files(self):
+        p, _ = self._poller({FEED_EN: _rss("https://x.test/a.xml"),
+                             "https://x.test/a.xml": _cap("TMD1_2-en")})
+        p.poll_once()
+        self.assertEqual(_snap(p)["skippedFiles"], 0)
+
+    def test_persistently_failing_listed_file_is_counted_while_others_are_served(self):
+        # Without the count a live warning that cannot be read looks like "no alerts".
+        p, get = self._poller({
+            FEED_EN: _rss("https://x.test/a.xml", "https://x.test/b.xml"),
+            "https://x.test/a.xml": _cap("TMD1_2-en"),
+            "https://x.test/b.xml": OSError("404"),
+        })
+        for minute in ("05:00", "05:02"):
+            p._clock.t = _at(f"2026-11-18T{minute}:00Z")
+            p.poll_once()
+            snap = _snap(p)
+            self.assertEqual(snap["skippedFiles"], 1)
+            self.assertEqual(snap["generatedAt"], f"2026-11-18T{minute}:00Z")
+            self.assertEqual([a["id"] for a in snap["alerts"]], ["TMD1_2"])
+        get.pages["https://x.test/b.xml"] = _cap("TMD2_2-en")
+        p.poll_once()
+        snap = _snap(p)
+        self.assertEqual(snap["skippedFiles"], 0)
+        self.assertEqual(sorted(a["id"] for a in snap["alerts"]), ["TMD1_2", "TMD2_2"])
+
+    def test_cached_files_do_not_count_as_skipped(self):
+        p, get = self._poller({FEED_EN: _rss("https://x.test/a.xml"),
+                               "https://x.test/a.xml": _cap("TMD1_2-en")})
+        p.poll_once()
+        get.pages["https://x.test/a.xml"] = OSError("gone")  # cached, never refetched
+        p.poll_once()
+        self.assertEqual(_snap(p)["skippedFiles"], 0)
+
     def test_oversize_file_skipped(self):
         # A valid alert padded past MAX_CAP_SIZE (and past the brief's 256 KB): the size
         # check, not a parse failure, is what must reject it.
@@ -193,7 +228,7 @@ class PollerTest(unittest.TestCase):
         p._clock.t = _at("2026-11-18T05:02:00Z")
         p.poll_once()
         self.assertEqual(_snap(p), {"generatedAt": "2026-11-18T05:02:00Z",
-                                    "alerts": [], "noPolygon": 0})
+                                    "alerts": [], "noPolygon": 0, "skippedFiles": 0})
 
     def test_one_feed_down_other_fine_succeeds(self):
         p, _ = self._poller({
@@ -320,6 +355,63 @@ class RealFixtureTest(unittest.TestCase):
         self.assertEqual(set(first["headline"]), {"en", "th"})
         self.assertEqual(first["polygons"][0][0], [99.968294, 9.311178])
         self.assertEqual(snap["noPolygon"], 0)
+
+
+CONTRACT = Path(__file__).resolve().parent.parent / "test" / "fixtures" / "alerts_snapshot.json"
+CONTRACT_NOW = "2026-11-18T10:50:00Z"
+
+
+def _ref(ident):
+    return f"TMD,{ident}-en,2026-11-18T10:00:00+07:00"
+
+
+def _contract_snapshot_text():
+    """Real fixtures plus synthetic Alert/Update/Cancel cases, at a fixed clock."""
+    synthetic = {
+        "syn_alert": _cap("SYN_ALERT-en", headline="Synthetic alert"),
+        "syn_target": _cap("SYN_TARGET-en", headline="Cancelled one"),
+        "syn_cancel": _cap("SYN_CANCEL-en", msg_type="Cancel", refs=_ref("SYN_TARGET"),
+                           polygon="", expires="2026-11-18T22:00:00+07:00"),
+        "syn_live": _cap("SYN_LIVE-en", headline="Survives a test cancel"),
+        "syn_test_cancel": _cap("SYN_TESTCANCEL-en", msg_type="Cancel", status="Test",
+                                refs=_ref("SYN_LIVE"), polygon=""),
+        "syn_old": _cap("SYN_OLD-en", headline="Replaced one"),
+        "syn_update": _cap("SYN_UPDATE-en", msg_type="Update", refs=_ref("SYN_OLD"),
+                           headline="Replacement"),
+        "syn_nohead": _cap("SYN_NOHEAD-en", headline=""),
+        "syn_noexp": _cap("SYN_NOEXP-en", expires=None, headline="No expiry",
+                         sent="2026-11-18T17:00:00+07:00"),
+    }
+    real = RealFixtureTest()._fixture_get()
+    extra = {f"https://x.test/{k}.xml": v for k, v in synthetic.items()}
+
+    def get(url):
+        if url == FEED_EN:
+            return real(url).replace("</channel>", "".join(
+                f"<item><title>x</title><link>{u}</link></item>" for u in extra) + "</channel>")
+        return extra[url] if url in extra else real(url)
+
+    p = tmd_poller.Poller([FEED_EN, FEED_TH], get, Clock(CONTRACT_NOW))
+    p.poll_once()
+    return json.dumps(json.loads(p.snapshot_json()), ensure_ascii=False, indent=2) + "\n"
+
+
+class ContractTest(unittest.TestCase):
+    """The app's parser reads test/fixtures/alerts_snapshot.json (test/alert_contract_test.dart),
+    so a change to the snapshot shape fails here until the file is regenerated."""
+
+    def test_snapshot_matches_checked_in_contract_file(self):
+        text = _contract_snapshot_text()
+        if os.environ.get("UPDATE_CONTRACT") == "1":
+            CONTRACT.parent.mkdir(parents=True, exist_ok=True)
+            CONTRACT.write_text(text, encoding="utf-8", newline="\n")
+        self.assertTrue(CONTRACT.exists(), "missing contract file; run with UPDATE_CONTRACT=1")
+        expected = CONTRACT.read_bytes().decode("utf-8").replace("\r\n", "\n")
+        self.assertEqual(
+            text, expected,
+            "snapshot shape changed: regenerate test/fixtures/alerts_snapshot.json with "
+            "`cd backend && UPDATE_CONTRACT=1 python -m unittest test_tmd_poller` "
+            "and commit it (the Dart contract test then checks the app still reads it)")
 
 
 class MergeLanguagesTest(unittest.TestCase):

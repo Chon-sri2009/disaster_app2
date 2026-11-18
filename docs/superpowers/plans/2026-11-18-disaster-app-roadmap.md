@@ -282,13 +282,124 @@ Already answered: D1 backend (yes, hosting open), D2 push (yes in principle, Fir
 
 ---
 
+## Phase B: province targeting and alert screens (Tasks 6–11)
+
+Owner go-ahead 2026-11-18 ("develop the app in phase B"); owner chose "assistant downloads COD-AB". Scope decision: **provinces only** (TMD sends only ISO 3166-2 province codes `TH-NN`, 4 to 9 per file; no district codes seen), so districts, tambons and the TH1008 district-name fix are deferred. COD-AB source: HDX dataset `cod-ab-tha`, resource `tha_admin_boundaries.shp.zip`, layers `tha_admin1` (provinces) and `tha_admin2` (districts, used only to test the bundle). A copy is already downloaded outside the repo (temporary, may vanish; re-fetch from HDX if so): `C:\Users\Admin\AppData\Local\Temp\claude\5c23be1f090ea38f\f961e356-9c26-4f82-b2e1-bd31e2ce112e\scratchpad\codab\tha_admin1.shp` (+ `.dbf`, `.prj`; WGS84 degrees; 77 features; fields `adm1_pcode` like `TH10`, `adm1_name` English, `adm1_name1` Thai, UTF-8). `TH-NN` ↔ `THNN` by dropping the hyphen; Task 6 must verify every code TMD uses exists in the bundle.
+
+**Rulings for Phase B (controller; reversible):**
+- PROVISIONAL, decided in Task 8 step 1 from data: an alert with polygons is matched by polygons only, province codes only when it has no polygons. Real TMD files have both polygons and province codes; \"geocode only\" has only been seen in the synthetic fixture, so Phase B's real gains are the area tag, detail screen and history. If any real fixture lists provinces its polygon does not cover, the owner chooses polygon-only or polygon-or-province.\n- Model routing: Tasks 7 and 8 (safety-critical) are implemented by Opus and reviewed by Sonnet; Tasks 6, 9, 10, 11 by Sonnet; Haiku for lookups; final whole-branch review by Opus.
+- Province matching only escalates a level. Unknown province (no GPS, at sea, bundle failed to load) never lowers anything and never creates Safe; such alerts are still listed.
+- All new user-facing wording is `DRAFT` for the owner to rewrite (Thai first). No wording of Guide, first aid or the disclaimer is touched.
+
+### Task 6: Province boundary bundle (build tool and asset)
+
+**Files:**
+- Create: `backend/build_provinces.py` (stdlib only: reads `.shp`/`.dbf` with `struct`, simplifies with Douglas-Peucker, writes JSON; under `backend/` so CI's `unittest discover` runs its test), `backend/test_build_provinces.py`, `assets/boundaries/th_provinces.json`
+- Modify: `pubspec.yaml` (add `assets/boundaries/` to `flutter: assets:`; no new package)
+
+**Interfaces:**
+- Produces: `th_provinces.json` = `{"source": "...CC BY-IGO...", "provinces": [{"code": "TH-10", "nameTh": "...", "nameEn": "...", "rings": [[[lon, lat], ...], ...]}]}`. `code` uses the `TH-NN` form. All rings of a province are in one flat list; holes are plain extra rings (even-odd fill). Coordinates rounded to 4 decimals.
+- Simplification must keep **shared borders identical**: simplify each shared border once (or snap vertices) so neighbouring provinces leave no gap or overlap. Size is secondary: target ≤ 600 KB, but lower the tolerance rather than accept misses.
+
+- [ ] **Step 1: Write failing tests** in `backend/test_build_provinces.py`: `douglas_peucker` keeps endpoints and drops a collinear point; `read_dbf` returns Thai text intact from a tiny synthetic DBF; `province_code('TH10') == 'TH-10'`; a built-in sample ring round-trips.
+- [ ] **Step 2: Run** `cd backend && python -m unittest test_build_provinces`. Expected: FAIL.
+- [ ] **Step 3: Implement** the tool and run it on the downloaded COD-AB folder.
+- [ ] **Step 4: Verify the output** with a test or a checked command: 77 provinces; every code matches `^TH-\d{2}$`; every `TH-NN` code appearing in `backend/fixtures/cap/*.xml` geocodes exists; Bangkok (13.7563, 100.5018) lies in `TH-10`; Phuket (7.89, 98.39) lies in `TH-83`; **all 928 `tha_admin2` district centres (`center_lat`, `center_lon`) resolve to their parent province (`adm1_pcode`) in the simplified bundle and to exactly one province** (a one-off check script, result recorded in the report; a handful of centres that fall outside their own district in the source are listed, not hidden); file size ≤ 600 KB.
+- [ ] **Step 5: Commit** `feat(data): simplified province boundaries from COD-AB (CC BY-IGO)`.
+
+### Task 7: Backend carries province codes in the snapshot (hard: Opus implements)
+
+**Files:**
+- Modify: `backend/tmd_cap.py` (`_parse_cap`, `merge_languages`, `build_snapshot`)
+- Test: `backend/test_tmd_cap.py`, `backend/test_tmd_poller.py`; regenerate `test/fixtures/alerts_snapshot.json` (`cd backend && UPDATE_CONTRACT=1 python -m unittest test_tmd_poller`)
+
+**Interfaces:**
+- Produces: each snapshot alert gains `areaCodes: ["TH-80", ...]` (sorted, deduplicated, only values matching `^TH-\d{2}$` from `<geocode>` whose `valueName` is `ISO3166-2`; anything else skipped, never raising). `merge_languages` unions codes. The snapshot also gains `noArea`: count of kept alerts with neither polygons nor `areaCodes`.
+- Consumes: Task 2/3 behaviour unchanged (cancel handling, pruning, skippedFiles).
+
+- [ ] **Step 1: Failing tests:** the real fixtures give the expected code sets (e.g. a file with TH-80, 84, 90–96); `synthetic_geocode_only.xml` gives codes and no polygons; an invalid code (`TH-9`, `XX-10`, wrong `valueName`) is dropped; English+Thai twins merge to one union; `noArea` counts only area-less alerts; old snapshots without `areaCodes` still parse in the app (Task 8).
+- [ ] **Step 2: Run** `cd backend && python -m unittest discover`. Expected: FAIL.
+- [ ] **Step 3: Implement** in the three functions above.
+- [ ] **Step 4: Regenerate the contract file** and run all backend tests. Expected: PASS.
+- [ ] **Step 5: Commit** `feat(backend): carry province codes in the alert snapshot`.
+
+### Task 8: App model, province locator and matching rule (safety-critical: Opus reviews)
+
+**Files:**
+- Modify: `lib/models/official_alert.dart` (`areaCodes`), `lib/services/alert_rules.dart` (`levelAt`), `lib/services/alert_service.dart` (`levelAt` passes the province)
+- Create: `lib/services/province_locator.dart` (`ProvinceBoundaries`: loads the asset; `Province{code,nameTh,nameEn,rings}`; `String? codeAt(LatLng)`; `Province? byCode(String)`), `test/province_locator_test.dart`
+- Test: `test/alert_rules_test.dart`, `test/alert_service_test.dart`, `test/alert_contract_test.dart`
+
+**Interfaces:**
+- Consumes: Task 6 asset, Task 7 snapshot (`areaCodes`, absent in old caches → empty).
+- Produces: `OfficialAlert.areaCodes: List<String>`; **one matching function** `AlertRules.matches(OfficialAlert a, LatLng point, String? provinceCode) -> bool` used by both `levelAt` and Task 9's area tag: it matches when the alert has polygons and one contains the point, **or** it has no polygons and `provinceCode != null` and `areaCodes` contains it (provisional rule, see Step 1). `AlertRules.levelAt(alerts, point, now, {String? provinceCode})` calls `matches`. `ProvinceBoundaries.parse(String json)` (pure, for tests) and `ProvinceBoundaries.load()` (asset). Point-in-province uses `AlertRules.contains` over all rings with even-odd (hole = outside).
+
+- [ ] **Step 1: Data check first (decides the rule):** for every real fixture in `backend/fixtures/cap/`, test whether the polygon(s) cover each listed province (using the Task 6 bundle). Record the result in `docs/CAP_FIELDS.md`. If a listed province is not covered by the polygons, stop and report to the controller: the owner picks polygon-only or polygon-or-province. Do not guess.\n- [ ] **Step 1b: Failing tests:** codeAt for Bangkok, Phuket, a point in the Gulf (null), a point on the 102°E line inside Nakhon Ratchasima; a province with a hole (synthetic) excludes the hole; `levelAt` escalates for a geocode-only alert when `provinceCode` matches, not when it differs, not when `provinceCode` is null; an alert **with** polygons ignores `areaCodes`; old JSON without `areaCodes` parses; contract test reads `areaCodes` from the regenerated fixture.
+- [ ] **Step 2: Run** the listed test files. Expected: FAIL.
+- [ ] **Step 3: Implement** as specified. A bundle that fails to load must leave `codeAt` returning null (never throw into the UI).
+- [ ] **Step 4: Run** `flutter analyze` and the CI test set. Expected: clean, PASS.
+- [ ] **Step 5: Commit** `feat(app): match province-only alerts to the user's province`.
+
+### Task 9: Home uses the province and labels each notice's area
+
+**Files:**
+- Modify: `lib/main.dart` (create and pass `ProvinceBoundaries`), `lib/screens/home_screen.dart` (`homeLevel`, `_OfficialAlerts`), `lib/services/alert_service.dart` (accepts the locator if needed)
+- Test: `test/widget_test.dart`, `test/home_alerts_test.dart` (new, if clearer)
+
+**Interfaces:**
+- Consumes: Task 8 (`ProvinceBoundaries.codeAt`, `AlertRules.levelAt(..., provinceCode:)`), `OfficialAlert.areaCodes`.
+- Produces: each notice row shows an area tag with icon **and** word: "In your area" / "Other areas" / "Area unknown" (DRAFT wording, Thai first, via `context.tr`). Notices in your area sort first; nothing is hidden. Home's level uses the province of the stored location. The tag comes from `AlertRules.matches`, the same function that drives the level, so tag and level cannot disagree. The locator is optional (nullable) so existing widget tests keep working; the bundle loads lazily and never delays the map startup gate. Tests inject a small `ProvinceBoundaries.parse(...)` fixture, not the asset.
+
+- [ ] **Step 1: Failing widget tests** (Thai default, also 1.5× text scale): a Warning geocode-only alert for the test location's province → Home shows Warning and the tag "In your area"; same alert for another province → Home level not Warning and tag "Other areas"; no location set → tag "Area unknown" and level unchanged.
+- [ ] **Step 2: Run** `flutter test test/widget_test.dart`. Expected: FAIL.
+- [ ] **Step 3: Implement.** Mark all new strings `// DRAFT` for the owner.
+- [ ] **Step 4: Run** `flutter analyze` and the CI test set. Expected: clean, PASS.
+- [ ] **Step 5: Commit** `feat(app): province-aware notices on Home`.
+
+### Task 10: Alert detail screen
+
+**Files:**
+- Create: `lib/screens/alert_detail_screen.dart`, `test/alert_detail_test.dart`
+- Modify: `lib/screens/home_screen.dart` (rows open the detail)
+
+**Interfaces:**
+- Consumes: `OfficialAlert`, `ProvinceBoundaries.byCode`, `AlertService.fetchedAt`.
+- Produces: `AlertDetailScreen(alert, alerts, provinces)` showing: level pill (icon+word+colour), full headline in the current language with the other language below, issuer (`sender`), issued time, received/updated time (the snapshot's data time), expiry or the label "no expiry given (shown for 6 hours)", and the affected provinces by Thai and English name (from `areaCodes`; if only polygons, "Area shown on the map"). Footer line: official source, not this app (DRAFT wording).
+
+- [ ] **Step 1: Failing widget tests:** an alert with expiry shows it; without expiry shows the "no expiry given" label; province names appear for known codes and an unknown code shows the raw code; text at 1.5× does not overflow; tap targets ≥ 48 dp.
+- [ ] **Step 2: Run** `flutter test test/alert_detail_test.dart`. Expected: FAIL.
+- [ ] **Step 3: Implement**, all strings via `context.tr`, marked `// DRAFT`.
+- [ ] **Step 4: Run** analyze and the CI test set. Expected: clean, PASS.
+- [ ] **Step 5: Commit** `feat(app): alert detail screen`.
+
+### Task 11: Alert history
+
+**Files:**
+- Modify: `lib/services/storage_service.dart` (`alertHistory`, `saveAlertHistory`, key `alert_history`), `lib/services/alert_service.dart` (records ended alerts)
+- Create: `lib/screens/alert_history_screen.dart`, `test/alert_history_test.dart`
+- Modify: `lib/screens/home_screen.dart` (a "History" entry under Official notices)
+
+**Interfaces:**
+- Consumes: `OfficialAlert`, `AlertRules.visible`.
+- Produces: `AlertService.history` (newest first, at most 50, entries older than 30 days dropped): every alert that was visible at some refresh and later is not (expired, cancelled or replaced), stored as a compact record (id, level, headlines, sender, sent, expires, `areaCodes`; **no polygons**, to keep storage small) with an `endedAt` time and a reason word "Expired" / "Cancelled" / "Replaced". The ids visible at the last refresh are persisted, so \"was visible, now is not\" survives a restart. History never feeds `levelAt`, `visibleAlerts` or Home's level. Offline use works from storage.
+
+- [ ] **Step 1: Failing tests:** an alert visible at refresh 1 and cancelled at refresh 2 appears in history as "Cancelled"; expired alert appears as "Expired"; history is capped at 50 and pruned at 30 days; history survives a restart (storage round-trip); history alerts never appear in `visibleAlerts`; a stale or empty snapshot does not add history entries by itself.
+- [ ] **Step 2: Run** `flutter test test/alert_history_test.dart`. Expected: FAIL.
+- [ ] **Step 3: Implement** history recording inside `_apply`, plus the screen (rows reuse the detail screen from Task 10).
+- [ ] **Step 4: Run** analyze and the CI test set. Expected: clean, PASS.
+- [ ] **Step 5: Commit** `feat(app): alert history`.
+
+**Phase B done when:** a province-only TMD alert raises the level for people inside that province and not elsewhere; each notice says whether it is in your area; a notice opens to a detail screen; ended alerts appear in history; analyze and tests green.
+
+---
+
 ## Phases B–D, F, G (outlines; each becomes full tasks when unblocked)
 
 Phase E (more hazards: PM2.5, quake, landslide, heat, fire) was **deleted by the owner on 2026-11-18**: the product focuses on floods. Letters are kept so older notes still match. River-level sources (HII, RID) stay as flood inputs.
 
 | Phase | Deliverable | Blocker (needs from owner) | Key acceptance |
 |---|---|---|---|
-| **B. Targeting and alert screens** | B1 province/district match using bundled simplified COD-AB polygons + CAP province `geocode`; B2 alert list and detail screen (source, issued, received, expiry, "no expiry given" label); B3 alert history | COD-AB download and licence credit; owner OK on screens | Province-only TMD alert reaches users inside that province; point-in-polygon tests on the 102°E line and islands; TH1008 Thai name corrected |
+| **B. Targeting and alert screens** | **In progress: exact tasks 6–11 are written above (provinces only; districts later).** | Done: COD-AB downloaded by assistant; screen wording is DRAFT for the owner | Province-only TMD alert reaches users inside that province; point-in-polygon tests on the 102°E line and islands |
 | **C. Hosting and delivery** | Deploy backend behind HTTPS on **Cloudflare** (owner's choice; the backend is a stdlib Python server with SQLite, so the route, such as Cloudflare Tunnel to a small machine or a Cloudflare Container, is a decision for the owner before any task is written); ops runbook; kill switch; cache + rate limit on `/flood-recurrence` (it is unauthenticated and spends the GISTDA key quota per call); expose a `skippedFiles` count and warning logs in the `/alerts` snapshot (a partial poll currently refreshes `generatedAt` even if one listed file, possibly a Cancel, failed to fetch); then push (FCM/APNs, topics by area code, coordinates never uploaded) | D1 host/budget; D2 Firebase project + package approval ("later") | Measured latency table (feed sent → shown) published in About; airplane-mode drill passes |
 | **D. Content and trust** | Verified numbers 191/199/1155; Guide expert sign-off with reviewer and date shown; privacy notice, consent, data-sources page; crash reports opt-in | Owner: sources/phone calls, two reviewers, controller name, counsel | Release blockers in the Global Constraints cleared |
 | **F. Sensors in the field** | Compile and run firmware on hardware; TLS in front; optional MQTT (D7); device registry; pilot next to an official gauge for a season | Hardware, site, pilot community | Documented error vs official gauge; sensors still do not raise area alerts (D15) until then |

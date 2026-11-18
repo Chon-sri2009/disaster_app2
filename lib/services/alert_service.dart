@@ -163,7 +163,19 @@ class AlertService extends ChangeNotifier {
         // Skip one bad entry, keep the rest.
       }
     }
-    return out;
+    return _pruneHistory(out, _clock().toUtc());
+  }
+
+  // One rule for load and save: drop entries older than 30 days, newest first, at most 50.
+  static List<HistoryEntry> _pruneHistory(
+    List<HistoryEntry> entries,
+    DateTime now,
+  ) {
+    final kept = [
+      for (final e in entries)
+        if (now.difference(e.endedAt) <= historyKeep) e,
+    ]..sort((x, y) => y.endedAt.compareTo(x.endedAt));
+    return kept.take(maxHistory).toList();
   }
 
   // Compares the notices seen as visible so far with this snapshot. A notice is recorded as
@@ -223,24 +235,29 @@ class AlertService extends ChangeNotifier {
     }
 
     final known = {for (final e in _history) e.record.id};
-    final merged = [
+    final next = _pruneHistory([
       ..._history,
       for (final e in ended)
         if (known.add(e.record.id)) e,
-    ]..removeWhere((e) => now.difference(e.endedAt) > historyKeep);
-    merged.sort((x, y) => y.endedAt.compareTo(x.endedAt));
-    final next = merged.take(maxHistory).toList();
+    ], now);
 
     final changed =
         next.length != _history.length ||
         [for (final e in next) e.record.id].join() !=
             [for (final e in _history) e.record.id].join();
     _history = next;
+    // Non-critical data: a failing write must not become an uncaught zone error.
     unawaited(
-      _storage.saveTrackedAlerts([for (final r in keep.values) r.toJson()]),
+      _storage
+          .saveTrackedAlerts([for (final r in keep.values) r.toJson()])
+          .catchError((_) {}),
     );
     if (changed || ended.isNotEmpty) {
-      unawaited(_storage.saveAlertHistory([for (final e in next) e.toJson()]));
+      unawaited(
+        _storage
+            .saveAlertHistory([for (final e in next) e.toJson()])
+            .catchError((_) {}),
+      );
     }
   }
 }

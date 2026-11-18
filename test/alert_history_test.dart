@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:disaster_app2/l10n/l10n.dart';
 import 'package:disaster_app2/models/alert_history_entry.dart';
 import 'package:disaster_app2/models/alert_level.dart';
 import 'package:disaster_app2/models/official_alert.dart';
@@ -50,6 +51,35 @@ String _snap(
   'skippedFiles': skipped,
   'alerts': alerts,
 });
+
+// Persisting alerts is non-critical: every write fails here.
+class _ThrowingStorage implements StorageService {
+  _ThrowingStorage(this._real);
+  final StorageService _real;
+
+  @override
+  Future<void> saveTrackedAlerts(List<Map<String, dynamic>> records) async =>
+      throw Exception('disk full');
+
+  @override
+  Future<void> saveAlertHistory(List<Map<String, dynamic>> entries) async =>
+      throw Exception('disk full');
+
+  @override
+  List<Map<String, dynamic>> get trackedAlerts => _real.trackedAlerts;
+
+  @override
+  List<Map<String, dynamic>> get alertHistory => _real.alertHistory;
+
+  @override
+  ({String json, DateTime fetchedAt})? get snapshot => _real.snapshot;
+
+  @override
+  Future<void> saveSnapshot(String json, DateTime fetchedAt) async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   late StorageService storage;
@@ -251,6 +281,92 @@ void main() {
     });
   });
 
+  group('hardening', () {
+    test('record keeps hadPolygons; old records default to false', () {
+      final withShape = OfficialAlert.fromJson({
+        ..._a('p', codes: []),
+        'polygons': [
+          [
+            [100.0, 13.0],
+            [101.0, 13.0],
+            [101.0, 14.0],
+          ],
+        ],
+      });
+      final r = AlertRecord.of(withShape);
+      expect(r.hadPolygons, isTrue);
+      expect(AlertRecord.fromJson(r.toJson()).hadPolygons, isTrue);
+      final old = r.toJson()..remove('hadPolygons');
+      expect(AlertRecord.fromJson(old).hadPolygons, isFalse);
+      expect(
+        AlertRecord.of(OfficialAlert.fromJson(_a('c'))).hadPolygons,
+        isFalse,
+      );
+    });
+
+    test('a failing storage write does not break refresh', () async {
+      final bad = _ThrowingStorage(storage);
+      final s = AlertService(
+        bad,
+        snapshotUrl: _url,
+        fetcher: (_) async => next!,
+        clock: () => now,
+      );
+      next = _snap([_a('a')], now);
+      await s.refresh();
+      expect(s.visibleAlerts.map((a) => a.id), ['a']);
+      await Future<void>.delayed(Duration.zero);
+      s.dispose();
+    });
+
+    test('stored history is pruned, capped and sorted on load', () async {
+      final entries = [
+        for (var i = 0; i < 60; i++)
+          HistoryEntry(
+            record: AlertRecord.of(OfficialAlert.fromJson(_a('h$i'))),
+            // Every third entry is older than 30 days; order is scrambled.
+            endedAt: now.subtract(
+              i % 3 == 0
+                  ? Duration(days: 31 + i)
+                  : Duration(hours: (i * 7) % 60 + 1),
+            ),
+            reason: EndReason.expired,
+          ).toJson(),
+      ];
+      SharedPreferences.setMockInitialValues({
+        'alert_history': jsonEncode(entries),
+      });
+      storage = await StorageService.create();
+      final h = make().history;
+      expect(h, hasLength(40));
+      expect(
+        h.every((e) => now.difference(e.endedAt) <= AlertService.historyKeep),
+        isTrue,
+      );
+      for (var i = 1; i < h.length; i++) {
+        expect(h[i - 1].endedAt.isBefore(h[i].endedAt), isFalse);
+      }
+    });
+
+    test('load caps at 50', () async {
+      final entries = [
+        for (var i = 0; i < 60; i++)
+          HistoryEntry(
+            record: AlertRecord.of(OfficialAlert.fromJson(_a('h$i'))),
+            endedAt: now.subtract(Duration(minutes: i + 1)),
+            reason: EndReason.expired,
+          ).toJson(),
+      ];
+      SharedPreferences.setMockInitialValues({
+        'alert_history': jsonEncode(entries),
+      });
+      storage = await StorageService.create();
+      final h = make().history;
+      expect(h, hasLength(50));
+      expect(h.first.record.id, 'h0');
+    });
+  });
+
   group('screen', () {
     Widget app(Widget home) => MaterialApp(
       theme: AppTheme.light(),
@@ -294,6 +410,64 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(AlertDetailScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
+      s.dispose();
+    });
+
+    testWidgets('detail from history says Ended, hides live-only parts', (
+      tester,
+    ) async {
+      final s = make();
+      await feed(s, [_a('a')]);
+      now = DateTime.utc(2026, 11, 12, 6);
+      await feed(s, []);
+      await tester.pumpWidget(app(AlertHistoryScreen(alerts: s)));
+      await tester.tap(find.text('Heavy rain a'));
+      await tester.pumpAndSettle();
+      final ctx = tester.element(find.byType(AlertDetailScreen));
+      final endedAt = s.history.single.endedAt;
+      expect(
+        find.textContaining('Ended: Expired · ${ctx.stamp(endedAt)}'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Alerts last updated'), findsNothing);
+      expect(find.text('Received by the app'), findsNothing);
+      s.dispose();
+    });
+
+    testWidgets('history detail of a polygon notice does not say not given', (
+      tester,
+    ) async {
+      final s = make();
+      final entry = HistoryEntry(
+        record: AlertRecord.of(
+          OfficialAlert.fromJson({
+            ..._a('p', codes: []),
+            'polygons': [
+              [
+                [100.0, 13.0],
+                [101.0, 13.0],
+                [101.0, 14.0],
+              ],
+            ],
+          }),
+        ),
+        endedAt: now,
+        reason: EndReason.expired,
+      );
+      await tester.pumpWidget(
+        app(
+          AlertDetailScreen(
+            alert: entry.record.toAlert(),
+            alerts: s,
+            ended: entry,
+          ),
+        ),
+      );
+      expect(
+        find.text('Area was given as a map shape (not kept in history)'),
+        findsOneWidget,
+      );
+      expect(find.text('Area not given'), findsNothing);
       s.dispose();
     });
   });

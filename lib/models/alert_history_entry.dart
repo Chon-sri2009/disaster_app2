@@ -15,6 +15,7 @@ class AlertRecord {
     required this.sent,
     this.expires,
     this.areaCodes = const [],
+    this.hadPolygons = false,
     this.missingSince,
   });
 
@@ -25,6 +26,8 @@ class AlertRecord {
   final DateTime sent;
   final DateTime? expires;
   final List<String> areaCodes;
+  // Polygons are dropped for size; this keeps the fact that the area was given as a shape.
+  final bool hadPolygons;
   final DateTime? missingSince;
 
   DateTime get effectiveExpiry =>
@@ -38,6 +41,7 @@ class AlertRecord {
     sent: a.sent,
     expires: a.expires,
     areaCodes: a.areaCodes,
+    hadPolygons: a.polygons.isNotEmpty,
   );
 
   AlertRecord withMissingSince(DateTime? t) => AlertRecord(
@@ -48,6 +52,7 @@ class AlertRecord {
     sent: sent,
     expires: expires,
     areaCodes: areaCodes,
+    hadPolygons: hadPolygons,
     missingSince: t,
   );
 
@@ -62,6 +67,8 @@ class AlertRecord {
         ? null
         : DateTime.parse(j['expires'] as String).toUtc(),
     areaCodes: List<String>.from(j['areaCodes'] as List? ?? const []),
+    // Records stored before this field existed read as false.
+    hadPolygons: j['hadPolygons'] == true,
     missingSince: j['missingSince'] == null
         ? null
         : DateTime.parse(j['missingSince'] as String).toUtc(),
@@ -75,6 +82,7 @@ class AlertRecord {
     'sent': sent.toUtc().toIso8601String(),
     'expires': expires?.toUtc().toIso8601String(),
     'areaCodes': areaCodes,
+    'hadPolygons': hadPolygons,
     if (missingSince != null)
       'missingSince': missingSince!.toUtc().toIso8601String(),
   };

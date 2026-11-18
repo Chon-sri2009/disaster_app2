@@ -63,6 +63,8 @@ abstract final class AlertRules {
     String? provinceCode,
   ) {
     if (point == null) return AlertArea.unknown;
+    // No shape and no codes: we cannot know where it applies, so never "other areas".
+    if (a.polygons.isEmpty && a.areaCodes.isEmpty) return AlertArea.unknown;
     if (matches(a, point, provinceCode)) return AlertArea.inYourArea;
     if (a.polygons.isNotEmpty || provinceCode != null) {
       return AlertArea.otherAreas;

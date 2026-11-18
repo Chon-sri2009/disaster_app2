@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
+import '../models/alert_history_entry.dart';
 import '../models/official_alert.dart';
 import '../services/alert_service.dart';
 import '../services/province_locator.dart';
@@ -17,12 +18,16 @@ class AlertDetailScreen extends StatelessWidget {
     required this.alert,
     required this.alerts,
     this.provinces,
+    this.ended,
   });
 
   final OfficialAlert alert;
   final AlertService alerts;
   // Null until the boundary file is loaded (or if it fails): codes then show as they came.
   final ProvinceBoundaries? provinces;
+  // Set when opened from history: the record is a past notice, so the live-snapshot parts
+  // (stale banner, "Received by the app") are hidden and an Ended banner shows instead.
+  final HistoryEntry? ended;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +41,7 @@ class AlertDetailScreen extends StatelessWidget {
     // The second block only exists when both languages do; a fallback is not repeated.
     final second = own != null ? other : null;
     final at = alerts.fetchedAt;
+    final ended = this.ended;
 
     final String expiry;
     if (alert.hasExpiry) {
@@ -60,6 +66,14 @@ class AlertDetailScreen extends StatelessWidget {
             final p? => '${p.nameTh} · ${p.nameEn}',
             null => code,
           },
+      ];
+    } else if (alert.polygons.isEmpty && (ended?.record.hadPolygons ?? false)) {
+      areaLines = [
+        // DRAFT wording, owner to approve.
+        context.tr(
+          th: 'พื้นที่ระบุเป็นรูปบนแผนที่ (ไม่ได้เก็บไว้ในประวัติ)',
+          en: 'Area was given as a map shape (not kept in history)',
+        ),
       ];
     } else if (alert.polygons.isNotEmpty) {
       areaLines = [
@@ -90,7 +104,22 @@ class AlertDetailScreen extends StatelessWidget {
               AppSpace.lg,
             ),
             children: [
-              if (alerts.isStale && at != null)
+              if (ended != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpace.md),
+                  child: WarningBanner(
+                    // Icon and word, never colour alone. DRAFT wording, owner to approve.
+                    message: context.tr(
+                      th:
+                          'สิ้นสุดแล้ว: ${endReasonWord(context, ended.reason)} · '
+                          '${context.stamp(ended.endedAt)}',
+                      en:
+                          'Ended: ${endReasonWord(context, ended.reason)} · '
+                          '${context.stamp(ended.endedAt)}',
+                    ),
+                  ),
+                )
+              else if (alerts.isStale && at != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpace.md),
                   child: WarningBanner(
@@ -163,24 +192,27 @@ class AlertDetailScreen extends StatelessWidget {
                         en: 'Affected area',
                       ), // DRAFT wording, owner to approve.
                       lines: areaLines,
+                      last: ended != null,
                     ),
-                    _Fact(
-                      label: context.tr(
-                        th: 'แอปได้รับข้อมูลเมื่อ',
-                        en: 'Received by the app',
-                      ), // DRAFT wording, owner to approve.
-                      lines: [
-                        at == null
-                            ? context.tr(th: 'ไม่มีข้อมูล', en: 'No data')
-                            : context.stamp(at),
-                        // DRAFT wording, owner to approve.
-                        context.tr(
-                          th: 'คือเวลาที่ข้อมูลชุดนี้ถูกสร้างบนเซิร์ฟเวอร์',
-                          en: 'This is when the data was built on the server.',
-                        ),
-                      ],
-                      last: true,
-                    ),
+                    if (ended == null)
+                      _Fact(
+                        label: context.tr(
+                          th: 'แอปได้รับข้อมูลเมื่อ',
+                          en: 'Received by the app',
+                        ), // DRAFT wording, owner to approve.
+                        lines: [
+                          at == null
+                              // DRAFT wording, owner to approve.
+                              ? context.tr(th: 'ไม่มีข้อมูล', en: 'No data')
+                              : context.stamp(at),
+                          // DRAFT wording, owner to approve.
+                          context.tr(
+                            th: 'คือเวลาที่ข้อมูลชุดนี้ถูกสร้างบนเซิร์ฟเวอร์',
+                            en: 'This is when the data was built on the server.',
+                          ),
+                        ],
+                        last: true,
+                      ),
                   ],
                 ),
               ),
@@ -204,6 +236,14 @@ class AlertDetailScreen extends StatelessWidget {
     );
   }
 }
+
+// Why a notice ended, in one word. Shared by the history list and the detail screen.
+String endReasonWord(BuildContext context, EndReason r) => switch (r) {
+  // DRAFT wording, owner to approve.
+  EndReason.expired => context.tr(th: 'หมดอายุ', en: 'Expired'),
+  EndReason.cancelled => context.tr(th: 'ยกเลิก', en: 'Cancelled'),
+  EndReason.replaced => context.tr(th: 'ถูกแทนที่', en: 'Replaced'),
+};
 
 // A small label over one or more value lines.
 class _Fact extends StatelessWidget {

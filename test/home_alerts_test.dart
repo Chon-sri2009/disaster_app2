@@ -110,6 +110,21 @@ void main() {
       expect(AlertRules.areaOf(a, _home, null), AlertArea.unknown);
     });
 
+    test('area-less alert is unknown even when the province is known', () {
+      final a = _alert();
+      expect(AlertRules.areaOf(a, _home, 'TH-10'), AlertArea.unknown);
+      expect(AlertRules.areaOf(a, _home, null), AlertArea.unknown);
+      // Ranks after in-your-area and before other-areas (Home sorts by enum order).
+      expect(
+        AlertArea.inYourArea.index,
+        lessThan(AlertRules.areaOf(a, _home, 'TH-10').index),
+      );
+      expect(
+        AlertRules.areaOf(a, _home, 'TH-10').index,
+        lessThan(AlertArea.otherAreas.index),
+      );
+    });
+
     test('no location is always unknown', () {
       expect(
         AlertRules.areaOf(_alert(areaCodes: ['TH-10']), null, 'TH-10'),

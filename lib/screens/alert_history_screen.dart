@@ -63,6 +63,7 @@ class AlertHistoryScreen extends StatelessWidget {
                                   alert: e.record.toAlert(),
                                   alerts: alerts,
                                   provinces: provinces,
+                                  ended: e,
                                 ),
                               ),
                             ),
@@ -92,13 +93,6 @@ class AlertHistoryScreen extends StatelessWidget {
   }
 }
 
-String _reasonWord(BuildContext context, EndReason r) => switch (r) {
-  // DRAFT wording, owner to approve.
-  EndReason.expired => context.tr(th: 'หมดอายุ', en: 'Expired'),
-  EndReason.cancelled => context.tr(th: 'ยกเลิก', en: 'Cancelled'),
-  EndReason.replaced => context.tr(th: 'ถูกแทนที่', en: 'Replaced'),
-};
-
 class _Row extends StatelessWidget {
   const _Row({required this.entry, required this.onTap});
 
@@ -114,7 +108,7 @@ class _Row extends StatelessWidget {
         r.headline['th'] ??
         r.headline['en'] ??
         context.levelLabel(r.level);
-    final reason = _reasonWord(context, entry.reason);
+    final reason = endReasonWord(context, entry.reason);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

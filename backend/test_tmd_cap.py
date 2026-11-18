@@ -98,14 +98,16 @@ def cap(info="", head_extra="", sent="2026-11-18T09:00:00+07:00", ident="X_1-en"
     )
 
 
-def info(severity=None, lang="en-US", polygons=(), expires=None, headline="H"):
+def info(severity=None, lang="en-US", polygons=(), expires=None, headline="H", geocodes=()):
     sev = f"<severity>{severity}</severity>" if severity is not None else ""
     exp = f"<expires>{expires}</expires>" if expires is not None else ""
     lng = f"<language>{lang}</language>" if lang is not None else ""
     polys = "".join(f"<polygon>{p}</polygon>" for p in polygons)
+    geos = "".join(f"<geocode><valueName>{n}</valueName><value>{v}</value></geocode>"
+                   for n, v in geocodes)
     return (
         f"<info>{lng}<event>E</event>{sev}{exp}<headline>{headline}</headline>"
-        f"<area><areaDesc>A</areaDesc>{polys}</area></info>"
+        f"<area><areaDesc>A</areaDesc>{polys}{geos}</area></info>"
     )
 
 
@@ -134,7 +136,7 @@ class ParseCapRealTest(unittest.TestCase):
         self.assertEqual(
             set(a),
             {"id", "sender", "status", "msgType", "level", "headline", "sent",
-             "expires", "references", "polygons"},
+             "expires", "references", "areaCodes", "polygons"},
         )
 
     def test_times_are_utc(self):
@@ -335,6 +337,89 @@ class ParseCapGarbageTest(unittest.TestCase):
     def test_bytes_input_accepted(self):
         raw = (FIX / UPDATE_EN).read_bytes()
         self.assertEqual(tmd_cap.parse_cap(raw)["id"], "TMD20261116051107_2")
+
+
+# Province codes per real file (en and th twins carry the same set), read from the raw XML.
+REAL_AREA_CODES = {
+    "CAPTMD20261116051107_2.xml": ["TH-80", "TH-84", "TH-90", "TH-91", "TH-92", "TH-93",
+                                   "TH-94", "TH-95", "TH-96"],
+    "CAPTMD20261116155515_2.xml": ["TH-90", "TH-91", "TH-92", "TH-93", "TH-94", "TH-95",
+                                   "TH-96"],
+    "CAPTMD20261117053453_2.xml": ["TH-90", "TH-94", "TH-95", "TH-96"],
+    "CAPTMD20261117161100_2.xml": ["TH-80", "TH-90", "TH-93", "TH-94", "TH-95", "TH-96"],
+    "CAPTMD20261118060419_2.xml": ["TH-80", "TH-90", "TH-93", "TH-94", "TH-95", "TH-96"],
+    "CAPTMD20261118155021_2.xml": ["TH-80", "TH-84", "TH-90", "TH-93", "TH-94", "TH-95",
+                                   "TH-96"],
+}
+ISO = "ISO3166-2"
+
+
+class AreaCodesTest(unittest.TestCase):
+    def test_real_fixtures_give_expected_codes(self):
+        for name, codes in REAL_AREA_CODES.items():
+            with self.subTest(name=name):
+                self.assertEqual(tmd_cap.parse_cap(real("en_" + name))["areaCodes"], codes)
+                self.assertEqual(tmd_cap.parse_cap(real("th_" + name))["areaCodes"], codes)
+
+    def test_geocode_only_file_has_codes_and_no_polygons(self):
+        a = tmd_cap.parse_cap(synthetic("synthetic_geocode_only.xml"))
+        self.assertEqual(a["areaCodes"], ["TH-90", "TH-91"])
+        self.assertEqual(a["polygons"], [])
+
+    def test_no_geocodes_gives_empty_list(self):
+        for name in ("synthetic_cancel_no_info.xml", "synthetic_multi_info.xml"):
+            with self.subTest(name=name):
+                self.assertEqual(tmd_cap.parse_cap(synthetic(name))["areaCodes"], [])
+
+    def test_invalid_codes_dropped(self):
+        bad = [(ISO, "TH-9"), (ISO, "XX-10"), (ISO, "th-10"), (ISO, "TH-100"),
+               (ISO, "TH-๑๐"),  # Thai digits are not ASCII digits
+               (ISO, "TH-１０"),  # full-width digits
+               (ISO, "TH-1a"), (ISO, ""), ("ISO3166-1", "TH-10"), ("iso3166-2", "TH-11"),
+               ("", "TH-12"), ("ISO3166-2 ", "TH-13x")]
+        a = tmd_cap.parse_cap(cap(info("Severe", geocodes=bad + [(ISO, "TH-50")])))
+        self.assertIsNotNone(a)
+        self.assertEqual(a["areaCodes"], ["TH-50"])
+
+    def test_whitespace_stripped_sorted_and_deduplicated(self):
+        codes = [(" ISO3166-2 ", " TH-96 "), (ISO, "TH-10"), (ISO, "\n TH-96\n"),
+                 (ISO, "TH-10")]
+        a = tmd_cap.parse_cap(cap(info("Severe", geocodes=codes)))
+        self.assertEqual(a["areaCodes"], ["TH-10", "TH-96"])
+
+    def test_missing_value_or_name_skipped_not_raised(self):
+        xml = cap('<info><language>en-US</language><event>E</event><headline>H</headline>'
+                  '<area><areaDesc>A</areaDesc><geocode><valueName>ISO3166-2</valueName>'
+                  '</geocode><geocode><value>TH-10</value></geocode><geocode/></area></info>')
+        a = tmd_cap.parse_cap(xml)
+        self.assertIsNotNone(a)
+        self.assertEqual(a["areaCodes"], [])
+
+    def test_collected_from_every_info_and_area(self):
+        xml = cap(
+            info("Severe", geocodes=[(ISO, "TH-90")])
+            + info("Severe", lang="th-TH", geocodes=[(ISO, "TH-10")]).replace(
+                "</info>", '<area><areaDesc>B</areaDesc><geocode><valueName>ISO3166-2'
+                           '</valueName><value>TH-50</value></geocode></area></info>'))
+        self.assertEqual(tmd_cap.parse_cap(xml)["areaCodes"], ["TH-10", "TH-50", "TH-90"])
+
+    def test_twins_merge_to_a_union(self):
+        en = tmd_cap.parse_cap(cap(info("Severe", geocodes=[(ISO, "TH-90"), (ISO, "TH-91")]),
+                                   ident="M_1-en"))
+        th = tmd_cap.parse_cap(cap(info("Severe", lang="th-TH",
+                                        geocodes=[(ISO, "TH-10"), (ISO, "TH-91")]), ident="M_1"))
+        merged = tmd_cap.merge_languages([en, th])
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["areaCodes"], ["TH-10", "TH-90", "TH-91"])
+        # Inputs are cached by the poller across polls: never mutated.
+        self.assertEqual(en["areaCodes"], ["TH-90", "TH-91"])
+        self.assertEqual(th["areaCodes"], ["TH-10", "TH-91"])
+
+    def test_real_twins_merge_to_same_codes(self):
+        name = "CAPTMD20261118155021_2.xml"
+        merged = tmd_cap.merge_languages([tmd_cap.parse_cap(real("en_" + name)),
+                                          tmd_cap.parse_cap(real("th_" + name))])
+        self.assertEqual(merged[0]["areaCodes"], REAL_AREA_CODES[name])
 
 
 if __name__ == "__main__":

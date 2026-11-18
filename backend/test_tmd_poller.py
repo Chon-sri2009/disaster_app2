@@ -65,14 +65,18 @@ def _snap(poller):
     return json.loads(poller.snapshot_json())
 
 
-def _alert(ident, sent, expires=None, msg_type="Alert", refs=(), polygons=None):
-    return {
+def _alert(ident, sent, expires=None, msg_type="Alert", refs=(), polygons=None,
+           area_codes=None):
+    a = {
         "id": ident, "sender": "TMD", "status": "Actual", "msgType": msg_type,
         "level": "warning", "headline": {"en": ident}, "sent": sent, "expires": expires,
         "references": list(refs),
         "polygons": [[[100.0, 13.0], [101.0, 13.0], [101.0, 14.0], [100.0, 13.0]]]
         if polygons is None else polygons,
     }
+    if area_codes is not None:
+        a["areaCodes"] = list(area_codes)
+    return a
 
 
 NOW = "2026-11-18T05:00:00Z"
@@ -178,6 +182,21 @@ class PollerTest(unittest.TestCase):
         p.poll_once()
         self.assertEqual(_snap(p)["noPolygon"], 1)
 
+    def test_geocode_only_alert_counts_in_no_polygon_not_no_area(self):
+        geo = (FIX / "synthetic" / "synthetic_geocode_only.xml").read_bytes().decode("utf-8")
+        p, _ = self._poller({
+            FEED_EN: _rss("https://x.test/a.xml", "https://x.test/b.xml"),
+            "https://x.test/a.xml": geo,
+            "https://x.test/b.xml": _cap("TMD2_2-en", polygon=""),
+        }, now="2026-11-18T03:00:00Z")
+        p.poll_once()
+        snap = _snap(p)
+        self.assertEqual(len(snap["alerts"]), 2)
+        self.assertEqual(snap["noPolygon"], 2)
+        self.assertEqual(snap["noArea"], 1)
+        codes = {a["id"]: a["areaCodes"] for a in snap["alerts"]}
+        self.assertEqual(codes, {"TMDSYNTH_GEO_1": ["TH-90", "TH-91"], "TMD2_2": []})
+
     def test_languages_merged(self):
         p, _ = self._poller({
             FEED_EN: _rss("https://x.test/en/a.xml"),
@@ -228,7 +247,8 @@ class PollerTest(unittest.TestCase):
         p._clock.t = _at("2026-11-18T05:02:00Z")
         p.poll_once()
         self.assertEqual(_snap(p), {"generatedAt": "2026-11-18T05:02:00Z",
-                                    "alerts": [], "noPolygon": 0, "skippedFiles": 0})
+                                    "alerts": [], "noPolygon": 0, "noArea": 0,
+                                    "skippedFiles": 0})
 
     def test_one_feed_down_other_fine_succeeds(self):
         p, _ = self._poller({
@@ -355,6 +375,11 @@ class RealFixtureTest(unittest.TestCase):
         self.assertEqual(set(first["headline"]), {"en", "th"})
         self.assertEqual(first["polygons"][0][0], [99.968294, 9.311178])
         self.assertEqual(snap["noPolygon"], 0)
+        self.assertEqual(snap["noArea"], 0)
+        self.assertEqual(first["areaCodes"],
+                         ["TH-80", "TH-84", "TH-90", "TH-93", "TH-94", "TH-95", "TH-96"])
+        for a in snap["alerts"]:
+            self.assertTrue(a["areaCodes"])
 
 
 CONTRACT = Path(__file__).resolve().parent.parent / "test" / "fixtures" / "alerts_snapshot.json"
@@ -458,6 +483,49 @@ class BuildSnapshotTest(unittest.TestCase):
         self.assertEqual(snap["generatedAt"], "2026-11-18T12:00:00Z")
         self.assertEqual([a["id"] for a in snap["alerts"]], ["NEW", "OLD"])
         self.assertEqual(snap["noPolygon"], 1)
+
+    def test_no_area_counts_only_alerts_with_neither_polygons_nor_codes(self):
+        snap = tmd_cap.build_snapshot([
+            _alert("POLY", "2026-11-18T01:00:00Z", "2026-11-18T20:00:00Z", area_codes=[]),
+            _alert("CODES", "2026-11-18T02:00:00Z", "2026-11-18T20:00:00Z", polygons=[],
+                   area_codes=["TH-90"]),
+            _alert("BOTH", "2026-11-18T03:00:00Z", "2026-11-18T20:00:00Z",
+                   area_codes=["TH-10"]),
+            _alert("NONE", "2026-11-18T04:00:00Z", "2026-11-18T20:00:00Z", polygons=[],
+                   area_codes=[]),
+            _alert("LEGACY", "2026-11-18T05:00:00Z", "2026-11-18T20:00:00Z", polygons=[]),
+            # Pruned alerts are not counted.
+            _alert("GONE", "2026-11-15T00:00:00Z", "2026-11-15T01:00:00Z", polygons=[],
+                   area_codes=[]),
+        ], self.NOW)
+        self.assertEqual(snap["noPolygon"], 3)  # meaning unchanged: CODES, NONE, LEGACY
+        self.assertEqual(snap["noArea"], 2)     # NONE, LEGACY
+        self.assertEqual(list(snap), ["generatedAt", "alerts", "noPolygon", "noArea",
+                                      "skippedFiles"])
+
+    def test_area_codes_do_not_change_pruning(self):
+        # Codes on a Cancel or its target must not resurrect or drop anything.
+        ids = self._ids([
+            _alert("ORIG", "2026-11-16T00:00:00Z", "2026-11-18T20:00:00Z",
+                   area_codes=["TH-90"]),
+            _alert("CANCEL", "2026-11-16T01:00:00Z", "2026-11-16T02:00:00Z",
+                   msg_type="Cancel", refs=["ORIG"], polygons=[], area_codes=["TH-90"]),
+            _alert("OLD", "2026-11-15T00:00:00Z", "2026-11-16T00:00:00Z",
+                   area_codes=["TH-10"]),
+            _alert("OLDCANCEL", "2026-11-15T01:00:00Z", "2026-11-15T02:00:00Z",
+                   msg_type="Cancel", refs=["OLD"], polygons=[], area_codes=["TH-10"]),
+        ])
+        self.assertEqual(sorted(ids), ["CANCEL", "ORIG"])
+
+    def test_area_less_cancel_counts_in_no_area_and_is_kept(self):
+        snap = tmd_cap.build_snapshot([
+            _alert("ORIG", "2026-11-16T00:00:00Z", "2026-11-18T20:00:00Z",
+                   area_codes=["TH-90"]),
+            _alert("CANCEL", "2026-11-16T01:00:00Z", "2026-11-16T02:00:00Z",
+                   msg_type="Cancel", refs=["ORIG"], polygons=[], area_codes=[]),
+        ], self.NOW)
+        self.assertEqual(sorted(a["id"] for a in snap["alerts"]), ["CANCEL", "ORIG"])
+        self.assertEqual(snap["noArea"], 1)
 
     def test_prunes_alerts_expired_over_24h(self):
         self.assertEqual(self._ids([

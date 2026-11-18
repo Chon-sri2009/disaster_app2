@@ -14,6 +14,15 @@
       "sent": "2026-11-18T10:45:00Z",
       "expires": "2026-11-18T23:00:00Z",
       "references": [],
+      "areaCodes": [
+        "TH-80",
+        "TH-84",
+        "TH-90",
+        "TH-93",
+        "TH-94",
+        "TH-95",
+        "TH-96"
+      ],
       "polygons": [
         [
           [
@@ -10473,6 +10482,7 @@
       "sent": "2026-11-18T10:00:00Z",
       "expires": null,
       "references": [],
+      "areaCodes": [],
       "polygons": [
         [
           [
@@ -10508,6 +10518,7 @@
       "references": [
         "SYN_OLD"
       ],
+      "areaCodes": [],
       "polygons": [
         [
           [
@@ -10543,6 +10554,7 @@
       "references": [
         "SYN_LIVE"
       ],
+      "areaCodes": [],
       "polygons": []
     },
     {
@@ -10557,6 +10569,7 @@
       "sent": "2026-11-18T03:00:00Z",
       "expires": "2026-11-18T13:00:00Z",
       "references": [],
+      "areaCodes": [],
       "polygons": [
         [
           [
@@ -10590,6 +10603,7 @@
       "sent": "2026-11-18T03:00:00Z",
       "expires": "2026-11-18T13:00:00Z",
       "references": [],
+      "areaCodes": [],
       "polygons": [
         [
           [
@@ -10621,6 +10635,7 @@
       "sent": "2026-11-18T03:00:00Z",
       "expires": "2026-11-18T13:00:00Z",
       "references": [],
+      "areaCodes": [],
       "polygons": [
         [
           [
@@ -10654,6 +10669,7 @@
       "sent": "2026-11-18T03:00:00Z",
       "expires": "2026-11-18T13:00:00Z",
       "references": [],
+      "areaCodes": [],
       "polygons": [
         [
           [
@@ -10689,6 +10705,7 @@
       "references": [
         "SYN_TARGET"
       ],
+      "areaCodes": [],
       "polygons": []
     },
     {
@@ -10703,6 +10720,7 @@
       "sent": "2026-11-18T03:00:00Z",
       "expires": "2026-11-18T13:00:00Z",
       "references": [],
+      "areaCodes": [],
       "polygons": [
         [
           [
@@ -10737,6 +10755,14 @@
       "sent": "2026-11-17T23:01:00Z",
       "expires": "2026-11-18T11:00:00Z",
       "references": [],
+      "areaCodes": [
+        "TH-80",
+        "TH-90",
+        "TH-93",
+        "TH-94",
+        "TH-95",
+        "TH-96"
+      ],
       "polygons": [
         [
           [
@@ -19455,6 +19481,14 @@
       "sent": "2026-11-17T09:07:00Z",
       "expires": "2026-11-18T01:00:00Z",
       "references": [],
+      "areaCodes": [
+        "TH-80",
+        "TH-90",
+        "TH-93",
+        "TH-94",
+        "TH-95",
+        "TH-96"
+      ],
       "polygons": [
         [
           [
@@ -28173,6 +28207,12 @@
       "sent": "2026-11-16T22:29:00Z",
       "expires": "2026-11-17T11:00:00Z",
       "references": [],
+      "areaCodes": [
+        "TH-90",
+        "TH-94",
+        "TH-95",
+        "TH-96"
+      ],
       "polygons": [
         [
           [
@@ -35438,5 +35478,6 @@
     }
   ],
   "noPolygon": 2,
+  "noArea": 2,
   "skippedFiles": 0
 }

@@ -58,7 +58,7 @@ Thai index can lag the English one. Poll both or prefer English.
 | area | always 1 | one `<area>` per file |
 | areaDesc | always | space-separated province names (not comma separated) |
 | polygon | always | 10 to 68 per file (en: 68, 44, 10, 17, 17, 36); `lat,lon` pairs separated by spaces, closed rings (first = last), min 4 points. Multi-polygon: one `<polygon>` element each |
-| geocode | always | `valueName` = `ISO3166-2`, `value` = `TH-NN` province code, one `<geocode>` per province (4 to 9 per file; seen TH-80, 84, 90..96) |
+| geocode | always | `valueName` = `ISO3166-2`, `value` = `TH-NN` province code, one `<geocode>` per province (4 to 9 per file; seen TH-80, 84, 90..96). Carried in the snapshot as `areaCodes` (sorted, de-duplicated; only `ISO3166-2` + `TH-` and two ASCII digits, anything else skipped); the snapshot's `noArea` counts alerts with neither polygons nor codes |
 | Signature | always | XML-DSig enveloped RSA-SHA256, in namespace `http://www.w3.org/2000/09/xmldsig#`, after `</info>`. Not verified by us |
 
 ## Encoding and shape quirks for the parser

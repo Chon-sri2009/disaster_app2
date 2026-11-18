@@ -37,6 +37,10 @@ _LEVEL_RANK = {"safe": 0, "watch": 1, "warning": 2, "danger": 3}
 # is rejected: guessing the zone could shift an alert by hours.
 _CAP_TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}:\d{2}|Z)")
 _DANGEROUS = re.compile(r"<!\s*(doctype|entity)", re.IGNORECASE)
+# Province code as TMD sends it (ISO 3166-2, e.g. TH-80). [0-9], not \d: \d also matches
+# Thai and other Unicode digits, which no province code uses. Case-sensitive on purpose.
+_AREA_CODE = re.compile(r"TH-[0-9]{2}")
+_AREA_CODE_NAME = "ISO3166-2"
 
 
 def base_id(identifier):
@@ -154,6 +158,7 @@ def _parse_cap(xml_text):
     expires = None
     polygons = []
     seen_rings = set()
+    area_codes = set()
     for info in root.findall("cap:info", _NS):
         candidate = _SEVERITY_LOOKUP.get(_text(info, "cap:severity").casefold(), DEFAULT_LEVEL)
         if _LEVEL_RANK[candidate] > _LEVEL_RANK[level]:
@@ -176,6 +181,14 @@ def _parse_cap(xml_text):
             if key not in seen_rings:
                 seen_rings.add(key)
                 polygons.append(ring)
+        for geocode in info.findall("cap:area/cap:geocode", _NS):
+            # Anything but a well-formed province code is skipped: one bad code must not
+            # hide the rest of the alert.
+            if _text(geocode, "cap:valueName") != _AREA_CODE_NAME:
+                continue
+            code = _text(geocode, "cap:value")
+            if _AREA_CODE.fullmatch(code):
+                area_codes.add(code)
 
     return {
         "id": base_id(identifier),
@@ -187,6 +200,7 @@ def _parse_cap(xml_text):
         "sent": sent,
         "expires": expires,
         "references": _references(root.findtext("cap:references", namespaces=_NS)),
+        "areaCodes": sorted(area_codes),
         "polygons": polygons,
     }
 
@@ -200,6 +214,7 @@ def merge_languages(alerts):
         if m is None:
             merged[a["id"]] = {**a, "headline": dict(a["headline"]),
                                "references": list(a["references"]),
+                               "areaCodes": sorted(set(a.get("areaCodes", []))),
                                "polygons": list(a["polygons"])}
             continue
         for lang, text in a["headline"].items():
@@ -212,6 +227,8 @@ def merge_languages(alerts):
         m["sent"] = min(m["sent"], a["sent"])
         m["references"] += [r for r in a["references"] if r not in m["references"]]
         m["polygons"] += [p for p in a["polygons"] if p not in m["polygons"]]
+        # Union: a province named in either language is in the alert.
+        m["areaCodes"] = sorted(set(m["areaCodes"]).union(a.get("areaCodes", [])))
     return list(merged.values())
 
 
@@ -257,6 +274,8 @@ def build_snapshot(alerts, now, skipped=0):
         "alerts": kept,
         # Visible count of alerts no area can match, so a gap is not silent.
         "noPolygon": sum(1 for a in kept if not a["polygons"]),
+        # Alerts neither a map shape nor a province code can match: no place to show them.
+        "noArea": sum(1 for a in kept if not a["polygons"] and not a.get("areaCodes")),
         "skippedFiles": skipped,
     }
 

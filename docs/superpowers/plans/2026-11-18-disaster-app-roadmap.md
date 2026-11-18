@@ -317,11 +317,11 @@ Owner go-ahead 2026-11-18 ("develop the app in phase B"); owner chose "assistant
 - Produces: each snapshot alert gains `areaCodes: ["TH-80", ...]` (sorted, deduplicated, only values matching `^TH-\d{2}$` from `<geocode>` whose `valueName` is `ISO3166-2`; anything else skipped, never raising). `merge_languages` unions codes. The snapshot also gains `noArea`: count of kept alerts with neither polygons nor `areaCodes`.
 - Consumes: Task 2/3 behaviour unchanged (cancel handling, pruning, skippedFiles).
 
-- [ ] **Step 1: Failing tests:** the real fixtures give the expected code sets (e.g. a file with TH-80, 84, 90–96); `synthetic_geocode_only.xml` gives codes and no polygons; an invalid code (`TH-9`, `XX-10`, wrong `valueName`) is dropped; English+Thai twins merge to one union; `noArea` counts only area-less alerts; old snapshots without `areaCodes` still parse in the app (Task 8).
-- [ ] **Step 2: Run** `cd backend && python -m unittest discover`. Expected: FAIL.
-- [ ] **Step 3: Implement** in the three functions above.
-- [ ] **Step 4: Regenerate the contract file** and run all backend tests. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(backend): carry province codes in the alert snapshot`.
+- [x] **Step 1: Failing tests:** the real fixtures give the expected code sets (e.g. a file with TH-80, 84, 90–96); `synthetic_geocode_only.xml` gives codes and no polygons; an invalid code (`TH-9`, `XX-10`, wrong `valueName`) is dropped; English+Thai twins merge to one union; `noArea` counts only area-less alerts; old snapshots without `areaCodes` still parse in the app (Task 8).
+- [x] **Step 2: Run** `cd backend && python -m unittest discover`. Expected: FAIL.
+- [x] **Step 3: Implement** in the three functions above.
+- [x] **Step 4: Regenerate the contract file** and run all backend tests. Expected: PASS.
+- [x] **Step 5: Commit** `feat(backend): carry province codes in the alert snapshot`.
 
 ### Task 8: App model, province locator and matching rule (safety-critical: Opus reviews)
 

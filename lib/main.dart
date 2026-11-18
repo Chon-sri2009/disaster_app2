@@ -24,8 +24,12 @@ Future<void> main() async {
   final storage = await StorageService.create();
   // Stand-in for "download shelters when online". Seed only an empty cache: a real
   // downloaded list must survive a restart.
-  if (storage.shelters.isEmpty ||
-      MockData.isDemoShelterList(storage.shelters)) {
+  // The bundled list also replaces the sample list and any older copy of itself; a list
+  // downloaded later (with other ids) is left alone.
+  final bundled = {for (final s in bangkokShelters) s.id};
+  if (storage.shelters.every(
+    (s) => bundled.contains(s.id) || MockData.shelters.any((m) => m.id == s.id),
+  )) {
     await storage.saveShelters(bangkokShelters);
   }
   runApp(DisasterApp(storage: storage));

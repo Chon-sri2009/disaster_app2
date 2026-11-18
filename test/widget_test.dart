@@ -145,7 +145,13 @@ void main() {
 
   // A cached snapshot with one TMD warning over lat 13-14, lng 100-101, stamped just now
   // (the app's real clock is used), plus a phone last seen at [at].
-  Future<void> pumpWithTmdWarning(WidgetTester tester, LatLng at) async {
+  Future<void> pumpWithTmdWarning(
+    WidgetTester tester,
+    LatLng at, {
+    Map<String, String> headline = const {'th': 'ฝนตกหนัก', 'en': 'Heavy rain'},
+    int? skippedFiles,
+    bool visible = true,
+  }) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
@@ -153,25 +159,27 @@ void main() {
     String iso(Duration d) => now.add(d).toIso8601String();
     final snapshot = jsonEncode({
       'generatedAt': iso(Duration.zero),
+      'skippedFiles': ?skippedFiles,
       'alerts': [
-        {
-          'id': 'tmd-1',
-          'sender': 'TMD',
-          'status': 'Actual',
-          'msgType': 'Alert',
-          'level': 'warning',
-          'headline': {'th': 'ฝนตกหนัก', 'en': 'Heavy rain'},
-          'sent': iso(const Duration(minutes: -10)),
-          'expires': iso(const Duration(hours: 3)),
-          'polygons': [
-            [
-              [100.0, 13.0],
-              [101.0, 13.0],
-              [101.0, 14.0],
-              [100.0, 14.0],
+        if (visible)
+          {
+            'id': 'tmd-1',
+            'sender': 'TMD',
+            'status': 'Actual',
+            'msgType': 'Alert',
+            'level': 'warning',
+            'headline': headline,
+            'sent': iso(const Duration(minutes: -10)),
+            'expires': iso(const Duration(hours: 3)),
+            'polygons': [
+              [
+                [100.0, 13.0],
+                [101.0, 13.0],
+                [101.0, 14.0],
+                [100.0, 14.0],
+              ],
             ],
-          ],
-        },
+          },
       ],
       'noPolygon': 0,
     });
@@ -205,6 +213,32 @@ void main() {
 
     // The notice list still shows the alert; the level card must not take its tier.
     expect(find.text(officialSource), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Home notices render an alert with no headline', (tester) async {
+    await pumpWithTmdWarning(tester, LatLng(13.5, 100.5), headline: {});
+
+    expect(tester.takeException(), isNull);
+    // The level label stands in for the missing headline text.
+    expect(find.text('เตือนภัย'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('skipped files show the stale banner, not "No alerts"', (
+    tester,
+  ) async {
+    await pumpWithTmdWarning(
+      tester,
+      LatLng(13.5, 100.5),
+      skippedFiles: 2,
+      visible: false,
+    );
+
+    expect(find.textContaining('ข้อมูลอาจไม่เป็นปัจจุบัน'), findsOneWidget);
+    expect(find.textContaining('ไม่มีประกาศเตือนภัยในพื้นที่'), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
   });

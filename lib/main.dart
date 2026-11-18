@@ -125,10 +125,13 @@ class _AppShellState extends State<AppShell> {
   late final FloodHistoryService _flood = FloodHistoryService(
     snapshotUrl: const String.fromEnvironment('SENSOR_SNAPSHOT_URL'),
   );
-  late final AlertService _alerts = AlertService(
-    widget.storage,
-    snapshotUrl: const String.fromEnvironment('ALERT_SNAPSHOT_URL'),
-  )..refresh();
+  late final AlertService _alerts =
+      AlertService(
+          widget.storage,
+          snapshotUrl: const String.fromEnvironment('ALERT_SNAPSHOT_URL'),
+        )
+        ..refresh()
+        ..startAutoRefresh();
   late final LocationService _location = LocationService(widget.storage);
   int _index = 0;
 

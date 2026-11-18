@@ -633,7 +633,7 @@ class _OfficialAlerts extends StatelessWidget {
             final headline =
                 a.headline[context.isThai ? 'th' : 'en'] ??
                 a.headline['th'] ??
-                a.headline.values.first;
+                context.levelLabel(a.level);
             if (i > 0) children.add(const Divider());
             children.add(
               Semantics(

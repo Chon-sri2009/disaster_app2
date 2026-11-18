@@ -30,6 +30,28 @@ void main() {
   final now = DateTime.utc(2026, 11, 12, 2);
   final inside = LatLng(13.5, 100.5);
 
+  test('a Test or Exercise Cancel does not hide a live Actual alert', () {
+    final all = [
+      alert('live'),
+      alert('t', status: 'Test', msgType: 'Cancel', references: ['live']),
+      alert('e', status: 'Exercise', msgType: 'Update', references: ['live']),
+    ];
+    expect(AlertRules.visible(all, now).map((a) => a.id), ['live']);
+  });
+
+  test('an Actual Cancel hides its target; an Actual Update replaces it', () {
+    final cancelled = [
+      alert('live'),
+      alert('c', msgType: 'Cancel', references: ['live']),
+    ];
+    expect(AlertRules.visible(cancelled, now), isEmpty);
+    final updated = [
+      alert('old'),
+      alert('new', msgType: 'Update', references: ['old']),
+    ];
+    expect(AlertRules.visible(updated, now).map((a) => a.id), ['new']);
+  });
+
   test('Test and Exercise alerts never reach users', () {
     final all = [alert('a', status: 'Test'), alert('b', status: 'Exercise')];
     expect(AlertRules.visible(all, now), isEmpty);

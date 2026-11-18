@@ -5,11 +5,14 @@ import '../models/official_alert.dart';
 
 // Pure rules that decide which alerts a person may see (plan 7.2, 10.4).
 abstract final class AlertRules {
-  // Only Actual alerts, not expired, not cancelled or replaced by a later message.
+  // Only Actual alerts, not expired, not cancelled or replaced by a later Actual message.
   static List<OfficialAlert> visible(List<OfficialAlert> all, DateTime now) {
     final dropped = <String>{
       for (final a in all)
-        if (a.msgType == 'Update' || a.msgType == 'Cancel') ...a.references,
+        // A Test or Exercise message must not hide a real warning.
+        if (a.status == 'Actual' &&
+            (a.msgType == 'Update' || a.msgType == 'Cancel'))
+          ...a.references,
     };
     return [
       for (final a in all)

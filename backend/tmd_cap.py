@@ -28,6 +28,9 @@ SEVERITY_TO_LEVEL = {
     "Extreme": "danger",
 }
 DEFAULT_LEVEL = "watch"
+# Lookup keyed by casefolded severity: CAP enums are case-sensitive, but a publisher's
+# case slip ("SEVERE") must not silently drop a warning to watch.
+_SEVERITY_LOOKUP = {k.casefold(): v for k, v in SEVERITY_TO_LEVEL.items()}
 _LEVEL_RANK = {"safe": 0, "watch": 1, "warning": 2, "danger": 3}
 
 # CAP 1.2 dateTime: seconds precision and an explicit offset. A time without an offset
@@ -152,7 +155,7 @@ def _parse_cap(xml_text):
     polygons = []
     seen_rings = set()
     for info in root.findall("cap:info", _NS):
-        candidate = SEVERITY_TO_LEVEL.get(_text(info, "cap:severity"), DEFAULT_LEVEL)
+        candidate = _SEVERITY_LOOKUP.get(_text(info, "cap:severity").casefold(), DEFAULT_LEVEL)
         if _LEVEL_RANK[candidate] > _LEVEL_RANK[level]:
             level = candidate
         # CAP 1.2: a missing <language> means en-US.

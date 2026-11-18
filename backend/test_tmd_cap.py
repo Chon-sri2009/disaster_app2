@@ -221,6 +221,14 @@ class ParseCapBehaviourTest(unittest.TestCase):
             with self.subTest(severity=sev):
                 self.assertEqual(tmd_cap.parse_cap(cap(info(sev)))["level"], level)
 
+    def test_severity_case_and_whitespace_insensitive(self):
+        # Case slips must not under-warn; unknown values still fall back to watch.
+        cases = {"severe": "warning", "SEVERE": "warning", " Severe ": "warning",
+                 "EXTREME": "danger", "Catastrophic": "watch", None: "watch"}
+        for sev, level in cases.items():
+            with self.subTest(severity=sev):
+                self.assertEqual(tmd_cap.parse_cap(cap(info(sev)))["level"], level)
+
     def test_synthetic_extreme_and_minor(self):
         self.assertEqual(tmd_cap.parse_cap(synthetic("synthetic_no_expires.xml"))["level"], "danger")
         self.assertEqual(tmd_cap.parse_cap(synthetic("synthetic_test_status.xml"))["level"], "watch")

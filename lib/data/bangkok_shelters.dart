@@ -7,6 +7,9 @@ import '../models/shelter.dart';
 // Anniversary Sports Center, and the permanent shelters Protection Center for the Destitute,
 // Baan Mitmaitri (Sai Mai, On Nut), Bangkok Emergency Home, Baan Phra Phon, Mercy Centre and
 // Mirror Foundation.
+//
+// The ids starting with d come from the 2026 temporary-shelter roster: only the few schools and
+// campuses there that print their own coordinates are included.
 const bangkokShelters = <Shelter>[
   Shelter(
     id: 't2',
@@ -113,4 +116,33 @@ const bangkokShelters = <Shelter>[
     lng: 100.55335,
     phone: '02-246-8661',
   ),
+  Shelter(
+    id: 'd1',
+    name: 'Chandrakasem Rajabhat University',
+    lat: 13.819084,
+    lng: 100.576455,
+    phone: '094-242-4571',
+  ),
+  Shelter(
+    id: 'd2',
+    name: 'Wat Weluwanaram School',
+    lat: 13.914165,
+    lng: 100.567276,
+    phone: '080-560-2828',
+  ),
+  Shelter(
+    id: 'd3',
+    name: 'Wat Suttharam School',
+    lat: 13.71257,
+    lng: 100.4938,
+    phone: '02-249-4499',
+  ),
+  Shelter(
+    id: 'd4',
+    name: 'Phranakhon Rajabhat University (Phutthavichalai Building)',
+    lat: 13.877699,
+    lng: 100.591621,
+    phone: '02-521-0057',
+  ),
+  Shelter(id: 'd5', name: 'Bang Phai School', lat: 13.75037, lng: 100.35487),
 ];

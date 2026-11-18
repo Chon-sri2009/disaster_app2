@@ -19,9 +19,25 @@ TIMEOUT_S = 20
 MAX_BYTES = 300_000
 
 
+def check_scheme(url):
+    """Links in the feed are untrusted: only http and https may be fetched."""
+    if urlparse(url).scheme.lower() not in ("http", "https"):
+        raise ValueError(f"refusing non-http(s) URL scheme: {urlparse(url).scheme or '(none)'}")
+
+
+class _SchemeCheckedRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        check_scheme(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_SchemeCheckedRedirects)
+
+
 def _get(url):
+    check_scheme(url)
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
+    with _opener.open(req, timeout=TIMEOUT_S) as r:
         return r.read(MAX_BYTES + 1)
 
 
@@ -38,7 +54,7 @@ def capture(feed_url, out_dir, get=_get):
             continue
         try:
             data = get(url)
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
             print(f"warning: skipping {name}: {type(e).__name__}")
             continue
         if len(data) > MAX_BYTES:
@@ -53,4 +69,9 @@ def capture(feed_url, out_dir, get=_get):
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         sys.exit(__doc__)
-    capture(sys.argv[1], sys.argv[2])
+    try:
+        capture(sys.argv[1], sys.argv[2])
+    except ValueError as e:
+        sys.exit(f"error: {e}")
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        sys.exit(f"error: could not fetch the feed: {type(e).__name__}")

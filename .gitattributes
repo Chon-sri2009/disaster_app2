@@ -2,3 +2,5 @@
 *.png binary
 *.pmtiles binary
 *.ttf binary
+
+backend/fixtures/cap/** -text

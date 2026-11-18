@@ -1,7 +1,8 @@
 # TMD CAP feed: what TMD actually fills
 
 Captured 2026-11-18 (one day of capture, not two weeks) with `backend/capture_cap.py`
-from the live feeds. Fixtures are real, unmodified files in `backend/fixtures/cap/`.
+from the live feeds. Fixtures are real, unmodified files in `backend/fixtures/cap/`, stored as raw bytes
+(BOM and CRLF kept) via `backend/fixtures/cap/** -text` in `.gitattributes`.
 The feed's copyright element says "public domain".
 
 ## Feeds

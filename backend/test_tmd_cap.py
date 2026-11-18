@@ -281,7 +281,10 @@ class ParseCapBehaviourTest(unittest.TestCase):
         good = "13.7,100.5 13.7,100.6 13.8,100.6"
         for bad in ("nan,100.5 13.7,100.6 13.8,100.6", "inf,100.5 13.7,100.6 13.8,100.6",
                     "13.7,100.5,0 13.7,100.6 13.8,100.6", "13.7 100.5 13.7,100.6 13.8,100.6",
-                    "13.7,100.5 13.7,100.6", ""):
+                    "13.7,100.5 13.7,100.6", "",
+                    # axis-swapped (lon,lat) ring: "latitude" 100.5 is out of range
+                    "100.5,13.7 100.6,13.7 100.6,13.8",
+                    "13.7,180.5 13.7,100.6 13.8,100.6"):
             with self.subTest(bad=bad):
                 a = tmd_cap.parse_cap(cap(info("Severe", polygons=[bad, good])))
                 self.assertEqual(a["polygons"], [[[100.5, 13.7], [100.6, 13.7], [100.6, 13.8]]])

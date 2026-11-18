@@ -73,6 +73,10 @@ def _ring(text):
         # NaN/inf parse as floats but are not places (and not valid JSON).
         if not (math.isfinite(lat) and math.isfinite(lon)):
             return None
+        # Out of range means not a place. Thai longitudes (97-106) exceed 90, so this
+        # also catches a ring sent as lon,lat instead of lat,lon.
+        if abs(lat) > 90 or abs(lon) > 180:
+            return None
         ring.append([lon, lat])
     return ring if len(ring) >= 3 else None
 

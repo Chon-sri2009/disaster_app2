@@ -3,6 +3,7 @@
 POST /ingest    signed reading from a node (HMAC-SHA256 of the raw body, per-device key)
 GET  /snapshot  latest state of every station, for the app
 GET  /health    liveness
+GET  /alerts    official TMD alerts snapshot (only with --tmd-feed; 503 until the first good poll)
 GET  /flood-recurrence?lat=&lng=  GISTDA flood-history record for a point (needs GISTDA_API_KEY)
 
 Rules this server enforces (the device is not trusted):
@@ -13,6 +14,8 @@ Rules this server enforces (the device is not trusted):
     "unknown". It is never reported as "safe".
   * a reading is an OBSERVATION from a community sensor. This server never
     raises an area alert and never says "evacuate".
+  * GET /alerts is the official TMD data, relayed unchanged: this server never
+    creates or raises an alert itself.
 
 No TLS here: keep it on a LAN, or put a TLS reverse proxy in front of it.
 """
@@ -28,7 +31,9 @@ import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import capture_cap
 import gistda
+import tmd_poller
 
 LABEL = "Community sensor, not an official gauge"
 MIN_VALID_CM, MAX_VALID_CM = 25.0, 450.0
@@ -252,14 +257,15 @@ class Store:
 
 
 # ------------------------------------------------------------------ HTTP
-def make_handler(store):
+def make_handler(store, poller=None):
     class Handler(BaseHTTPRequestHandler):
         timeout = 10  # a client that stalls mid-request is dropped, not held forever
 
-        def _send(self, code, obj):
-            body = json.dumps(obj).encode()
+        def _send(self, code, obj, raw=None):
+            # raw: already-serialized JSON text (may hold raw Thai), sent as UTF-8
+            body = (json.dumps(obj) if raw is None else raw).encode("utf-8")
             self.send_response(code)
-            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
@@ -272,6 +278,12 @@ def make_handler(store):
                 self._send(200, store.snapshot())
             elif url.path == "/flood-recurrence":
                 self._send(*flood_history(urllib.parse.parse_qs(url.query)))
+            elif url.path == "/alerts" and poller is not None:
+                text = poller.snapshot_json()
+                if "generatedAt" in json.loads(text):
+                    self._send(200, None, raw=text)
+                else:  # never fetched: must not read as a fresh empty snapshot
+                    self._send(503, {"error": "no alert data yet"})
             elif self.path == "/health":
                 self._send(200, {"ok": True})
             else:
@@ -325,18 +337,38 @@ def flood_history(query, lookup=gistda.flood_recurrence):
     return 200, body
 
 
+def check_feed_urls(urls):
+    """--tmd-feed values: http(s) only. Raises ValueError otherwise."""
+    for u in urls:
+        capture_cap.check_scheme(u)
+    return list(urls)
+
+
+def start_poller(feed_urls):
+    poller = tmd_poller.Poller(feed_urls, tmd_poller.fetch_text, lambda: datetime.now(timezone.utc))
+    threading.Thread(target=poller.run_forever, daemon=True).start()  # first poll runs at once
+    return poller
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--config", default="stations.json")
     ap.add_argument("--db", default="sensors.db")
     ap.add_argument("--host", default="0.0.0.0")
     ap.add_argument("--port", type=int, default=8080)
+    ap.add_argument("--tmd-feed", action="append", default=[], metavar="URL",
+                    help="TMD CAP feed URL (repeatable); enables GET /alerts")
     a = ap.parse_args()
+    try:
+        feeds = check_feed_urls(a.tmd_feed)
+    except ValueError as e:
+        ap.error(f"--tmd-feed: {e}")
     with open(a.config, encoding="utf-8") as f:
         stations = json.load(f)
     store = Store(stations, a.db)
     print(f"Listening on http://{a.host}:{a.port}  (no TLS: LAN only)")
-    ThreadingHTTPServer((a.host, a.port), make_handler(store)).serve_forever()
+    poller = start_poller(feeds) if feeds else None
+    ThreadingHTTPServer((a.host, a.port), make_handler(store, poller)).serve_forever()
 
 
 if __name__ == "__main__":

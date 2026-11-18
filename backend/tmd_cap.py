@@ -13,7 +13,7 @@ raises. Field quirks of the real feed are recorded in docs/CAP_FIELDS.md.
 import math
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 CAP_NS = "urn:oasis:names:tc:emergency:cap:1.2"
 _NS = {"cap": CAP_NS}
@@ -188,6 +188,73 @@ def _parse_cap(xml_text):
         "expires": expires,
         "references": _references(root.findtext("cap:references", namespaces=_NS)),
         "polygons": polygons,
+    }
+
+
+def merge_languages(alerts):
+    """Fold the English and Thai files of one alert (same id) into one alert.
+    Inputs are not mutated: the poller keeps them cached across polls."""
+    merged = {}  # dicts keep insertion order, so output follows first appearance
+    for a in alerts:
+        m = merged.get(a["id"])
+        if m is None:
+            merged[a["id"]] = {**a, "headline": dict(a["headline"]),
+                               "references": list(a["references"]),
+                               "polygons": list(a["polygons"])}
+            continue
+        for lang, text in a["headline"].items():
+            m["headline"].setdefault(lang, text)
+        if _LEVEL_RANK.get(a["level"], 0) > _LEVEL_RANK.get(m["level"], 0):
+            m["level"] = a["level"]
+        # Latest expiry: the alert stays up while either language says it is in force.
+        if a["expires"] and (m["expires"] is None or a["expires"] > m["expires"]):
+            m["expires"] = a["expires"]
+        m["sent"] = min(m["sent"], a["sent"])
+        m["references"] += [r for r in a["references"] if r not in m["references"]]
+        m["polygons"] += [p for p in a["polygons"] if p not in m["polygons"]]
+    return list(merged.values())
+
+
+KEEP_AFTER_EXPIRY = timedelta(hours=24)
+_UTC_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def _utc_text(t):
+    return t.astimezone(timezone.utc).strftime(_UTC_FORMAT)
+
+
+def _kept(alerts, now):
+    """Alerts still worth serving: expired at most 24 h ago, or (no expiry) sent at most
+    24 h ago. An Update/Cancel past its own window is kept while anything it references
+    is kept: the app hides the old alert only while the message that cancels or replaces
+    it is in the snapshot, so pruning it would resurrect the old alert. Repeated to a
+    fixed point for chains (Cancel -> Update -> Alert). Same-format UTC strings compare
+    correctly as text."""
+    cutoff = _utc_text(now - KEEP_AFTER_EXPIRY)
+    kept = [a for a in alerts if (a["expires"] or a["sent"]) >= cutoff]
+    kept_ids = {a["id"] for a in kept}
+    changed = True
+    while changed:
+        changed = False
+        for a in alerts:
+            if a["id"] not in kept_ids and a["msgType"] in ("Update", "Cancel") \
+                    and kept_ids.intersection(a["references"]):
+                kept.append(a)
+                kept_ids.add(a["id"])
+                changed = True
+    return kept
+
+
+def build_snapshot(alerts, now):
+    """Parsed (and merged) alerts -> the snapshot the app reads. `now` must be aware."""
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware")  # guessing a zone shifts every age
+    kept = sorted(_kept(alerts, now), key=lambda a: (a["sent"], a["id"]), reverse=True)
+    return {
+        "generatedAt": _utc_text(now),
+        "alerts": kept,
+        # Visible count of alerts no area can match, so a gap is not silent.
+        "noPolygon": sum(1 for a in kept if not a["polygons"]),
     }
 
 

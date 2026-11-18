@@ -383,11 +383,11 @@ Owner go-ahead 2026-11-18 ("develop the app in phase B"); owner chose "assistant
 - Consumes: `OfficialAlert`, `AlertRules.visible`.
 - Produces: `AlertService.history` (newest first, at most 50, entries older than 30 days dropped): every alert that was visible at some refresh and later is not (expired, cancelled or replaced), stored as a compact record (id, level, headlines, sender, sent, expires, `areaCodes`; **no polygons**, to keep storage small) with an `endedAt` time and a reason word "Expired" / "Cancelled" / "Replaced". The ids visible at the last refresh are persisted, so \"was visible, now is not\" survives a restart. History never feeds `levelAt`, `visibleAlerts` or Home's level. Offline use works from storage.
 
-- [ ] **Step 1: Failing tests:** an alert visible at refresh 1 and cancelled at refresh 2 appears in history as "Cancelled"; expired alert appears as "Expired"; history is capped at 50 and pruned at 30 days; history survives a restart (storage round-trip); history alerts never appear in `visibleAlerts`; a stale or empty snapshot does not add history entries by itself.
-- [ ] **Step 2: Run** `flutter test test/alert_history_test.dart`. Expected: FAIL.
-- [ ] **Step 3: Implement** history recording inside `_apply`, plus the screen (rows reuse the detail screen from Task 10).
-- [ ] **Step 4: Run** analyze and the CI test set. Expected: clean, PASS.
-- [ ] **Step 5: Commit** `feat(app): alert history`.
+- [x] **Step 1: Failing tests:** an alert visible at refresh 1 and cancelled at refresh 2 appears in history as "Cancelled"; expired alert appears as "Expired"; history is capped at 50 and pruned at 30 days; history survives a restart (storage round-trip); history alerts never appear in `visibleAlerts`; a stale or empty snapshot does not add history entries by itself.
+- [x] **Step 2: Run** `flutter test test/alert_history_test.dart`. Expected: FAIL.
+- [x] **Step 3: Implement** history recording inside `_apply`, plus the screen (rows reuse the detail screen from Task 10).
+- [x] **Step 4: Run** analyze and the CI test set. Expected: clean, PASS.
+- [x] **Step 5: Commit** `feat(app): alert history`.
 
 **Phase B done when:** a province-only TMD alert raises the level for people inside that province and not elsewhere; each notice says whether it is in your area; a notice opens to a detail screen; ended alerts appear in history; analyze and tests green.
 

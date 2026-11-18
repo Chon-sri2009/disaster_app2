@@ -21,6 +21,7 @@ import '../widgets/soft_ui.dart';
 import '../widgets/sos_hold_button.dart';
 import '../widgets/warning_banner.dart';
 import 'alert_detail_screen.dart';
+import 'alert_history_screen.dart';
 import 'calls_screen.dart';
 import 'settings_screen.dart';
 
@@ -733,6 +734,21 @@ class _OfficialAlerts extends StatelessWidget {
             );
           }
         }
+        children.add(const Divider());
+        children.add(
+          AccentRow(
+            // Past notices only; opens the record (min 48 dp tall, set by AccentRow).
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    AlertHistoryScreen(alerts: alerts, provinces: provinces),
+              ),
+            ),
+            leading: const Icon(Icons.history),
+            // DRAFT wording, owner to approve.
+            title: context.tr(th: 'ประวัติประกาศ', en: 'Alert history'),
+          ),
+        );
         return Padding(
           padding: const EdgeInsets.only(top: AppSpace.md),
           child: SoftCard(

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../models/alert_history_entry.dart';
 import '../models/alert_level.dart';
 import '../models/official_alert.dart';
 import 'alert_rules.dart';
@@ -20,6 +21,7 @@ class AlertService extends ChangeNotifier {
     DateTime Function()? clock,
   }) : _fetch = fetcher ?? httpGetText,
        _clock = clock ?? DateTime.now {
+    _history = _loadHistory();
     final cached = _storage.snapshot;
     if (cached != null) {
       try {
@@ -41,8 +43,18 @@ class AlertService extends ChangeNotifier {
   List<OfficialAlert> _alerts = const [];
   DateTime? _fetchedAt;
   int _skippedFiles = 0;
+  late List<HistoryEntry> _history;
   Timer? _timer;
   bool _busy = false;
+
+  // Notices that were shown and have ended, newest first. Read-only record for the history
+  // screen: it must never feed visibleAlerts, levelAt or Home's level.
+  List<HistoryEntry> get history => List.unmodifiable(_history);
+
+  static const maxHistory = 50;
+  static const historyKeep = Duration(days: 30);
+  // A notice that vanished with no proof it ended is followed this long, then forgotten.
+  static const unprovenKeep = Duration(days: 7);
 
   bool get hasSnapshot => _fetchedAt != null;
   // The time of the DATA: when the backend built the snapshot, not when the phone downloaded it.
@@ -60,12 +72,13 @@ class AlertService extends ChangeNotifier {
       AlertRules.visible(_alerts, _clock().toUtc());
 
   // [provinceCode] is the user's province, or null when unknown (then codes never match).
-  AlertLevel levelAt(LatLng point, {String? provinceCode}) => AlertRules.levelAt(
-    _alerts,
-    point,
-    _clock().toUtc(),
-    provinceCode: provinceCode,
-  );
+  AlertLevel levelAt(LatLng point, {String? provinceCode}) =>
+      AlertRules.levelAt(
+        _alerts,
+        point,
+        _clock().toUtc(),
+        provinceCode: provinceCode,
+      );
 
   // Re-downloads every [every] while the app runs; a refresh still running is skipped.
   void startAutoRefresh({Duration every = const Duration(minutes: 2)}) {
@@ -133,6 +146,101 @@ class AlertService extends ChangeNotifier {
     _alerts = alerts;
     _fetchedAt = time;
     _skippedFiles = skipped is int && skipped > 0 ? skipped : 0;
+    try {
+      _recordEnded(alerts);
+    } catch (_) {
+      // History is a convenience; it must never break the alerts themselves.
+    }
     notifyListeners();
+  }
+
+  List<HistoryEntry> _loadHistory() {
+    final out = <HistoryEntry>[];
+    for (final j in _storage.alertHistory) {
+      try {
+        out.add(HistoryEntry.fromJson(j));
+      } catch (_) {
+        // Skip one bad entry, keep the rest.
+      }
+    }
+    return out;
+  }
+
+  // Compares the notices seen as visible so far with this snapshot. A notice is recorded as
+  // ended only with proof: a Cancel or Update in the snapshot, or its expiry time passed.
+  // A missing notice alone proves nothing (a partial or stale list can omit it).
+  void _recordEnded(List<OfficialAlert> alerts) {
+    final now = _clock().toUtc();
+    final visibleNow = AlertRules.visible(alerts, now);
+    final visibleIds = {for (final a in visibleNow) a.id};
+    final cancelled = <String>{};
+    final replaced = <String>{};
+    for (final a in alerts) {
+      if (a.status != 'Actual') continue; // Test or Exercise proves nothing
+      if (a.msgType == 'Cancel') cancelled.addAll(a.references);
+      if (a.msgType == 'Update') replaced.addAll(a.references);
+    }
+
+    final tracked = <AlertRecord>[];
+    for (final j in _storage.trackedAlerts) {
+      try {
+        tracked.add(AlertRecord.fromJson(j));
+      } catch (_) {
+        // Skip one bad record.
+      }
+    }
+
+    final keep = <String, AlertRecord>{};
+    final ended = <HistoryEntry>[];
+    for (final r in tracked) {
+      if (visibleIds.contains(r.id)) continue;
+      // Some files could not be read: nothing may be ended by absence this round.
+      if (_skippedFiles > 0) {
+        keep[r.id] = r;
+        continue;
+      }
+      EndReason? reason;
+      var endedAt = now;
+      if (cancelled.contains(r.id)) {
+        reason = EndReason.cancelled;
+      } else if (replaced.contains(r.id)) {
+        reason = EndReason.replaced;
+      } else if (!now.isBefore(r.effectiveExpiry)) {
+        reason = EndReason.expired;
+        endedAt = r.effectiveExpiry;
+      }
+      if (reason != null) {
+        ended.add(HistoryEntry(record: r, endedAt: endedAt, reason: reason));
+      } else {
+        final since = r.missingSince ?? now;
+        if (now.difference(since) <= unprovenKeep) {
+          keep[r.id] = r.withMissingSince(since);
+        }
+      }
+    }
+    for (final a in visibleNow) {
+      keep[a.id] = AlertRecord.of(a);
+    }
+
+    final known = {for (final e in _history) e.record.id};
+    final merged = [
+      ..._history,
+      for (final e in ended)
+        if (known.add(e.record.id)) e,
+    ]..removeWhere((e) => now.difference(e.endedAt) > historyKeep);
+    merged.sort((x, y) => y.endedAt.compareTo(x.endedAt));
+    final next = merged.take(maxHistory).toList();
+
+    final changed =
+        next.length != _history.length ||
+        [for (final e in next) e.record.id].join() !=
+            [for (final e in _history) e.record.id].join();
+    _history = next;
+    unawaited(
+      _storage.saveTrackedAlerts([for (final r in keep.values) r.toJson()]),
+    );
+    if (changed || ended.isNotEmpty) {
+      unawaited(_storage.saveAlertHistory([for (final e in next) e.toJson()]));
+    }
   }
 }

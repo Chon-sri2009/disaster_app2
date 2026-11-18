@@ -14,6 +14,7 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = context.tokens;
     final disclaimer = [
       context.tr(
         th: 'แอปนี้ไม่ใช่ช่องทางแจ้งเตือนภัยอย่างเป็นทางการของรัฐ',
@@ -100,37 +101,64 @@ class AboutScreen extends StatelessWidget {
               SectionLabel(context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer')),
               SoftCard(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final line in disclaimer)
+                    // The first line is the one that matters most, so it leads as a title.
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                      child: Text(
+                        disclaimer.first,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    for (final line in disclaimer.skip(1))
                       Padding(
                         padding: const EdgeInsets.only(bottom: AppSpace.sm),
                         child: Text(line, style: theme.textTheme.bodyLarge),
                       ),
-                    Text(
-                      context.tr(
-                        th: 'ในเหตุฉุกเฉิน โทร $numbers',
-                        en: 'In an emergency call $numbers.',
+                    const SizedBox(height: AppSpace.xs),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpace.md),
+                      decoration: BoxDecoration(
+                        color: t.errorBg,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      style: theme.textTheme.titleMedium,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.call, color: t.dangerInk),
+                          const SizedBox(width: AppSpace.sm + AppSpace.xs),
+                          Expanded(
+                            child: Text(
+                              context.tr(
+                                th: 'ในเหตุฉุกเฉิน โทร $numbers',
+                                en: 'In an emergency call $numbers.',
+                              ),
+                              style: theme.textTheme.titleSmall,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
               SectionLabel(context.tr(th: 'แหล่งข้อมูล', en: 'Data sources')),
-              for (final s in sources)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                  child: SoftCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(s.$1, style: theme.textTheme.titleSmall),
-                        Text(s.$2, style: theme.textTheme.bodySmall),
-                      ],
-                    ),
-                  ),
+              SoftCard(
+                child: Column(
+                  children: [
+                    for (final (i, s) in sources.indexed) ...[
+                      if (i > 0) const Divider(),
+                      AccentRow(
+                        // The build's own data is the one caveat; it gets the quiet offline tint.
+                        accent: i == sources.length - 1 ? t.inkMuted : t.brand,
+                        title: s.$1,
+                        subtitle: s.$2,
+                      ),
+                    ],
+                  ],
                 ),
+              ),
             ],
           ),
         ),

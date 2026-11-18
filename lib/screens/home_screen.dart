@@ -442,13 +442,14 @@ class _QuickCalls extends StatelessWidget {
             inCard: true,
           ),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final n in EmergencyNumbers.sos)
-                Flexible(
+                Expanded(
                   child: RoundChip(
                     icon: emergencyIcon(n),
                     label: n.number,
+                    caption: context.serviceName(n),
                     semanticLabel: context.tr(
                       th: 'โทร ${n.number} ${context.serviceName(n)}',
                       en: 'Call ${n.number}, ${context.serviceName(n)}',

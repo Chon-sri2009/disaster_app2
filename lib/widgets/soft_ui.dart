@@ -412,6 +412,7 @@ class RoundChip extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.caption,
     this.semanticLabel,
     this.color,
     this.onColor,
@@ -419,6 +420,9 @@ class RoundChip extends StatelessWidget {
 
   final IconData icon;
   final String label;
+
+  // A second, smaller line under the label (what the number is).
+  final String? caption;
   final VoidCallback? onTap;
   final String? semanticLabel;
   final Color? color;
@@ -454,8 +458,18 @@ class RoundChip extends StatelessWidget {
               Text(
                 label,
                 maxLines: 1,
-                style: Theme.of(context).textTheme.labelMedium,
+                style: Theme.of(context).textTheme.titleSmall,
               ),
+              if (caption != null)
+                Text(
+                  caption!,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: t.inkMuted,
+                  ),
+                ),
             ],
           ),
         ),

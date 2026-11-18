@@ -3,6 +3,9 @@ import 'package:latlong2/latlong.dart';
 import '../models/alert_level.dart';
 import '../models/official_alert.dart';
 
+// Declared order is the sort order on Home: yours first, unknown next, other areas last.
+enum AlertArea { inYourArea, unknown, otherAreas }
+
 // Pure rules that decide which alerts a person may see (plan 7.2, 10.4).
 abstract final class AlertRules {
   // Only Actual alerts, not expired, not cancelled or replaced by a later Actual message.
@@ -49,6 +52,22 @@ abstract final class AlertRules {
       return a.polygons.any((ring) => contains(ring, point));
     }
     return provinceCode != null && a.areaCodes.contains(provinceCode);
+  }
+
+  // The area tag of a notice, decided by [matches] so the tag and the level cannot disagree.
+  // "Other areas" is said only when we can tell: a polygon always can; a province code list
+  // cannot be judged without the user's province. Then the honest answer is unknown.
+  static AlertArea areaOf(
+    OfficialAlert a,
+    LatLng? point,
+    String? provinceCode,
+  ) {
+    if (point == null) return AlertArea.unknown;
+    if (matches(a, point, provinceCode)) return AlertArea.inYourArea;
+    if (a.polygons.isNotEmpty || provinceCode != null) {
+      return AlertArea.otherAreas;
+    }
+    return AlertArea.unknown;
   }
 
   // The level Home shows: the worse of the sensor level and an official alert at the user's

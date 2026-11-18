@@ -11,6 +11,7 @@ import '../services/alert_service.dart';
 import '../services/emergency_launcher.dart';
 import '../services/location_service.dart';
 import '../services/nearby.dart';
+import '../services/province_locator.dart';
 import '../services/sensor_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
@@ -31,6 +32,7 @@ class HomeScreen extends StatefulWidget {
     required this.location,
     required this.storage,
     this.alerts,
+    this.provinces,
     this.onOpenMap,
   });
 
@@ -38,6 +40,8 @@ class HomeScreen extends StatefulWidget {
   final LocationService location;
   final StorageService storage;
   final AlertService? alerts;
+  // Null until the boundary file is loaded (or if it fails): the province is then unknown.
+  final ProvinceBoundaries? provinces;
   final VoidCallback? onOpenMap;
 
   @override
@@ -125,6 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     widget.sensors,
                     widget.alerts,
                     widget.storage,
+                    provinces: widget.provinces,
                   ).level;
                   // At warning and danger the whole band takes the tier color.
                   final loud =
@@ -161,6 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       sensors: widget.sensors,
                       alerts: widget.alerts,
                       storage: widget.storage,
+                      provinces: widget.provinces,
                       onOpenMap: widget.onOpenMap,
                     ),
                   ),
@@ -179,11 +185,12 @@ class _HomeScreenState extends State<HomeScreen> {
 ({AlertLevel? level, bool fromOfficial}) homeLevel(
   SensorService sensors,
   AlertService? alerts,
-  StorageService storage,
-) {
+  StorageService storage, {
+  ProvinceBoundaries? provinces,
+}) {
   final LatLng? p = storage.lastPosition;
   final official = alerts != null && alerts.hasSnapshot && p != null
-      ? alerts.levelAt(p)
+      ? alerts.levelAt(p, provinceCode: provinces?.codeAt(p))
       : null;
   final level = AlertRules.combine(sensors.level, official);
   final fromOfficial =
@@ -197,12 +204,14 @@ class _Board extends StatelessWidget {
     required this.sensors,
     required this.storage,
     this.alerts,
+    this.provinces,
     this.onOpenMap,
   });
 
   final SensorService sensors;
   final StorageService storage;
   final AlertService? alerts;
+  final ProvinceBoundaries? provinces;
   final VoidCallback? onOpenMap;
 
   @override
@@ -212,11 +221,21 @@ class _Board extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _LevelCard(sensors: sensors, alerts: alerts, storage: storage),
+          _LevelCard(
+            sensors: sensors,
+            alerts: alerts,
+            storage: storage,
+            provinces: provinces,
+          ),
           const SizedBox(height: AppSpace.md),
           const _QuickCalls(),
           _NearestShelter(storage: storage, onOpenMap: onOpenMap),
-          if (alerts != null) _OfficialAlerts(alerts: alerts!),
+          if (alerts != null)
+            _OfficialAlerts(
+              alerts: alerts!,
+              storage: storage,
+              provinces: provinces,
+            ),
         ],
       ),
     );
@@ -227,11 +246,17 @@ class _Board extends StatelessWidget {
 // 4-step meter and where the level came from. At warning and danger the whole card fills with
 // the tier color; below that it is a white card with tier-colored marks.
 class _LevelCard extends StatelessWidget {
-  const _LevelCard({required this.sensors, required this.storage, this.alerts});
+  const _LevelCard({
+    required this.sensors,
+    required this.storage,
+    this.alerts,
+    this.provinces,
+  });
 
   final SensorService sensors;
   final StorageService storage;
   final AlertService? alerts;
+  final ProvinceBoundaries? provinces;
 
   @override
   Widget build(BuildContext context) {
@@ -239,7 +264,12 @@ class _LevelCard extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([sensors, ?alerts]),
       builder: (context, _) {
-        final (:level, :fromOfficial) = homeLevel(sensors, alerts, storage);
+        final (:level, :fromOfficial) = homeLevel(
+          sensors,
+          alerts,
+          storage,
+          provinces: provinces,
+        );
         final p = storage.lastPosition;
         final t = context.tokens;
         final style = level == null ? null : t.styleFor(level);
@@ -568,16 +598,22 @@ class _NearestShelter extends StatelessWidget {
 // Official notices with level, sender and time. With no backend yet it says so plainly instead
 // of showing an invented warning.
 class _OfficialAlerts extends StatelessWidget {
-  const _OfficialAlerts({required this.alerts});
+  const _OfficialAlerts({
+    required this.alerts,
+    required this.storage,
+    this.provinces,
+  });
 
   final AlertService alerts;
+  final StorageService storage;
+  final ProvinceBoundaries? provinces;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = context.tokens;
     return ListenableBuilder(
-      listenable: alerts,
+      listenable: Listenable.merge([alerts, storage]),
       builder: (context, _) {
         final at = alerts.fetchedAt;
         final children = <Widget>[
@@ -628,8 +664,21 @@ class _OfficialAlerts extends StatelessWidget {
               ),
             );
           }
-          for (final (i, a) in shown.indexed) {
+          // Same inputs as the level above, so a notice tagged "in your area" is the one that
+          // raised the level. Yours first, unknown next, other areas last; nothing is hidden.
+          final point = storage.lastPosition;
+          final code = point == null ? null : provinces?.codeAt(point);
+          final ranked =
+              [
+                for (final (n, a) in shown.indexed)
+                  (n, a, AlertRules.areaOf(a, point, code)),
+              ]..sort((x, y) {
+                final byArea = x.$3.index.compareTo(y.$3.index);
+                return byArea != 0 ? byArea : x.$1.compareTo(y.$1);
+              });
+          for (final (i, (_, a, area)) in ranked.indexed) {
             final style = t.styleFor(a.level);
+            final tag = _areaTag(context, area);
             final headline =
                 a.headline[context.isThai ? 'th' : 'en'] ??
                 a.headline['th'] ??
@@ -640,18 +689,32 @@ class _OfficialAlerts extends StatelessWidget {
                 container: true,
                 label:
                     '${context.levelLabel(a.level)}. $headline. '
-                    '${a.sender}, ${context.stamp(a.sent)}',
+                    '${a.sender}, ${context.stamp(a.sent)}. ${tag.word}',
                 child: ExcludeSemantics(
-                  child: AccentRow(
-                    accent: style.color,
-                    title: headline,
-                    subtitle: '${a.sender} · ${context.stamp(a.sent)}',
-                    trailing: StatusPill(
-                      context.levelLabel(a.level),
-                      icon: style.icon,
-                      color: style.color,
-                      onColor: style.onColor,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AccentRow(
+                        accent: style.color,
+                        title: headline,
+                        subtitle: '${a.sender} · ${context.stamp(a.sent)}',
+                        trailing: StatusPill(
+                          context.levelLabel(a.level),
+                          icon: style.icon,
+                          color: style.color,
+                          onColor: style.onColor,
+                        ),
+                      ),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: StatusPill(
+                          tag.word,
+                          icon: tag.icon,
+                          color: tag.color,
+                          onColor: tag.onColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -670,6 +733,38 @@ class _OfficialAlerts extends StatelessWidget {
       },
     );
   }
+}
+
+// Icon, word and color of a notice's area tag; the word and icon carry the meaning, the color
+// only backs them up.
+({String word, IconData icon, Color? color, Color? onColor}) _areaTag(
+  BuildContext context,
+  AlertArea area,
+) {
+  final t = context.tokens;
+  return switch (area) {
+    AlertArea.inYourArea => (
+      // DRAFT wording, owner to approve.
+      word: context.tr(th: 'ในพื้นที่ของคุณ', en: 'In your area'),
+      icon: Icons.place,
+      color: null,
+      onColor: null,
+    ),
+    AlertArea.otherAreas => (
+      // DRAFT wording, owner to approve.
+      word: context.tr(th: 'พื้นที่อื่น', en: 'Other areas'),
+      icon: Icons.public,
+      color: t.ground,
+      onColor: t.inkMuted,
+    ),
+    AlertArea.unknown => (
+      // DRAFT wording, owner to approve.
+      word: context.tr(th: 'ไม่ทราบพื้นที่', en: 'Area unknown'),
+      icon: Icons.location_off,
+      color: t.offlineBg,
+      onColor: t.ink,
+    ),
+  };
 }
 
 // What opens after a confirmed SOS: calling comes first, the ready-made message second.

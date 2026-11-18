@@ -350,11 +350,11 @@ Owner go-ahead 2026-11-18 ("develop the app in phase B"); owner chose "assistant
 - Consumes: Task 8 (`ProvinceBoundaries.codeAt`, `AlertRules.levelAt(..., provinceCode:)`), `OfficialAlert.areaCodes`.
 - Produces: each notice row shows an area tag with icon **and** word: "In your area" / "Other areas" / "Area unknown" (DRAFT wording, Thai first, via `context.tr`). Notices in your area sort first; nothing is hidden. Home's level uses the province of the stored location. The tag comes from `AlertRules.matches`, the same function that drives the level, so tag and level cannot disagree. The locator is optional (nullable) so existing widget tests keep working; the bundle loads lazily and never delays the map startup gate. Tests inject a small `ProvinceBoundaries.parse(...)` fixture, not the asset.
 
-- [ ] **Step 1: Failing widget tests** (Thai default, also 1.5× text scale): a Warning geocode-only alert for the test location's province → Home shows Warning and the tag "In your area"; same alert for another province → Home level not Warning and tag "Other areas"; no location set → tag "Area unknown" and level unchanged.
-- [ ] **Step 2: Run** `flutter test test/widget_test.dart`. Expected: FAIL.
-- [ ] **Step 3: Implement.** Mark all new strings `// DRAFT` for the owner.
-- [ ] **Step 4: Run** `flutter analyze` and the CI test set. Expected: clean, PASS.
-- [ ] **Step 5: Commit** `feat(app): province-aware notices on Home`.
+- [x] **Step 1: Failing widget tests** (Thai default, also 1.5× text scale): a Warning geocode-only alert for the test location's province → Home shows Warning and the tag "In your area"; same alert for another province → Home level not Warning and tag "Other areas"; no location set → tag "Area unknown" and level unchanged.
+- [x] **Step 2: Run** `flutter test test/widget_test.dart`. Expected: FAIL.
+- [x] **Step 3: Implement.** Mark all new strings `// DRAFT` for the owner.
+- [x] **Step 4: Run** `flutter analyze` and the CI test set. Expected: clean, PASS.
+- [x] **Step 5: Commit** `feat(app): province-aware notices on Home`.
 
 ### Task 10: Alert detail screen
 

@@ -13,6 +13,7 @@ import 'services/alert_service.dart';
 import 'services/flood_history_service.dart';
 import 'services/location_service.dart';
 import 'services/offline_map.dart';
+import 'services/province_locator.dart';
 import 'services/sensor_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
@@ -133,6 +134,9 @@ class _AppShellState extends State<AppShell> {
         ..refresh()
         ..startAutoRefresh();
   late final LocationService _location = LocationService(widget.storage);
+  // Read in the background; Home treats the province as unknown until it arrives (or if it
+  // fails), so this never gates the app or the map.
+  late final Future<ProvinceBoundaries> _provinces = ProvinceBoundaries.load();
   int _index = 0;
 
   // Call sits in the middle as a filled brand circle: the most urgent tab after SOS.
@@ -188,12 +192,16 @@ class _AppShellState extends State<AppShell> {
     final body = IndexedStack(
       index: _index,
       children: [
-        HomeScreen(
-          sensors: _sensors,
-          location: _location,
-          alerts: _alerts,
-          storage: widget.storage,
-          onOpenMap: () => setState(() => _index = _mapTab),
+        FutureBuilder<ProvinceBoundaries>(
+          future: _provinces,
+          builder: (context, snap) => HomeScreen(
+            sensors: _sensors,
+            location: _location,
+            alerts: _alerts,
+            storage: widget.storage,
+            provinces: snap.data,
+            onOpenMap: () => setState(() => _index = _mapTab),
+          ),
         ),
         MapScreen(
           storage: widget.storage,

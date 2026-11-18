@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="https://www.tmd.go.th/rss/en/rss-style.xsl"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+  <channel>
+    <atom:link rel="hub" href="//alert-hub.appspot.com" />
+    <atom:link rel="self" href="https://www.tmd.go.th/en/api/xml/CAP" type="application/rss+xml" />
+    <title>Latest alerts from Thai Meteorological Department (TMD)</title>
+    <link>https://www.tmd.go.th/en/api/xml/CAP</link>
+    <description>Latest alerts from Thai Meteorological Department (TMD)</description>
+    <language>en</language>
+    <copyright>public domain</copyright>
+    <pubDate>Wed, 18 Nov 2026 16:45:50 +0700</pubDate>
+    <lastBuildDate>Wed, 18 Nov 2026 16:45:50 +0700</lastBuildDate>
+    <docs>https://cyber.harvard.edu/rss/rss.html</docs>
+    <image>
+      <title>Latest alerts from Thai Meteorological Department (TMD)</title>
+      <url>https://www.tmd.go.th/CustomTheme3/logoes/logo_colorcmyk.png</url>
+      <link>https://www.tmd.go.th/en/api/xml/CAP</link>
+    </image>
+    <item>
+      <title>Heavy Rain</title>
+      <link>https://www.tmd.go.th/uploads/CAP/en/CAPTMD20261118155021_2.xml</link>
+      <description>The northeast moonsoon prevailing over the Gulf and the South is strengthening with more rain and isolated heavy rains in the lower South.  The wind and waves in the Gulf and the Andaman Sea are expected above 2 meters high in thundershowers. </description>
+      <author>info_service@tmd.mail.go.th (Thai Meteorological Department)</author>
+      <guid isPermaLink="false">TMD20261118155021_2-en</guid>
+      <pubDate>Wed, 18 Nov 2026 10:45:00 +0700</pubDate>
+    </item>
+    <item>
+      <title>Heavy Rain</title>
+      <link>https://www.tmd.go.th/uploads/CAP/en/CAPTMD20261118060419_2.xml</link>
+      <description>The moderate to rather strong high-pressure system from China extend to the upper Northeast and the South China Sea is expect to cover the upper country by tonight (18 Nov 2026). Less rain with thundershowers and isolated gusty wind are forecast in the North and western part of the Central. A decrease in temperature with strong wind are forecast in the Northeast. People in the upper country should keep healthy due to changeable weather and beware of thundershowers with gust. Farmers should prevent for crop’s damage. The Eastery wind prevailing over the Gulf and the South is strengthening with more rain and isolated heavy rains in the lower South. </description>
+      <author>info_service@tmd.mail.go.th (Thai Meteorological Department)</author>
+      <guid isPermaLink="false">TMD20261118060419_2-en</guid>
+      <pubDate>Tue, 17 Nov 2026 23:01:00 +0700</pubDate>
+    </item>
+    <item>
+      <title>Heavy Rain</title>
+      <link>https://www.tmd.go.th/uploads/CAP/en/CAPTMD20261117161100_2.xml</link>
+      <description>The moderate to rather strong high-pressure system from China extend to the upper Vietnam is expect to cover 
+the Northeast and the South China Sea by tonight (17 Nov 2026) leading to the easterly wind bring the moisture to the upper country. More thundershowers and isolated gusty wind are forecast in the upper country.
+The Eastery wind prevails over the Gulf and the South with isolated heavy rains in the South. 
+The wind and waves in the Gulf and the Andaman Sea are expected above 2 meters high in thundershowers. 
+In addition, during 19–22 November 2026 more rain with scattered heavy to isolated very heavy rains are forecast in 
+the South. The wind forces the waves in the lower Gulf are expected above 3 meters high in thundershowers. 
+</description>
+      <author>info_service@tmd.mail.go.th (Thai Meteorological Department)</author>
+      <guid isPermaLink="false">TMD20261117161100_2-en</guid>
+      <pubDate>Tue, 17 Nov 2026 09:07:00 +0700</pubDate>
+    </item>
+    <item>
+      <title>Heavy Rain</title>
+      <link>https://www.tmd.go.th/uploads/CAP/en/CAPTMD20261117053453_2.xml</link>
+      <description>The moderate to rather strong high-pressure system from China will extend to upper Thailand and the South China Sea leading to the easterly wind bring the moisture to the upper country. More thundershowers and isolated gusty wind are forecast in the upper country while cool in the morning is possible in the North and the upper Northeast regions.
+The moderate northeast monsoon prevails over the Gulf and the South with isolated heavy rains in the South. 
+The wind and waves in the Gulf and the Andaman Sea are expected above 2 meters high in thundershowers. 
+In addition, during 18–22 November 2026, scattered heavy to isolated very heavy rains are forecast in the South. The wind forces the waves in the lower Gulf are expected above 3 meters high in thundershowers. Thundershowers with gust are forecast over upper Thailand during 17-18  November 2026 then a decrease in temperature with strong wind. 
+</description>
+      <author>info_service@tmd.mail.go.th (Thai Meteorological Department)</author>
+      <guid isPermaLink="false">TMD20261117053453_2-en</guid>
+      <pubDate>Mon, 16 Nov 2026 22:29:00 +0700</pubDate>
+    </item>
+    <item>
+      <title>Heavy Rain</title>
+      <link>https://www.tmd.go.th/uploads/CAP/en/CAPTMD20261116155515_2.xml</link>
+      <description>The moderate northeast monsoon prevails over the Gulf and the South with isolated heavy rains in the South. People in 
+
+The moderate high-pressure system covers the North and the upper Northeast while the easterly wind prevails over 
+the lower Northeast, the East and the Central. Isolated thundershowers are forecast in the upper country while cool with morning fog are possible in the North and the upper Northeast regions. 
+The wind and waves in the Gulf and the Andaman Sea are expected above 2 meters high in thundershowers.
+In addition, during 18–22 November 2026, scattered heavy to isolated very heavy rains are forecast in the South. The wind forces the waves in the lower Gulf are expected above 3 meters high in thundershowers. Thundershowers with gust are forecast over upper Thailand during 17-18  November 2026 then a decrease in temperature with strong wind. 
+</description>
+      <author>info_service@tmd.mail.go.th (Thai Meteorological Department)</author>
+      <guid isPermaLink="false">TMD20261116155515_2-en</guid>
+      <pubDate>Mon, 16 Nov 2026 08:52:00 +0700</pubDate>
+    </item>
+    <item>
+      <title>Heavy Rain</title>
+      <link>https://www.tmd.go.th/uploads/CAP/en/CAPTMD20261116051107_2.xml</link>
+      <description>The moderate high-pressure system covering the upper country and the South China Sea is weakening while the easterly and the southeasterly wind prevail over the upper country. The moderate northeast monsoon prevails over the Gulf and the South. Isolated heavy rains are likely in the South. Isolated rains are forecast over upper Thailand while cool with morning fog are possible in the North and the Northeast regions.
+The wind and waves in the Gulf and the Andaman Sea are expected above 2 meters high in thundershowers. 
+In addition, during 18–22 November 2026, scattered heavy to isolated very heavy rains are forecast in the South. The wind forces the waves in the lower Gulf are expected above 3 meters high in thundershowers. Thundershowers with gust are forecast over upper Thailand during 17-18  November 2026 then a decrease in temperature with strong wind. 
+</description>
+      <author>info_service@tmd.mail.go.th (Thai Meteorological Department)</author>
+      <guid isPermaLink="false">TMD20261116051107_2-en</guid>
+      <pubDate>Sun, 15 Nov 2026 22:04:00 +0700</pubDate>
+    </item>
+  </channel>
+</rss>

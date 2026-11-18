@@ -117,14 +117,18 @@ class AppShell extends StatefulWidget {
 
 // Creates the services once and keeps the selected tab.
 class _AppShellState extends State<AppShell> {
-  // Set at build time: --dart-define=SENSOR_SNAPSHOT_URL=https://host/snapshot
+  // Set at build time: --dart-define=SENSOR_SNAPSHOT_URL=https://host/snapshot and
+  // --dart-define=ALERT_SNAPSHOT_URL=https://host/alerts
   late final SensorService _sensors = SensorService(
     snapshotUrl: const String.fromEnvironment('SENSOR_SNAPSHOT_URL'),
   );
   late final FloodHistoryService _flood = FloodHistoryService(
     snapshotUrl: const String.fromEnvironment('SENSOR_SNAPSHOT_URL'),
   );
-  late final AlertService _alerts = AlertService(widget.storage)..refresh();
+  late final AlertService _alerts = AlertService(
+    widget.storage,
+    snapshotUrl: const String.fromEnvironment('ALERT_SNAPSHOT_URL'),
+  )..refresh();
   late final LocationService _location = LocationService(widget.storage);
   int _index = 0;
 

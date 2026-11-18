@@ -41,6 +41,8 @@ class AlertService extends ChangeNotifier {
   DateTime? _fetchedAt;
 
   bool get hasSnapshot => _fetchedAt != null;
+  // The time of the DATA: when the backend built the snapshot, not when the phone downloaded it.
+  // A dead backend keeps serving its last snapshot, so download time would hide that it is old.
   DateTime? get fetchedAt => _fetchedAt;
   bool get isStale =>
       _fetchedAt == null || _clock().difference(_fetchedAt!) > staleAfter;
@@ -65,13 +67,24 @@ class AlertService extends ChangeNotifier {
     }
   }
 
+  // generatedAt when it is a valid time, else the download time (old caches and backends
+  // without it). A time in the future (clock skew) must not look fresher than now.
+  DateTime _dataTime(Object? generatedAt, DateTime downloaded) {
+    final parsed = generatedAt is String
+        ? DateTime.tryParse(generatedAt)?.toUtc()
+        : null;
+    if (parsed == null) return downloaded;
+    final now = _clock().toUtc();
+    return parsed.isAfter(now) ? now : parsed;
+  }
+
   void _apply(String json, DateTime fetchedAt) {
     final map = jsonDecode(json) as Map<String, dynamic>;
     _alerts = [
       for (final a in map['alerts'] as List)
         OfficialAlert.fromJson(a as Map<String, dynamic>),
     ];
-    _fetchedAt = fetchedAt;
+    _fetchedAt = _dataTime(map['generatedAt'], fetchedAt);
     notifyListeners();
   }
 }

@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:disaster_app2/main.dart';
 import 'package:disaster_app2/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'test_helpers.dart';
@@ -134,6 +137,74 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('Heavy rain'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  const officialSource = 'ประกาศเตือนภัยทางการ ในพื้นที่ล่าสุดของคุณ';
+
+  // A cached snapshot with one TMD warning over lat 13-14, lng 100-101, stamped just now
+  // (the app's real clock is used), plus a phone last seen at [at].
+  Future<void> pumpWithTmdWarning(WidgetTester tester, LatLng at) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.reset);
+    final now = DateTime.now().toUtc();
+    String iso(Duration d) => now.add(d).toIso8601String();
+    final snapshot = jsonEncode({
+      'generatedAt': iso(Duration.zero),
+      'alerts': [
+        {
+          'id': 'tmd-1',
+          'sender': 'TMD',
+          'status': 'Actual',
+          'msgType': 'Alert',
+          'level': 'warning',
+          'headline': {'th': 'ฝนตกหนัก', 'en': 'Heavy rain'},
+          'sent': iso(const Duration(minutes: -10)),
+          'expires': iso(const Duration(hours: 3)),
+          'polygons': [
+            [
+              [100.0, 13.0],
+              [101.0, 13.0],
+              [101.0, 14.0],
+              [100.0, 14.0],
+            ],
+          ],
+        },
+      ],
+      'noPolygon': 0,
+    });
+    SharedPreferences.setMockInitialValues({});
+    final storage = await StorageService.create();
+    await storage.saveSnapshot(snapshot, now);
+    await storage.saveLastPosition(at);
+    await tester.pumpWidget(
+      DisasterApp(storage: storage, loadMap: failingLoadMap),
+    );
+    await tester.pump();
+  }
+
+  testWidgets('Home shows the warning and TMD inside the alert area', (
+    tester,
+  ) async {
+    await pumpWithTmdWarning(tester, LatLng(13.5, 100.5));
+
+    // The level card names the official alert as its source, and the notice shows the issuer.
+    expect(find.text(officialSource), findsOneWidget);
+    expect(find.text('เตือนภัย'), findsWidgets);
+    expect(find.textContaining('TMD'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Home level ignores an alert area far from the phone', (
+    tester,
+  ) async {
+    await pumpWithTmdWarning(tester, LatLng(18.8, 98.9));
+
+    // The notice list still shows the alert; the level card must not take its tier.
+    expect(find.text(officialSource), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
   });

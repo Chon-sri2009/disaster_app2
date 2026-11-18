@@ -21,6 +21,7 @@ Debug builds with no server show clearly labelled demo data. Release builds with
 
 ```bash
 flutter run --dart-define=SENSOR_SNAPSHOT_URL=https://your-host/snapshot
+flutter run --dart-define=ALERT_SNAPSHOT_URL=https://your-host/alerts
 ```
 
 Official TMD alerts: run the backend with the TMD CAP feeds. It serves them unchanged at

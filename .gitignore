@@ -60,3 +60,7 @@ backend/*.db
 android/key.properties
 *.jks
 *.keystore
+
+# Local sensor databases
+sensors.db
+backend/sensors.db

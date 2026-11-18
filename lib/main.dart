@@ -10,6 +10,7 @@ import 'screens/home_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/report_screen.dart';
 import 'services/alert_service.dart';
+import 'services/flood_history_service.dart';
 import 'services/location_service.dart';
 import 'services/offline_map.dart';
 import 'services/sensor_service.dart';
@@ -120,6 +121,9 @@ class _AppShellState extends State<AppShell> {
   late final SensorService _sensors = SensorService(
     snapshotUrl: const String.fromEnvironment('SENSOR_SNAPSHOT_URL'),
   );
+  late final FloodHistoryService _flood = FloodHistoryService(
+    snapshotUrl: const String.fromEnvironment('SENSOR_SNAPSHOT_URL'),
+  );
   late final AlertService _alerts = AlertService(widget.storage)..refresh();
   late final LocationService _location = LocationService(widget.storage);
   int _index = 0;
@@ -187,6 +191,7 @@ class _AppShellState extends State<AppShell> {
         MapScreen(
           storage: widget.storage,
           sensors: _sensors,
+          floodHistory: _flood,
           loadMap: widget.loadMap,
         ),
         CallsScreen(storage: widget.storage),

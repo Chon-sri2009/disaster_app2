@@ -8,6 +8,7 @@ import '../data/mock_data.dart';
 import '../l10n/l10n.dart';
 import '../models/shelter.dart';
 import '../services/emergency_launcher.dart';
+import '../services/flood_history_service.dart';
 import '../services/nearby.dart';
 import '../services/offline_map.dart';
 import '../services/sensor_service.dart';
@@ -17,6 +18,7 @@ import '../widgets/desktop_vector_map.dart';
 import '../widgets/soft_ui.dart';
 import '../widgets/sensor_readings.dart';
 import '../widgets/warning_banner.dart';
+import 'flood_history_card.dart';
 import 'settings_screen.dart';
 
 // Map: the offline Protomaps map, drawn by MapLibre on the GPU, (OpenStreetMap data) with shelter, sensor and "you" markers.
@@ -26,11 +28,13 @@ class MapScreen extends StatefulWidget {
     super.key,
     required this.storage,
     required this.sensors,
+    this.floodHistory,
     this.loadMap = loadBundledBangkokMap,
   });
 
   final StorageService storage;
   final SensorService sensors;
+  final FloodHistoryService? floodHistory;
   final OfflineMapLoader loadMap;
 
   @override
@@ -602,6 +606,11 @@ class _MapScreenState extends State<MapScreen> {
           selected: {_showSensors},
           onSelectionChanged: (v) => setState(() => _showSensors = v.first),
         ),
+        if (widget.floodHistory != null)
+          FloodHistoryCard(
+            service: widget.floodHistory!,
+            storage: widget.storage,
+          ),
         const SizedBox(height: AppSpace.md),
         if (_showSensors)
           SensorReadings(sensors: widget.sensors)

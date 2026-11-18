@@ -3,6 +3,7 @@
 POST /ingest    signed reading from a node (HMAC-SHA256 of the raw body, per-device key)
 GET  /snapshot  latest state of every station, for the app
 GET  /health    liveness
+GET  /flood-recurrence?lat=&lng=  GISTDA flood-history record for a point (needs GISTDA_API_KEY)
 
 Rules this server enforces (the device is not trusted):
   * bad signature -> 401, counter not higher than the last one -> 409 (replay)
@@ -23,8 +24,11 @@ import math
 import sqlite3
 import threading
 import time
+import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import gistda
 
 LABEL = "Community sensor, not an official gauge"
 MIN_VALID_CM, MAX_VALID_CM = 25.0, 450.0
@@ -263,8 +267,11 @@ def make_handler(store):
             self.wfile.write(body)
 
         def do_GET(self):
-            if self.path == "/snapshot":
+            url = urllib.parse.urlsplit(self.path)
+            if url.path == "/snapshot":
                 self._send(200, store.snapshot())
+            elif url.path == "/flood-recurrence":
+                self._send(*flood_history(urllib.parse.parse_qs(url.query)))
             elif self.path == "/health":
                 self._send(200, {"ok": True})
             else:
@@ -286,6 +293,32 @@ def make_handler(store):
             self._send(code, obj)
 
     return Handler
+
+
+def flood_history(query, lookup=gistda.flood_recurrence):
+    """(status, body) for /flood-recurrence. found=false means GISTDA has no record: not "safe"."""
+    try:
+        lat, lng = float(query["lat"][0]), float(query["lng"][0])
+        if not (math.isfinite(lat) and math.isfinite(lng) and -90 <= lat <= 90 and -180 <= lng <= 180):
+            raise ValueError
+    except (KeyError, IndexError, ValueError):
+        return 400, {"error": "lat and lng required"}
+    try:
+        rows = lookup(lat, lng)
+    except gistda.GistdaError:
+        return 503, {"error": "flood history unavailable"}
+    if not rows:
+        return 200, {"found": False, "source": "GISTDA"}
+    r = rows[0]
+    years = [{"year": int(d["year"]), "freq": int(d["freq"])} for d in r.get("detail", [])]
+    return 200, {
+        "found": True,
+        "source": "GISTDA",
+        "subdistrict": r.get("subdistrict_name"),
+        "district": r.get("district_name"),
+        "province": r.get("province_name"),
+        "years": sorted(years, key=lambda y: y["year"]),
+    }
 
 
 def main():

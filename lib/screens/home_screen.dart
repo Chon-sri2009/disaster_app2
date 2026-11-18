@@ -20,6 +20,7 @@ import '../widgets/level_meter.dart';
 import '../widgets/soft_ui.dart';
 import '../widgets/sos_hold_button.dart';
 import '../widgets/warning_banner.dart';
+import 'alert_detail_screen.dart';
 import 'calls_screen.dart';
 import 'settings_screen.dart';
 
@@ -687,6 +688,7 @@ class _OfficialAlerts extends StatelessWidget {
             children.add(
               Semantics(
                 container: true,
+                button: true,
                 label:
                     '${context.levelLabel(a.level)}. $headline. '
                     '${a.sender}, ${context.stamp(a.sent)}. ${tag.word}',
@@ -695,6 +697,16 @@ class _OfficialAlerts extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       AccentRow(
+                        // Opens the full notice (min 48 dp tall, set by AccentRow).
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => AlertDetailScreen(
+                              alert: a,
+                              alerts: alerts,
+                              provinces: provinces,
+                            ),
+                          ),
+                        ),
                         accent: style.color,
                         title: headline,
                         subtitle: '${a.sender} · ${context.stamp(a.sent)}',

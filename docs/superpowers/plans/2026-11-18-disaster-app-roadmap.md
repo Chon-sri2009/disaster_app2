@@ -366,11 +366,11 @@ Owner go-ahead 2026-11-18 ("develop the app in phase B"); owner chose "assistant
 - Consumes: `OfficialAlert`, `ProvinceBoundaries.byCode`, `AlertService.fetchedAt`.
 - Produces: `AlertDetailScreen(alert, alerts, provinces)` showing: level pill (icon+word+colour), full headline in the current language with the other language below, issuer (`sender`), issued time, received/updated time (the snapshot's data time), expiry or the label "no expiry given (shown for 6 hours)", and the affected provinces by Thai and English name (from `areaCodes`; if only polygons, "Area shown on the map"). Footer line: official source, not this app (DRAFT wording).
 
-- [ ] **Step 1: Failing widget tests:** an alert with expiry shows it; without expiry shows the "no expiry given" label; province names appear for known codes and an unknown code shows the raw code; text at 1.5× does not overflow; tap targets ≥ 48 dp.
-- [ ] **Step 2: Run** `flutter test test/alert_detail_test.dart`. Expected: FAIL.
-- [ ] **Step 3: Implement**, all strings via `context.tr`, marked `// DRAFT`.
-- [ ] **Step 4: Run** analyze and the CI test set. Expected: clean, PASS.
-- [ ] **Step 5: Commit** `feat(app): alert detail screen`.
+- [x] **Step 1: Failing widget tests:** an alert with expiry shows it; without expiry shows the "no expiry given" label; province names appear for known codes and an unknown code shows the raw code; text at 1.5× does not overflow; tap targets ≥ 48 dp.
+- [x] **Step 2: Run** `flutter test test/alert_detail_test.dart`. Expected: FAIL.
+- [x] **Step 3: Implement**, all strings via `context.tr`, marked `// DRAFT`.
+- [x] **Step 4: Run** analyze and the CI test set. Expected: clean, PASS.
+- [x] **Step 5: Commit** `feat(app): alert detail screen`.
 
 ### Task 11: Alert history
 

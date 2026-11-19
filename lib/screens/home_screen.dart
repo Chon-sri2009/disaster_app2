@@ -11,6 +11,7 @@ import '../services/alert_service.dart';
 import '../services/emergency_launcher.dart';
 import '../services/location_service.dart';
 import '../services/nearby.dart';
+import '../services/place_lookup.dart';
 import '../services/province_locator.dart';
 import '../services/sensor_service.dart';
 import '../services/storage_service.dart';
@@ -50,56 +51,25 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// Keeps track of whether the SOS is waiting for GPS.
+// Opens the SOS sheet at once; the sheet itself waits for GPS.
 class _HomeScreenState extends State<HomeScreen> {
-  bool _locating = false;
+  // The hold and the screen-reader long-press can both confirm, so open only one sheet.
+  bool _sosOpen = false;
 
-  // Reads GPS, then shows the ready-made help message in a sheet.
   Future<void> _onSos() async {
-    setState(() => _locating = true);
-    final result = await widget.location.getCurrent();
-    if (!mounted) return;
-    setState(() => _locating = false);
-
-    final point = result.point;
-    final reason = result.issue == null
-        ? ''
-        : context.locationError(result.issue!);
-    String? message;
-    if (point != null) {
-      final place = await widget.location.describe(point);
-      if (!mounted) return;
-      final where = context.placeText(place);
-      final lat = point.latitude.toStringAsFixed(6);
-      final lng = point.longitude.toStringAsFixed(6);
-      // Local time plus the UTC offset, so a rescuer in another zone reads the right hour.
-      final now = DateTime.now();
-      final off = now.timeZoneOffset;
-      final hh = off.inHours.abs().toString().padLeft(2, '0');
-      final mm = (off.inMinutes.abs() % 60).toString().padLeft(2, '0');
-      final time =
-          '${now.toString().substring(0, 16)} UTC${off.isNegative ? '-' : '+'}$hh:$mm';
-      // The person reading this may speak either language, so the message carries both.
-      final cached = result.fromCache
-          ? ' (ตำแหน่งที่บันทึกไว้ล่าสุด / last saved position)'
-          : '';
-      message =
-          'SOS! ต้องการความช่วยเหลือ / I need help.\n'
-          'ที่อยู่ / Address: ${where.isEmpty ? '-' : where}$cached\n'
-          'แผนที่ / Map: https://www.google.com/maps?q=$lat,$lng\n'
-          'เวลา / Time: $time';
+    if (_sosOpen) return;
+    _sosOpen = true;
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        useSafeArea: true,
+        builder: (_) => _SosSheet(location: widget.location),
+      );
+    } finally {
+      _sosOpen = false;
     }
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (context) => _SosSheet(
-        message: message,
-        reason: reason,
-        fromCache: result.fromCache,
-      ),
-    );
   }
 
   @override
@@ -108,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, box) {
         final tall = box.maxHeight >= AppSize.sosHeightTallScreen;
         final sos = SosHoldButton(
-          busy: _locating,
+          busy: false,
           onConfirmed: _onSos,
           height: tall ? AppSize.sosHeight : AppSize.sosHeightCompact,
         );
@@ -795,24 +765,83 @@ class _OfficialAlerts extends StatelessWidget {
   };
 }
 
-// What opens after a confirmed SOS: calling comes first, the ready-made message second.
-class _SosSheet extends StatelessWidget {
-  const _SosSheet({
-    required this.message,
-    required this.reason,
-    required this.fromCache,
-  });
+// What opens after a confirmed SOS: calling comes first, the ready-made message second. The
+// call buttons never wait for GPS; the position and then the address fill in when they arrive.
+class _SosSheet extends StatefulWidget {
+  const _SosSheet({required this.location});
 
-  // Null when no position (fresh or saved) is available.
-  final String? message;
-  final String reason;
-  final bool fromCache;
+  final LocationService location;
+
+  @override
+  State<_SosSheet> createState() => _SosSheetState();
+}
+
+class _SosSheetState extends State<_SosSheet> {
+  // Null while GPS is still being read.
+  LocationResult? _result;
+  // Null until the address lookup answers; the message shows '-' meanwhile.
+  Place? _place;
+  // Set once when the position arrives so later rebuilds never change the time line.
+  DateTime? _at;
+
+  @override
+  void initState() {
+    super.initState();
+    _locate();
+  }
+
+  Future<void> _locate() async {
+    final r = await widget.location.getCurrent();
+    if (!mounted) return;
+    setState(() {
+      _result = r;
+      _at = DateTime.now();
+    });
+    final point = r.point;
+    if (point == null) return;
+    Place place;
+    try {
+      place = await widget.location.describe(point);
+    } catch (_) {
+      place = const Place();
+    }
+    if (!mounted) return;
+    setState(() => _place = place);
+  }
+
+  // The message carries both languages because the person reading it may speak either.
+  String _message(BuildContext context, LatLng point, bool fromCache) {
+    final where = _place == null ? '' : context.placeText(_place!);
+    final lat = point.latitude.toStringAsFixed(6);
+    final lng = point.longitude.toStringAsFixed(6);
+    // Local time plus the UTC offset, so a rescuer in another zone reads the right hour.
+    final now = _at!;
+    final off = now.timeZoneOffset;
+    final hh = off.inHours.abs().toString().padLeft(2, '0');
+    final mm = (off.inMinutes.abs() % 60).toString().padLeft(2, '0');
+    final time =
+        '${now.toString().substring(0, 16)} UTC${off.isNegative ? '-' : '+'}$hh:$mm';
+    final cached = fromCache
+        ? ' (ตำแหน่งที่บันทึกไว้ล่าสุด / last saved position)'
+        : '';
+    return 'SOS! ต้องการความช่วยเหลือ / I need help.\n'
+        'ที่อยู่ / Address: ${where.isEmpty ? '-' : where}$cached\n'
+        'แผนที่ / Map: https://www.google.com/maps?q=$lat,$lng\n'
+        'เวลา / Time: $time';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = context.tokens;
-    final text = message;
+    final result = _result;
+    final locating = result == null;
+    final reason = (result == null || result.issue == null)
+        ? ''
+        : context.locationError(result.issue!);
+    final fromCache = result?.fromCache ?? false;
+    final point = result?.point;
+    final text = point == null ? null : _message(context, point, fromCache);
     final primary = EmergencyNumbers.medical;
     final others = EmergencyNumbers.sos.where((n) => n != primary);
     return SingleChildScrollView(
@@ -826,7 +855,7 @@ class _SosSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            text == null
+            (text == null && !locating)
                 ? context.tr(
                     th: 'หาตำแหน่งของคุณไม่ได้',
                     en: 'Cannot find your location',
@@ -835,7 +864,7 @@ class _SosSheet extends StatelessWidget {
             style: theme.textTheme.headlineSmall,
           ),
           const SizedBox(height: AppSpace.md),
-          if (text == null)
+          if (text == null && !locating)
             WarningBanner(
               kind: BannerKind.error,
               message: context.tr(
@@ -873,6 +902,40 @@ class _SosSheet extends StatelessWidget {
               ),
             ),
           ),
+          if (locating) ...[
+            SectionLabel(
+              context.tr(th: 'ส่งตำแหน่งของคุณ', en: 'Send your location'),
+            ),
+            // Neutral, not red: waiting for GPS is a normal state.
+            Semantics(
+              liveRegion: true,
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  Icon(Icons.my_location, color: t.ink),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      // DRAFT (same words as the SOS button's busy hint)
+                      context.tr(
+                        th: 'กำลังหาตำแหน่งของคุณ…',
+                        en: 'Finding your location…',
+                      ),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: t.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpace.sm),
+          ],
           if (text != null) ...[
             SectionLabel(
               context.tr(th: 'ส่งตำแหน่งของคุณ', en: 'Send your location'),

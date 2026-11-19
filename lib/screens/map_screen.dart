@@ -53,8 +53,20 @@ class _MapScreenState extends State<MapScreen> {
   // Desktop builds draw the same map with flutter_map; this drives its camera.
   final _desktopController = fm.MapController();
   bool _desktopReady = false;
-  late Future<String> _tiles = widget.loadMap();
+  // The map file is opened per app language (labels follow it), so it is set up in
+  // didChangeDependencies and reopened when the language changes.
+  late Future<String> _tiles;
+  bool? _tilesThai;
   Object? _loadError;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final thai = context.isThai;
+    if (_tilesThai == thai) return;
+    _tilesThai = thai;
+    _tiles = widget.loadMap(thai: thai);
+  }
 
   // Which list the sheet shows: shelters (default) or the sensor readings.
   bool _showSensors = false;
@@ -114,7 +126,10 @@ class _MapScreenState extends State<MapScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(s.name, style: Theme.of(sheet).textTheme.headlineSmall),
+            Text(
+              sheet.shelterName(s),
+              style: Theme.of(sheet).textTheme.headlineSmall,
+            ),
             const SizedBox(height: AppSpace.xs),
             Text(
               [
@@ -161,7 +176,7 @@ class _MapScreenState extends State<MapScreen> {
   // Tries to open the map file again after a failure.
   void _retryTiles() => setState(() {
     _loadError = null;
-    _tiles = widget.loadMap();
+    _tiles = widget.loadMap(thai: context.isThai);
   });
 
   // Back to the user's last position, or the area centre when it is unknown.
@@ -365,7 +380,7 @@ class _MapScreenState extends State<MapScreen> {
                         for (final s in shelters)
                           _marker(
                             point: LatLng(s.lat, s.lng),
-                            label: '$shelterWord: ${s.name}',
+                            label: '$shelterWord: ${context.shelterName(s)}',
                             icon: Icons.home_work,
                             square: true,
                             onTap: () => _showShelter(s),
@@ -395,6 +410,7 @@ class _MapScreenState extends State<MapScreen> {
                         // Desktop builds: the same pack and style, drawn by flutter_map.
                         return DesktopVectorMap(
                           key: ValueKey(style),
+                          thai: context.isThai,
                           styleFile: style,
                           controller: _desktopController,
                           center: MockData.areaCenter,
@@ -716,7 +732,10 @@ class _MapScreenState extends State<MapScreen> {
                                 context.tr(th: 'ใกล้สุด', en: 'Nearest'),
                               ),
                             ),
-                          Text(s.name, style: theme.textTheme.titleSmall),
+                          Text(
+                            context.shelterName(s),
+                            style: theme.textTheme.titleSmall,
+                          ),
                           Text(
                             [
                               if (from != null)

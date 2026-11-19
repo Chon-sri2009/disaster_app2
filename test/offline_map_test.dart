@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:disaster_app2/data/mock_data.dart';
 import 'package:disaster_app2/main.dart';
 import 'package:disaster_app2/services/offline_map.dart';
+import 'package:disaster_app2/services/offline_map_theme.dart';
 import 'package:disaster_app2/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,6 +64,7 @@ void main() {
       packUri: 'file:///data/bangkok.pmtiles',
       spriteUri: 'file:///data/sprites',
       glyphsUri: 'file:///data/glyphs/{fontstack}/{range}.pbf',
+      thai: true,
     );
     expect(jsonEncode(style), isNot(contains('http')));
     final layers = style['layers'] as List;
@@ -71,5 +73,17 @@ void main() {
       final font = (layer['layout'] as Map?)?['text-font'];
       if (font != null) expect(font, ['NotoSans']);
     }
+  });
+
+  test('labels use the own name for Thai and the English name for English', () {
+    String firstLabelKey(bool thai) {
+      final layers = offlineMapLayers(thai: thai);
+      final layer = layers.firstWhere((l) => l['id'] == 'pois_emergency');
+      final field = (layer['layout'] as Map)['text-field'] as List;
+      return jsonEncode(field[1]);
+    }
+
+    expect(firstLabelKey(true), '["get","name"]');
+    expect(firstLabelKey(false), '["get","name:en"]');
   });
 }

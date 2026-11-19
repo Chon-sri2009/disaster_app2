@@ -31,6 +31,7 @@ class MockData {
     Shelter(
       id: 's1',
       name: 'City Hall Shelter',
+      nameTh: 'ศูนย์พักพิงศาลากลาง',
       lat: 13.7600,
       lng: 100.4960,
       capacity: 300,
@@ -38,6 +39,7 @@ class MockData {
     Shelter(
       id: 's2',
       name: 'Green Hill School',
+      nameTh: 'โรงเรียนเนินเขียว',
       lat: 13.7520,
       lng: 100.5100,
       capacity: 200,
@@ -45,6 +47,7 @@ class MockData {
     Shelter(
       id: 's3',
       name: 'Community Sports Hall',
+      nameTh: 'โรงยิมชุมชน',
       lat: 13.7650,
       lng: 100.5080,
       capacity: 450,
@@ -52,6 +55,7 @@ class MockData {
     Shelter(
       id: 's4',
       name: 'Sunrise Temple Hall',
+      nameTh: 'ศาลาวัดตะวันขึ้น',
       lat: 13.7480,
       lng: 100.4950,
       capacity: 150,
@@ -59,6 +63,7 @@ class MockData {
     Shelter(
       id: 's5',
       name: 'North District Clinic',
+      nameTh: 'คลินิกเขตเหนือ',
       lat: 13.7700,
       lng: 100.5020,
       capacity: 80,

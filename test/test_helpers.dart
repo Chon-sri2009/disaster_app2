@@ -21,7 +21,7 @@ Future<void> loadAppFonts() async {
 Future<String> neverLoadMap() => Completer<String>().future;
 
 // Stands in for a map file that cannot be opened, so the calm error banner shows.
-Future<String> failingLoadMap() =>
+Future<String> failingLoadMap({required bool thai}) =>
     Future.error(const FileSystemException('offline map missing'));
 
 // path_provider asks the platform for a folder; answer with a temp one. for a folder; answer with a temp one.

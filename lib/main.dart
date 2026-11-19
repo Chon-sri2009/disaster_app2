@@ -85,7 +85,9 @@ class _MapGate extends StatefulWidget {
 }
 
 class _MapGateState extends State<_MapGate> {
-  late final Future<String> _ready = widget.loadMap();
+  late final Future<String> _ready = widget.loadMap(
+    thai: widget.storage.language.code == 'th',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -95,11 +97,7 @@ class _MapGateState extends State<_MapGate> {
         if (snap.connectionState != ConnectionState.done) {
           return const _StartupNotice();
         }
-        final style = snap.data;
-        return AppShell(
-          storage: widget.storage,
-          loadMap: style == null ? widget.loadMap : () async => style,
-        );
+        return AppShell(storage: widget.storage, loadMap: widget.loadMap);
       },
     );
   }

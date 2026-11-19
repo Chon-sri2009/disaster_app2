@@ -532,7 +532,7 @@ class _NearestShelter extends StatelessWidget {
               AccentRow(
                 accent: t.brand,
                 leading: Icon(Icons.home_work, color: t.brand),
-                title: s.name,
+                title: context.shelterName(s),
                 titleStyle: Theme.of(context).textTheme.titleMedium,
                 subtitle: s.capacity == null
                     ? null
@@ -926,9 +926,7 @@ class _SosSheetState extends State<_SosSheet> {
                         th: 'กำลังหาตำแหน่งของคุณ…',
                         en: 'Finding your location…',
                       ),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: t.ink,
-                      ),
+                      style: theme.textTheme.bodyMedium?.copyWith(color: t.ink),
                     ),
                   ),
                 ],

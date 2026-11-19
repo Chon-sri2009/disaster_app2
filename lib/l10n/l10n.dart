@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../data/emergency_numbers.dart';
 import '../models/alert_level.dart';
+import '../models/shelter.dart';
 import '../services/location_service.dart';
 import '../services/place_lookup.dart';
 
@@ -11,6 +12,9 @@ extension AppL10n on BuildContext {
   bool get isThai => Localizations.localeOf(this).languageCode == 'th';
 
   String tr({required String th, required String en}) => isThai ? th : en;
+
+  // The shelter's name in the app language (English name if no Thai one exists).
+  String shelterName(Shelter s) => isThai ? (s.nameTh ?? s.name) : s.name;
 
   String get cmUnit => tr(th: 'ซม.', en: 'cm');
 
@@ -57,8 +61,8 @@ extension AppL10n on BuildContext {
     if (place.address != null) return place.address!;
     if (near == null) return '';
     return tr(
-      th: 'ใกล้ ${near.name} (ประมาณ ${distance(place.meters ?? 0)})',
-      en: 'Near ${near.name} (about ${distance(place.meters ?? 0)})',
+      th: 'ใกล้ ${shelterName(near)} (ประมาณ ${distance(place.meters ?? 0)})',
+      en: 'Near ${shelterName(near)} (about ${distance(place.meters ?? 0)})',
     );
   }
 

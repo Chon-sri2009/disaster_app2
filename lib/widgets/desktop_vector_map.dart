@@ -24,6 +24,7 @@ class DesktopVectorMap extends StatefulWidget {
     required this.background,
     required this.onReady,
     required this.markers,
+    required this.thai,
   });
 
   final String styleFile;
@@ -33,13 +34,11 @@ class DesktopVectorMap extends StatefulWidget {
   final Color background;
   final VoidCallback onReady;
   final List<Marker> markers;
+  final bool thai;
 
   @override
   State<DesktopVectorMap> createState() => _DesktopVectorMapState();
 }
-
-// The tuned Protomaps layers as a theme for the desktop renderer.
-final _theme = const ProtomapsThemes().build(offlineMapLayers);
 
 class _Source {
   const _Source(this.tiles, this.sprites);
@@ -50,6 +49,10 @@ class _Source {
 
 class _DesktopVectorMapState extends State<DesktopVectorMap> {
   late final Future<_Source> _source = _open(widget.styleFile);
+  // The tuned Protomaps layers as a theme for the desktop renderer, labelled in the app language.
+  late final _theme = const ProtomapsThemes().build(
+    offlineMapLayers(thai: widget.thai),
+  );
 
   static Future<_Source> _open(String styleFile) async {
     final style = jsonDecode(

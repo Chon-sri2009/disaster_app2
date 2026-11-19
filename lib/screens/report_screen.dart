@@ -413,6 +413,14 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
           ),
         const SizedBox(height: AppSpace.md),
+        // Said before saving, not only in the toast after: nobody receives a report.
+        WarningBanner(
+          message: context.tr(
+            th: 'บันทึกในเครื่องนี้เท่านั้น ไม่มีใครได้รับแจ้ง', // DRAFT
+            en: 'Saved on this phone only. No one is told.', // DRAFT
+          ),
+        ),
+        const SizedBox(height: AppSpace.sm),
         FilledButton.icon(
           onPressed: _save,
           icon: const Icon(Icons.save),

@@ -7,7 +7,7 @@ import '../models/alert_level.dart';
 import '../services/sensor_service.dart';
 import '../theme/app_tokens.dart';
 import 'level_meter.dart';
-import 'soft_ui.dart';
+import 'notice_ui.dart';
 import 'warning_banner.dart';
 
 // Sensor readings for Home: the demo water and vibration gauges, or the live stations.
@@ -75,62 +75,85 @@ class _DemoReadings extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         // The simulator is a developer tool: it never ships in release builds.
-        if (kDebugMode)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpace.sm),
-            child: SoftCard(
-              padding: EdgeInsets.zero,
-              child: ExpansionTile(
-                leading: const Icon(Icons.tune),
-                title: Text(
-                  context.tr(
-                    th: 'ทดลอง: จำลองระดับน้ำ',
-                    en: 'Demo: simulate water level',
-                  ),
-                  style: theme.textTheme.titleSmall,
-                ),
-                expansionAnimationStyle: AnimationStyle(
-                  duration: context.motion(AppMotion.base),
-                  curve: Curves.easeOut,
-                ),
-                childrenPadding: const EdgeInsets.fromLTRB(
-                  AppSpace.md,
-                  0,
-                  AppSpace.md,
-                  AppSpace.sm,
-                ),
-                expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.tr(
-                      th: 'สำหรับทดลองเท่านั้น ค่าจะถูกแทนที่เมื่อเซนเซอร์อัปเดตครั้งถัดไป',
-                      en: 'For demos only. The sensor timer replaces this value on its next update.',
-                    ),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  Slider(
-                    value: reading.waterCm.clamp(0.0, MockData.waterMaxCm),
-                    max: MockData.waterMaxCm,
-                    divisions: 50,
-                    label:
-                        '${reading.waterCm.toStringAsFixed(0)} ${context.cmUnit}',
-                    semanticFormatterCallback: (v) => context.tr(
-                      th: '${v.round()} เซนติเมตร',
-                      en: '${v.round()} centimeters',
-                    ),
-                    onChanged: sensors.simulateWater,
-                  ),
-                ],
-              ),
-            ),
+        if (kDebugMode) _Simulator(sensors: sensors),
+      ],
+    );
+  }
+}
+
+// Debug-only water slider behind a ruled row that folds open.
+class _Simulator extends StatefulWidget {
+  const _Simulator({required this.sensors});
+
+  final SensorService sensors;
+
+  @override
+  State<_Simulator> createState() => _SimulatorState();
+}
+
+class _SimulatorState extends State<_Simulator> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = context.tokens;
+    final reading = widget.sensors.latest;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RuledRow(
+          icon: Icons.tune,
+          title: context.tr(
+            th: 'ทดลอง: จำลองระดับน้ำ',
+            en: 'Demo: simulate water level',
           ),
+          trailing: Icon(
+            _open ? Icons.expand_less : Icons.expand_more,
+            color: t.inkMuted,
+          ),
+          onTap: () => setState(() => _open = !_open),
+        ),
+        AnimatedSize(
+          duration: context.motion(AppMotion.base),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: _open
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: AppSpace.sm),
+                    Text(
+                      context.tr(
+                        th: 'สำหรับทดลองเท่านั้น ค่าจะถูกแทนที่เมื่อเซนเซอร์อัปเดตครั้งถัดไป',
+                        en: 'For demos only. The sensor timer replaces this value on its next update.',
+                      ),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    Slider(
+                      value: reading.waterCm.clamp(0.0, MockData.waterMaxCm),
+                      max: MockData.waterMaxCm,
+                      divisions: 50,
+                      label:
+                          '${reading.waterCm.toStringAsFixed(0)} ${context.cmUnit}',
+                      semanticFormatterCallback: (v) => context.tr(
+                        th: '${v.round()} เซนติเมตร',
+                        en: '${v.round()} centimeters',
+                      ),
+                      onChanged: widget.sensors.simulateWater,
+                    ),
+                  ],
+                )
+              : const SizedBox(width: double.infinity),
+        ),
       ],
     );
   }
 }
 
 // One measured value on the board: title and status, the value, its segmented gauge with the
-// limit post, and the limit in words. Over the limit the card takes a danger outline and tint.
+// limit post, and the limit in words. A flat ruled block; over the limit it takes a danger
+// outline and tint, with the icon and the words "Over the limit" beside it.
 class ReadingBlock extends StatelessWidget {
   const ReadingBlock({
     super.key,
@@ -173,54 +196,69 @@ class ReadingBlock extends StatelessWidget {
         en: '$title $shown $spokenUnit, safe limit $limitText $spokenUnit, $status',
       ),
       child: ExcludeSemantics(
-        child: SoftCard(
-          color: over ? t.errorBg : t.surface,
-          borderColor: over ? t.dangerInk : null,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: AppIconSize.md),
-                  const SizedBox(width: AppSpace.sm),
-                  Expanded(
-                    child: Text(title, style: theme.textTheme.titleSmall),
-                  ),
-                  Icon(
-                    over ? Icons.dangerous : Icons.check_circle,
-                    size: AppIconSize.sm,
-                    color: over ? t.dangerInk : safe.onGround,
-                  ),
-                  const SizedBox(width: AppSpace.xs),
-                  Flexible(
-                    child: Text(
-                      status,
-                      textAlign: TextAlign.end,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: over ? t.dangerInk : safe.onGround,
-                      ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: over ? t.errorBg : null,
+            border: over
+                ? Border.all(color: t.dangerInk, width: AppStroke.frame)
+                : Border(
+                    bottom: BorderSide(
+                      color: t.hairline,
+                      width: AppStroke.rule,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpace.xs),
-              Text(
-                '$shown $unit',
-                style: theme.textTheme.displaySmall?.copyWith(
-                  color: over ? t.dangerInk : t.ink,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: over ? AppSpace.md : 0,
+              vertical: AppSpace.md,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: AppIconSize.md),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Text(title, style: theme.textTheme.titleSmall),
+                    ),
+                    Icon(
+                      over ? Icons.dangerous : Icons.check_circle,
+                      size: AppIconSize.sm,
+                      color: over ? t.dangerInk : safe.onGround,
+                    ),
+                    const SizedBox(width: AppSpace.xs),
+                    Flexible(
+                      child: Text(
+                        status,
+                        textAlign: TextAlign.end,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: over ? t.dangerInk : safe.onGround,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              SegmentedGauge(value: value, max: max, limit: limit),
-              Text(
-                context.tr(
-                  th: 'ระดับปลอดภัย: ไม่เกิน $limitText $unit',
-                  en: 'Safe limit: $limitText $unit',
+                const SizedBox(height: AppSpace.xs),
+                Text(
+                  '$shown $unit',
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    color: over ? t.dangerInk : t.ink,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
+                const SizedBox(height: AppSpace.sm),
+                SegmentedGauge(value: value, max: max, limit: limit),
+                Text(
+                  context.tr(
+                    th: 'ระดับปลอดภัย: ไม่เกิน $limitText $unit',
+                    en: 'Safe limit: $limitText $unit',
+                  ),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -267,42 +305,21 @@ class _LiveStations extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: WarningBanner(kind: BannerKind.offline, message: notice),
           ),
+        if (sensors.stations.isNotEmpty)
+          Container(height: AppStroke.rule, color: t.hairline),
         for (final s in sensors.stations)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpace.sm),
-            child: SoftCard(
-              padding: EdgeInsets.zero,
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpace.md),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(s.name, style: theme.textTheme.titleSmall),
-                            Text(
-                              s.level == null
-                                  ? context.tr(
-                                      th: 'ไม่มีข้อมูลที่เชื่อถือได้',
-                                      en: 'No reliable reading',
-                                    )
-                                  : '${s.waterCm?.toStringAsFixed(0) ?? '-'} ${context.cmUnit}'
-                                        '${s.readingTime == null ? '' : ' · ${context.stamp(s.readingTime!)}'}',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    _StationLevel(level: s.level, tokens: t),
-                  ],
-                ),
-              ),
-            ),
+          RuledRow(
+            title: s.name,
+            subtitle: s.level == null
+                ? context.tr(
+                    th: 'ไม่มีข้อมูลที่เชื่อถือได้',
+                    en: 'No reliable reading',
+                  )
+                : '${s.waterCm?.toStringAsFixed(0) ?? '-'} ${context.cmUnit}'
+                      '${s.readingTime == null ? '' : ' · ${context.stamp(s.readingTime!)}'}',
+            trailing: _stationTag(context, _shownLevel(s.level)),
           ),
+        const SizedBox(height: AppSpace.sm),
         Text(
           context.tr(
             th: 'เซนเซอร์ชุมชน ไม่ใช่เครื่องวัดทางการ',
@@ -313,40 +330,26 @@ class _LiveStations extends StatelessWidget {
       ],
     );
   }
+
+  // Same rule as SensorService.level: an old Safe is "no data". Older Watch, Warning and Danger
+  // stay visible next to the "may be out of date" notice.
+  AlertLevel? _shownLevel(AlertLevel? level) =>
+      level == AlertLevel.safe &&
+          (!sensors.isLive || sensors.isStale)
+      ? null
+      : level;
 }
 
-// The right-hand cell of a station row: the tier field with icon and word, or an empty cell.
-class _StationLevel extends StatelessWidget {
-  const _StationLevel({required this.level, required this.tokens});
-
-  final AlertLevel? level;
-  final AppTokens tokens;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = level;
-    final style = l == null ? null : tokens.styleFor(l);
-    final fg = style?.onColor ?? tokens.inkMuted;
-    return Container(
-      constraints: const BoxConstraints(minWidth: AppSize.levelCell),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.all(AppSpace.sm),
-      decoration: BoxDecoration(
-        color: style?.color ?? tokens.offlineBg,
-        borderRadius: const BorderRadiusDirectional.horizontal(
-          end: Radius.circular(AppRadius.lg),
-        ).resolve(Directionality.of(context)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(style?.icon ?? Icons.sensors_off, color: fg),
-          Text(
-            l == null ? '–' : context.levelLabel(l),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: fg),
-          ),
-        ],
-      ),
-    );
-  }
+// The tag at the end of a station row: the tier with its icon and word, or (no usable reading)
+// a neutral outlined dash with the sensor-off icon. Never green or red for missing data.
+Widget _stationTag(BuildContext context, AlertLevel? level) {
+  final t = context.tokens;
+  if (level == null) return const Tag('–', icon: Icons.sensors_off);
+  final style = t.styleFor(level);
+  return Tag(
+    context.levelLabel(level),
+    icon: style.icon,
+    color: style.color,
+    onColor: style.onColor,
+  );
 }

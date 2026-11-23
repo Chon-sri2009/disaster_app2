@@ -38,6 +38,22 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
+  testWidgets('the note field is spoken with its label (text-field node)', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await pump(tester, const Locale('en'));
+    final field = find.byType(TextFormField).first;
+    await tester.ensureVisible(field);
+    await tester.pump();
+    final node = tester.getSemantics(
+      find.descendant(of: field, matching: find.byType(EditableText)),
+    );
+    expect(node.flagsCollection.isTextField, isTrue);
+    expect(node.label, contains('Note (optional)'));
+    handle.dispose();
+  });
+
   final cases = {
     'th': 'บันทึกในเครื่องนี้เท่านั้น ไม่มีใครได้รับแจ้ง',
     'en': 'Saved on this phone only. No one is told.',

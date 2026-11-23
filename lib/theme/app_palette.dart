@@ -5,11 +5,11 @@ import 'dart:ui';
 // the same layout on deep navy at night.
 abstract final class AppPalette {
   // Day.
-  static const canvas = Color(0xFFEEF2F6);
+  static const canvas = Color(0xFFF4F6F8);
   static const card = Color(0xFFFFFFFF);
   static const ink = Color(0xFF0F1B2D);
   static const inkMuted = Color(0xFF515C6B);
-  static const hairline = Color(0xFFDCE2E9);
+  static const hairline = Color(0xFFD3DAE2);
   static const pressed = Color(0xFFE4EAF1);
   static const offlineDay = Color(0xFFE6EBF1);
   static const errorDay = Color(0xFFFBE4E2);

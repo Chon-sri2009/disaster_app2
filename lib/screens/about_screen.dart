@@ -4,7 +4,7 @@ import '../data/emergency_numbers.dart';
 import '../l10n/l10n.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
-import '../widgets/soft_ui.dart';
+import '../widgets/notice_ui.dart';
 
 // About: disclaimer (content required by DEVELOPMENT_PLAN.md 9.4) and data sources (9.2, 5.7).
 // DRAFT wording: the owner must rewrite it and Thai counsel must review it before release.
@@ -80,14 +80,8 @@ class AboutScreen extends StatelessWidget {
         .map((n) => '${n.number} (${context.serviceName(n)})')
         .join(', ');
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          context.tr(
-            th: 'เกี่ยวกับแอปและข้อสงวนสิทธิ์',
-            en: 'About and disclaimer',
-          ),
-        ),
-      ),
+      // Back arrow only: the long title lives in the body, where it wraps instead of being cut.
+      appBar: AppBar(),
       body: SafeArea(
         child: ContentWidth(
           child: ListView(
@@ -98,36 +92,48 @@ class AboutScreen extends StatelessWidget {
               AppSpace.lg,
             ),
             children: [
-              SectionLabel(context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer')),
-              SoftCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // The first line is the one that matters most, so it leads as a title.
+              ScreenTitle(
+                context.tr(
+                  th: 'เกี่ยวกับแอปและข้อสงวนสิทธิ์',
+                  en: 'About and disclaimer',
+                ),
+                compact: true,
+              ),
+              Section(
+                title: context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer'),
+                children: [
+                  // The first line is the one that matters most, so it leads as a title.
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: AppSpace.md,
+                      bottom: AppSpace.sm,
+                    ),
+                    child: Text(
+                      disclaimer.first,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  for (final line in disclaimer.skip(1))
                     Padding(
                       padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                      child: Text(
-                        disclaimer.first,
-                        style: theme.textTheme.titleMedium,
+                      child: Text(line, style: theme.textTheme.bodyLarge),
+                    ),
+                  const SizedBox(height: AppSpace.xs),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: t.errorBg,
+                      border: Border.all(
+                        color: t.dangerInk,
+                        width: AppStroke.frame,
                       ),
                     ),
-                    for (final line in disclaimer.skip(1))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                        child: Text(line, style: theme.textTheme.bodyLarge),
-                      ),
-                    const SizedBox(height: AppSpace.xs),
-                    Container(
+                    child: Padding(
                       padding: const EdgeInsets.all(AppSpace.md),
-                      decoration: BoxDecoration(
-                        color: t.errorBg,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.call, color: t.dangerInk),
-                          const SizedBox(width: AppSpace.sm + AppSpace.xs),
+                          const SizedBox(width: AppSpace.md),
                           Expanded(
                             child: Text(
                               context.tr(
@@ -140,24 +146,23 @@ class AboutScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              SectionLabel(context.tr(th: 'แหล่งข้อมูล', en: 'Data sources')),
-              SoftCard(
-                child: Column(
-                  children: [
-                    for (final (i, s) in sources.indexed) ...[
-                      if (i > 0) const Divider(),
-                      AccentRow(
-                        // The build's own data is the one caveat; it gets the quiet offline tint.
-                        accent: i == sources.length - 1 ? t.inkMuted : t.brand,
-                        title: s.$1,
-                        subtitle: s.$2,
-                      ),
-                    ],
-                  ],
-                ),
+              Section(
+                title: context.tr(th: 'แหล่งข้อมูล', en: 'Data sources'),
+                children: [
+                  for (final (i, s) in sources.indexed)
+                    RuledRow(
+                      // The build's own data is the one caveat; its icon differs from the rest.
+                      icon: i == sources.length - 1
+                          ? Icons.science_outlined
+                          : Icons.source_outlined,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      title: s.$1,
+                      subtitle: s.$2,
+                    ),
+                ],
               ),
             ],
           ),

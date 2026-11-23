@@ -256,6 +256,243 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // R-F9 (b): the open detail follows the service. The clock is injected and the service
+  // ticks every 30 s, so pump(31 s) runs one tick.
+  group('live detail follows the service', () {
+    final t0 = DateTime.utc(2026, 11, 12, 2);
+    const tick = Duration(seconds: 31);
+    late StorageService storage;
+    var now = t0;
+    var online = false;
+    String? nextBody;
+
+    String snap(DateTime generated, DateTime expires) => jsonEncode({
+      'generatedAt': generated.toIso8601String(),
+      'alerts': [
+        {
+          'id': 'd',
+          'sender': 'TMD',
+          'status': 'Actual',
+          'msgType': 'Alert',
+          'level': 'warning',
+          'headline': {'th': 'ฝนตกหนัก', 'en': 'Heavy rain'},
+          'sent': generated.subtract(const Duration(minutes: 5)).toIso8601String(),
+          'expires': expires.toIso8601String(),
+          'areaCodes': ['TH-10'],
+          'polygons': [],
+        },
+      ],
+    });
+
+    Future<AlertService> open(WidgetTester tester, DateTime expires) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues({});
+      storage = await StorageService.create();
+      now = t0;
+      online = false;
+      nextBody = null;
+      await storage.saveSnapshot(snap(t0, expires), t0);
+      final s = AlertService(
+        storage,
+        snapshotUrl: 'https://example.invalid/s.json',
+        fetcher: (_) async =>
+            online ? nextBody! : throw Exception('offline'),
+        clock: () => now,
+      );
+      s.startAutoRefresh(every: const Duration(seconds: 30));
+      cleanup = () async {
+        await tester.pumpWidget(const SizedBox());
+        s.dispose();
+      };
+      await tester.pumpWidget(
+        app(AlertDetailScreen(alert: s.visibleAlerts.single, alerts: s)),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      return s;
+    }
+
+    detailTest('clock passes expiry: the Ended banner and quiet tier show', (
+      tester,
+    ) async {
+      await open(tester, t0.add(const Duration(minutes: 10)));
+      expect(find.textContaining('สิ้นสุดแล้ว'), findsNothing);
+      expect(find.text('แอปได้รับข้อมูลเมื่อ'), findsOneWidget);
+      now = t0.add(const Duration(minutes: 11));
+      await tester.pump(tick);
+      await tester.pump();
+      expect(find.textContaining('สิ้นสุดแล้ว: หมดอายุ'), findsOneWidget);
+      expect(find.text('แอปได้รับข้อมูลเมื่อ'), findsNothing);
+      final block = tester.widget<Container>(find.byKey(const ValueKey('tier-block')));
+      expect((block.decoration as BoxDecoration).border, isNotNull);
+      expect(tester.takeException(), isNull);
+    });
+
+    detailTest('data goes stale: the out-of-date banner appears', (
+      tester,
+    ) async {
+      await open(tester, t0.add(const Duration(hours: 5)));
+      expect(find.textContaining('ข้อมูลอาจไม่เป็นปัจจุบัน'), findsNothing);
+      now = t0.add(const Duration(minutes: 31));
+      await tester.pump(tick);
+      await tester.pump();
+      expect(find.textContaining('ข้อมูลอาจไม่เป็นปัจจุบัน'), findsOneWidget);
+      expect(find.textContaining('สิ้นสุดแล้ว'), findsNothing);
+    });
+
+    detailTest('the notice disappears from the service: last known alert, '
+        'Ended', (tester) async {
+      await open(tester, t0.add(const Duration(hours: 5)));
+      // The next download carries a Cancel for it and no longer lists it.
+      nextBody = jsonEncode({
+        'generatedAt': t0.add(const Duration(minutes: 2)).toIso8601String(),
+        'alerts': [
+          {
+            'id': 'c',
+            'sender': 'TMD',
+            'status': 'Actual',
+            'msgType': 'Cancel',
+            'level': 'safe',
+            'headline': {'th': 'ยกเลิก'},
+            'sent': t0.add(const Duration(minutes: 2)).toIso8601String(),
+            'expires': null,
+            'references': ['d'],
+            'areaCodes': [],
+            'polygons': [],
+          },
+        ],
+      });
+      online = true;
+      now = t0.add(const Duration(minutes: 2));
+      await tester.pump(tick);
+      await tester.pump();
+      expect(find.textContaining('สิ้นสุดแล้ว: ยกเลิก'), findsOneWidget);
+      expect(find.text('ฝนตกหนัก'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  // R-F9 follow-ups: Ended is only claimed with proof, and a stale service always carries
+  // the out-of-date caveat next to it.
+  group('detail: Ended and stale together', () {
+    final t0 = DateTime.utc(2026, 11, 12, 2);
+    const tick = Duration(seconds: 31);
+    var now = t0;
+    var online = false;
+    String? nextBody;
+
+    Map<String, dynamic> noticeD(DateTime generated, DateTime expires) => {
+      'id': 'd',
+      'sender': 'TMD',
+      'status': 'Actual',
+      'msgType': 'Alert',
+      'level': 'warning',
+      'headline': {'th': 'ฝนตกหนัก', 'en': 'Heavy rain'},
+      'sent': generated.subtract(const Duration(minutes: 5)).toIso8601String(),
+      'expires': expires.toIso8601String(),
+      'areaCodes': ['TH-10'],
+      'polygons': [],
+    };
+
+    String body(
+      DateTime generated,
+      List<Map<String, dynamic>> alerts, {
+      int? skipped,
+    }) => jsonEncode({
+      'generatedAt': generated.toIso8601String(),
+      'alerts': alerts,
+      'skippedFiles': ?skipped,
+    });
+
+    Future<AlertService> open(WidgetTester tester, DateTime expires) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues({});
+      final storage = await StorageService.create();
+      now = t0;
+      online = false;
+      nextBody = null;
+      await storage.saveSnapshot(body(t0, [noticeD(t0, expires)]), t0);
+      final s = AlertService(
+        storage,
+        snapshotUrl: 'https://example.invalid/s.json',
+        fetcher: (_) async =>
+            online ? nextBody! : throw Exception('offline'),
+        clock: () => now,
+      );
+      s.startAutoRefresh(every: const Duration(seconds: 30));
+      cleanup = () async {
+        await tester.pumpWidget(const SizedBox());
+        s.dispose();
+      };
+      await tester.pumpWidget(
+        app(AlertDetailScreen(alert: s.visibleAlerts.single, alerts: s)),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      return s;
+    }
+
+    const staleText = 'ข้อมูลอาจไม่เป็นปัจจุบัน';
+
+    detailTest('vanished with no proof and not expired: still live, no Ended', (
+      tester,
+    ) async {
+      await open(tester, t0.add(const Duration(hours: 5)));
+      // A fresh snapshot that simply no longer lists it: absence proves nothing.
+      nextBody = body(t0.add(const Duration(minutes: 2)), []);
+      online = true;
+      now = t0.add(const Duration(minutes: 2));
+      await tester.pump(tick);
+      await tester.pump();
+      expect(find.textContaining('สิ้นสุดแล้ว'), findsNothing);
+      expect(find.text('ฝนตกหนัก'), findsOneWidget);
+      expect(find.textContaining(staleText), findsNothing);
+    });
+
+    detailTest('skippedFiles > 0: stale banner, not Ended', (tester) async {
+      await open(tester, t0.add(const Duration(hours: 5)));
+      final g = t0.add(const Duration(minutes: 2));
+      nextBody = body(g, [
+        noticeD(g, t0.add(const Duration(hours: 5))),
+      ], skipped: 1);
+      online = true;
+      now = g;
+      await tester.pump(tick);
+      await tester.pump();
+      expect(find.textContaining(staleText), findsOneWidget);
+      expect(find.textContaining('สิ้นสุดแล้ว'), findsNothing);
+    });
+
+    detailTest('generatedAt in the future beyond the slack: stale banner', (
+      tester,
+    ) async {
+      await open(tester, t0.add(const Duration(hours: 5)));
+      final g = t0.add(const Duration(minutes: 10));
+      nextBody = body(g, [noticeD(g, t0.add(const Duration(hours: 5)))]);
+      online = true;
+      now = t0.add(const Duration(minutes: 2));
+      await tester.pump(tick);
+      await tester.pump();
+      expect(find.textContaining(staleText), findsOneWidget);
+      expect(find.textContaining('สิ้นสุดแล้ว'), findsNothing);
+    });
+
+    detailTest('phone clock ahead: Ended and the stale caveat both show', (
+      tester,
+    ) async {
+      await open(tester, t0.add(const Duration(minutes: 10)));
+      // The clock jumps far ahead: past the expiry, and the data is old.
+      now = t0.add(const Duration(hours: 3));
+      await tester.pump(tick);
+      await tester.pump();
+      expect(find.textContaining('สิ้นสุดแล้ว: หมดอายุ'), findsOneWidget);
+      expect(find.textContaining(staleText), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   testWidgets('tapping a Home notice opens its detail', (tester) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
@@ -283,7 +520,11 @@ void main() {
       }),
       now,
     );
-    final sensors = SensorService();
+    // Live mode with an unreachable backend: no demo timers, no fake readings.
+    final sensors = SensorService(
+      snapshotUrl: 'https://example.invalid/s.json',
+      fetcher: (_) async => throw Exception('offline'),
+    );
     final service = AlertService(storage);
     await tester.pumpWidget(
       app(

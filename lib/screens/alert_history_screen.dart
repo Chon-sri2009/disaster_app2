@@ -6,7 +6,7 @@ import '../services/alert_service.dart';
 import '../services/province_locator.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
-import '../widgets/soft_ui.dart';
+import '../widgets/notice_ui.dart';
 import 'alert_detail_screen.dart';
 
 // Notices that were shown and have ended. A record only: it never changes any level on Home.
@@ -47,31 +47,28 @@ class AlertHistoryScreen extends StatelessWidget {
                 );
               }
               return ListView(
-                padding: const EdgeInsets.all(AppSpace.md),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.md,
+                  AppSpace.sm,
+                  AppSpace.md,
+                  AppSpace.lg,
+                ),
                 children: [
-                  SoftCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final (i, e) in entries.indexed) ...[
-                          if (i > 0) const Divider(),
-                          _Row(
-                            entry: e,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => AlertDetailScreen(
-                                  alert: e.record.toAlert(),
-                                  alerts: alerts,
-                                  provinces: provinces,
-                                  ended: e,
-                                ),
-                              ),
-                            ),
+                  Container(height: AppStroke.rule, color: t.hairline),
+                  for (final e in entries)
+                    _Row(
+                      entry: e,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AlertDetailScreen(
+                            alert: e.record.toAlert(),
+                            alerts: alerts,
+                            provinces: provinces,
+                            ended: e,
                           ),
-                        ],
-                      ],
+                        ),
+                      ),
                     ),
-                  ),
                   const SizedBox(height: AppSpace.md),
                   Text(
                     // DRAFT wording, owner to approve.
@@ -109,23 +106,18 @@ class _Row extends StatelessWidget {
         r.headline['en'] ??
         context.levelLabel(r.level);
     final reason = endReasonWord(context, entry.reason);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AccentRow(
-          // Opens the full notice (min 48 dp tall, set by AccentRow).
-          onTap: onTap,
-          accent: style.color,
-          title: headline,
-          subtitle: '${r.sender} · $reason ${context.stamp(entry.endedAt)}',
-          trailing: StatusPill(
-            context.levelLabel(r.level),
-            icon: style.icon,
-            color: style.color,
-            onColor: style.onColor,
-          ),
-        ),
-      ],
+    return RuledRow(
+      // Opens the full notice (min 48 dp tall, set by RuledRow).
+      onTap: onTap,
+      title: headline,
+      subtitle: '${r.sender} · $reason ${context.stamp(entry.endedAt)}',
+      // The tier the notice had. Outlined, never filled: a past notice does not shout a level,
+      // and nothing here feeds any level on Home.
+      trailing: Tag(
+        context.levelLabel(r.level),
+        icon: style.icon,
+        color: style.rule,
+      ),
     );
   }
 }

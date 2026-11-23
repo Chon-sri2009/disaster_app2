@@ -15,6 +15,9 @@ abstract final class AppSpace {
 
 // Corner radii: photos and small marks, tiles and inputs, cards, sheets, and fully round pills.
 abstract final class AppRadius {
+  // Posted notice: square by default, 8 for controls. The rest are LEGACY (remove in R10).
+  static const double none = 0;
+  static const double control = 8;
   static const double sm = 8;
   static const double md = 12;
   static const double lg = 16;
@@ -27,6 +30,9 @@ abstract final class AppStroke {
   static const double rule = 1;
   static const double frame = 2;
   static const double accent = 3;
+  // Posted notice: the selected-tab rule and the tier slab edge.
+  static const double tab = 3;
+  static const double slab = 8;
 }
 
 // Icon sizes.
@@ -66,13 +72,28 @@ abstract final class AppSize {
   static const double meterHeight = 20;
   static const double marker = 40;
   static const double toolbar = 64;
-  static const double navBar = 80;
-  static const double raisedNavIcon = 44;
+  static const double navBar =
+      100; // two 16 sp lines at 1.5x need about 98 (tested at 360 wide)
+  static const double navRail = 112;
+  // The bar is navBar tall up to this text scale, then grows in step with the text.
+  static const double navBarFitScale = 1.5;
+  // The bar stops growing here (it would otherwise swallow the screen).
+  static const double navBarMaxScale = 3;
+  // From this text scale up, screens use their short layouts (smaller titles, shorter SOS bar).
+  static const double compactTextScale = 1.3;
+  // Text size used to read the user's text scale back (scale(probe) / probe).
+  static const double textScaleProbe = 16;
   static const double sosBar = 6;
   static const Size dragHandle = Size(40, 4);
   static const double levelCell = 96;
   static const double photoPreview = 160;
   static const double thumb = 56;
+  // Posted notice: the vertical staff gauge, one block per tier.
+  static const double gaugeWidth = 28;
+  // Smallest height of one gauge block; the gauge grows to the slab's height past this.
+  static const double gaugeStep = 32;
+  // The same on short screens and at large text, where height is scarce.
+  static const double gaugeStepCompact = 24;
 }
 
 // The four alert tiers; the model (AlertLevel) carries all four.
@@ -87,6 +108,7 @@ class LevelStyle {
     required this.color,
     required this.onColor,
     required this.onGround,
+    required this.rule,
   });
 
   final String label;
@@ -94,6 +116,10 @@ class LevelStyle {
   final Color color;
   final Color onColor;
   final Color onGround;
+
+  // The tier colour as a rule or edge on the board: the field colour by day, the light tier ink
+  // at night (the day fields fail 3:1 on the navy ground).
+  final Color rule;
 }
 
 // Theme colors and alert-tier styles, read with context.tokens.
@@ -105,6 +131,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required this.surface,
     required this.ink,
     required this.inkMuted,
+    required this.mark,
     required this.hairline,
     required this.pressed,
     required this.offlineBg,
@@ -133,6 +160,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
   final Color ink;
   final Color inkMuted;
 
+  // Icon marks and small glyphs: same as inkMuted (3:1 on ground and surface).
+  final Color mark;
+
   // Dividers between list rows and the empty cells of a meter.
   final Color hairline;
 
@@ -154,15 +184,15 @@ class AppTokens extends ThemeExtension<AppTokens> {
   // quiet tint behind brand-colored icons and numbers.
   final Color brand;
   final Color onBrand;
-  final Color brandSoft;
+  final Color brandSoft; // LEGACY: remove in R10 (Posted notice)
 
   // The header band at the top of each tab, with its text colors. Never used as an alert tier.
-  final Color header;
-  final Color onHeader;
-  final Color onHeaderMuted;
+  final Color header; // LEGACY: remove in R10 (Posted notice)
+  final Color onHeader; // LEGACY: remove in R10 (Posted notice)
+  final Color onHeaderMuted; // LEGACY: remove in R10 (Posted notice)
 
   // The soft shadow under cards (empty at night: cards are lighter than the canvas instead).
-  final List<BoxShadow> cardShadow;
+  final List<BoxShadow> cardShadow; // LEGACY: remove in R10 (Posted notice)
 
   final Map<AlertTier, LevelStyle> levels;
 
@@ -178,6 +208,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required Color watchInk,
     required Color warningInk,
     required Color dangerInk,
+    required bool night,
   }) => {
     AlertTier.safe: LevelStyle(
       label: _labels[AlertTier.safe]!.$1,
@@ -185,6 +216,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       color: AppPalette.safe,
       onColor: AppPalette.onSafe,
       onGround: safeInk,
+      rule: night ? safeInk : AppPalette.safe,
     ),
     AlertTier.watch: LevelStyle(
       label: _labels[AlertTier.watch]!.$1,
@@ -192,6 +224,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       color: AppPalette.watch,
       onColor: AppPalette.onWatch,
       onGround: watchInk,
+      rule: night ? watchInk : AppPalette.watch,
     ),
     AlertTier.warning: LevelStyle(
       label: _labels[AlertTier.warning]!.$1,
@@ -199,6 +232,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       color: AppPalette.warning,
       onColor: AppPalette.onWarning,
       onGround: warningInk,
+      rule: night ? warningInk : AppPalette.warning,
     ),
     AlertTier.danger: LevelStyle(
       label: _labels[AlertTier.danger]!.$1,
@@ -206,6 +240,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       color: AppPalette.danger,
       onColor: AppPalette.onDanger,
       onGround: dangerInk,
+      rule: night ? dangerInk : AppPalette.danger,
     ),
   };
 
@@ -216,6 +251,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     surface: AppPalette.card,
     ink: AppPalette.ink,
     inkMuted: AppPalette.inkMuted,
+    mark: AppPalette.inkMuted,
     hairline: AppPalette.hairline,
     pressed: AppPalette.pressed,
     offlineBg: AppPalette.offlineDay,
@@ -238,6 +274,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       watchInk: AppPalette.watchInkDay,
       warningInk: AppPalette.warningInkDay,
       dangerInk: AppPalette.dangerInkDay,
+      night: false,
     ),
   );
 
@@ -248,6 +285,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     surface: AppPalette.cardNight,
     ink: AppPalette.inkNight,
     inkMuted: AppPalette.inkMutedNight,
+    mark: AppPalette.inkMutedNight,
     hairline: AppPalette.hairlineNight,
     pressed: AppPalette.pressedNight,
     offlineBg: AppPalette.offlineNight,
@@ -268,6 +306,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       watchInk: AppPalette.watchInkNight,
       warningInk: AppPalette.warningInkNight,
       dangerInk: AppPalette.dangerInkNight,
+      night: true,
     ),
   );
 
@@ -293,6 +332,11 @@ class AppTokens extends ThemeExtension<AppTokens> {
 
 // Shortcuts: context.tokens for colors, context.motion(d) for reduce-motion-aware durations.
 extension AppTokensContext on BuildContext {
+  // The user's text scale as a plain factor (1.0 = default).
+  double get textScale =>
+      MediaQuery.textScalerOf(this).scale(AppSize.textScaleProbe) /
+      AppSize.textScaleProbe;
+
   AppTokens get tokens => Theme.of(this).extension<AppTokens>()!;
 
   // Returns the duration, or zero when the phone's "remove animations" setting is on.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/emergency_numbers.dart';
 import '../data/guide_data.dart';
@@ -8,11 +9,12 @@ import '../services/emergency_launcher.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
-import '../widgets/soft_ui.dart';
+import '../widgets/notice_ui.dart';
 import 'settings_screen.dart';
 
-// Guide: two folding cards, urgent first aid on top and disaster topics below, each topic a row
-// with a colored accent bar. Each topic opens as its own page.
+// Guide: a ruled index in two groups, urgent first aid (thick danger rule) and disaster topics
+// (ink rule), each topic a row. Both groups are always open: with eight topics there is little to
+// fold, and a folded urgent group is one more tap in an emergency. Each topic opens as its own page.
 class GuideScreen extends StatelessWidget {
   const GuideScreen({super.key, required this.storage});
 
@@ -33,69 +35,61 @@ class GuideScreen extends StatelessWidget {
         .where((t) => t.kind == GuideKind.disaster)
         .toList();
     final t = context.tokens;
-    Widget row(GuideTopic topic, Color accent) => AccentRow(
-      accent: accent,
-      leading: Container(
-        width: AppSize.tapTarget,
-        height: AppSize.tapTarget,
-        decoration: BoxDecoration(color: t.brandSoft, shape: BoxShape.circle),
-        child: Icon(topic.icon, color: t.brand),
-      ),
+    Widget row(GuideTopic topic) => RuledRow(
+      icon: topic.icon,
       title: thai ? topic.titleTh : topic.title,
       trailing: Icon(Icons.chevron_right, color: t.inkMuted),
       onTap: () => _open(context, topic),
     );
-    // The header band paints behind the status bar, so the top is not inset.
-    return SafeArea(
-      top: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          BrandHeader(
-            title: context.tr(th: 'คู่มือออฟไลน์', en: 'Offline guide'),
-            trailing: SettingsButton(storage: storage),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: t.brightness == Brightness.light
+          ? SystemUiOverlayStyle.dark
+          : SystemUiOverlayStyle.light,
+      // The title sits on the ground, so the status bar is inset; the nav bar is the Scaffold's.
+      child: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.md,
+            0,
+            AppSpace.md,
+            AppSpace.lg,
           ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpace.md),
+          child: ContentWidth(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ContentWidth(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      CollapsibleCard(
-                        title: context.tr(
-                          th: 'ปฐมพยาบาลด่วน (${firstAid.length})',
-                          en: 'Urgent first aid (${firstAid.length})',
-                        ),
-                        children: [
-                          for (final topic in firstAid)
-                            row(topic, t.tier(AlertTier.danger).color),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpace.md),
-                      CollapsibleCard(
-                        title: context.tr(
-                          th: 'น้ำท่วมและแผ่นดินไหว (${disaster.length})',
-                          en: 'Floods and earthquakes (${disaster.length})',
-                        ),
-                        children: [
-                          for (final topic in disaster) row(topic, t.brand),
-                        ],
-                      ),
-                    ],
+                ScreenTitle(
+                  context.tr(th: 'คู่มือออฟไลน์', en: 'Offline guide'),
+                  trailing: SettingsButton(storage: storage),
+                ),
+                Section(
+                  title: context.tr(
+                    th: 'ปฐมพยาบาลด่วน (${firstAid.length})',
+                    en: 'Urgent first aid (${firstAid.length})',
                   ),
+                  ruleColor: t.danger,
+                  titleColor: t.dangerInk,
+                  children: [for (final topic in firstAid) row(topic)],
+                ),
+                Section(
+                  title: context.tr(
+                    th: 'น้ำท่วมและแผ่นดินไหว (${disaster.length})',
+                    en: 'Floods and earthquakes (${disaster.length})',
+                  ),
+                  ruleColor: t.ink,
+                  children: [for (final topic in disaster) row(topic)],
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// One topic as a page: large numbered steps, and a call button on first-aid pages.
+// One topic as a page: numbered steps as ruled rows, and a call button on first-aid pages.
 class GuideTopicScreen extends StatelessWidget {
   const GuideTopicScreen({super.key, required this.topic});
 
@@ -109,73 +103,54 @@ class GuideTopicScreen extends StatelessWidget {
     final steps = thai ? topic.stepsTh : topic.steps;
     final medical = EmergencyNumbers.medical;
     return Scaffold(
-      appBar: AppBar(title: Text(thai ? topic.titleTh : topic.title)),
+      // Back arrow only: the title lives in the body, where long Thai wraps instead of being cut.
+      appBar: AppBar(),
       body: SafeArea(
-        child: ContentWidth(
-          child: ListView(
-            padding: const EdgeInsets.all(AppSpace.md),
-            children: [
-              SoftCard(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpace.md,
-                  AppSpace.md,
-                  AppSpace.md,
-                  0,
-                ),
-                child: Column(
-                  children: [
-                    for (final (i, step) in steps.indexed)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpace.md),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: AppIconSize.xl - AppSpace.sm,
-                              height: AppIconSize.xl - AppSpace.sm,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: t.brandSoft,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '${i + 1}',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: t.brand,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: AppSpace.md),
-                            Expanded(
-                              child: Text(
-                                step,
-                                style: theme.textTheme.bodyLarge,
-                              ),
-                            ),
-                          ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpace.md),
+          child: ContentWidth(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ScreenTitle(thai ? topic.titleTh : topic.title, compact: true),
+                Container(height: AppStroke.rule, color: t.hairline),
+                for (final (i, step) in steps.indexed)
+                  RuledRow(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    // Plain bold number, same line height as the step so it sits by line one.
+                    leading: SizedBox(
+                      width: AppIconSize.lg,
+                      child: Text(
+                        '${i + 1}',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
-                  ],
-                ),
-              ),
-              if (topic.kind == GuideKind.firstAid) ...[
-                const SizedBox(height: AppSpace.md),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: t.danger,
-                    foregroundColor: t.onDanger,
+                    ),
+                    title: step,
+                    titleStyle: theme.textTheme.bodyLarge,
                   ),
-                  onPressed: () => EmergencyLauncher.call(medical.number),
-                  icon: const Icon(Icons.call),
-                  label: Text(
-                    context.tr(
-                      th: 'โทร ${medical.number} ${context.serviceName(medical)}',
-                      en: 'Call ${medical.number} ${context.serviceName(medical)}',
+                if (topic.kind == GuideKind.firstAid) ...[
+                  const SizedBox(height: AppSpace.md),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: t.danger,
+                      foregroundColor: t.onDanger,
+                      minimumSize: const Size.fromHeight(AppSize.primaryButton),
+                    ),
+                    onPressed: () => EmergencyLauncher.call(medical.number),
+                    icon: const Icon(Icons.call),
+                    label: Text(
+                      context.tr(
+                        th: 'โทร ${medical.number} ${context.serviceName(medical)}',
+                        en: 'Call ${medical.number} ${context.serviceName(medical)}',
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

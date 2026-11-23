@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/bangkok_shelters.dart';
@@ -137,34 +138,19 @@ class _AppShellState extends State<AppShell> {
   late final Future<ProvinceBoundaries> _provinces = ProvinceBoundaries.load();
   int _index = 0;
 
-  // Call sits in the middle as a filled brand circle: the most urgent tab after SOS.
-  List<(Widget, Widget, String)> _destinations(
-    BuildContext context, {
-    required bool rail,
-  }) => [
+  // Five equal tabs; Call is an ordinary tab (no raised circle).
+  List<(IconData, IconData, String)> _destinations(BuildContext context) => [
+    (Icons.home_outlined, Icons.home, context.tr(th: 'หน้าแรก', en: 'Home')),
+    (Icons.map_outlined, Icons.map, context.tr(th: 'แผนที่', en: 'Map')),
+    (Icons.call_outlined, Icons.call, context.tr(th: 'โทร', en: 'Call')),
     (
-      const Icon(Icons.home_outlined),
-      const Icon(Icons.home),
-      context.tr(th: 'หน้าแรก', en: 'Home'),
-    ),
-    (
-      const Icon(Icons.map_outlined),
-      const Icon(Icons.map),
-      context.tr(th: 'แผนที่', en: 'Map'),
-    ),
-    (
-      _RaisedCall(lifted: !rail),
-      _RaisedCall(lifted: !rail),
-      context.tr(th: 'โทร', en: 'Call'),
-    ),
-    (
-      const Icon(Icons.edit_note_outlined),
-      const Icon(Icons.edit_note),
+      Icons.edit_note_outlined,
+      Icons.edit_note,
       context.tr(th: 'รายงาน', en: 'Report'),
     ),
     (
-      const Icon(Icons.menu_book_outlined),
-      const Icon(Icons.menu_book),
+      Icons.menu_book_outlined,
+      Icons.menu_book,
       context.tr(th: 'คู่มือ', en: 'Guide'),
     ),
   ];
@@ -185,7 +171,7 @@ class _AppShellState extends State<AppShell> {
     final wide =
         size.width >= AppSize.wideBreakpoint &&
         size.height >= AppSize.railMinHeight;
-    final destinations = _destinations(context, rail: wide);
+    final destinations = _destinations(context);
     // IndexedStack keeps every screen alive, so form text and map position are not lost.
     final body = IndexedStack(
       index: _index,
@@ -218,19 +204,10 @@ class _AppShellState extends State<AppShell> {
       return Scaffold(
         body: Row(
           children: [
-            SafeArea(
-              child: NavigationRail(
-                selectedIndex: _index,
-                onDestinationSelected: (i) => setState(() => _index = i),
-                destinations: [
-                  for (final d in destinations)
-                    NavigationRailDestination(
-                      icon: d.$1,
-                      selectedIcon: d.$2,
-                      label: Text(d.$3),
-                    ),
-                ],
-              ),
+            AppNavRail(
+              destinations: destinations,
+              selectedIndex: _index,
+              onSelected: (i) => setState(() => _index = i),
             ),
             VerticalDivider(color: context.tokens.hairline),
             Expanded(child: body),
@@ -241,26 +218,10 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       body: body,
-      // A white bar lifted off the canvas by a soft shadow (a hairline at night).
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          border: context.tokens.cardShadow.isEmpty
-              ? Border(top: BorderSide(color: context.tokens.hairline))
-              : null,
-          boxShadow: context.tokens.cardShadow,
-        ),
-        child: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
-          destinations: [
-            for (final d in destinations)
-              NavigationDestination(
-                icon: d.$1,
-                selectedIcon: d.$2,
-                label: d.$3,
-              ),
-          ],
-        ),
+      bottomNavigationBar: AppNavBar(
+        destinations: destinations,
+        selectedIndex: _index,
+        onSelected: (i) => setState(() => _index = i),
       ),
     );
   }
@@ -316,36 +277,241 @@ class _StartupNotice extends StatelessWidget {
   }
 }
 
-// The Call tab's icon: a filled brand circle, so the emergency dialer stands out. In the bottom
-// bar it keeps the icon's 24 dp layout box (its label lines up with the others) and is drawn
-// larger and lifted; the rail has room for the full circle in place.
-class _RaisedCall extends StatelessWidget {
-  const _RaisedCall({required this.lifted});
+// One tab: icon over label, ink when selected, muted otherwise. The selection is a rule in the
+// brand colour (never colour alone: ink, weight and the filled icon change too). The rule is
+// always laid out, transparent when unselected, so nothing shifts on tap.
+class _NavTab extends StatefulWidget {
+  const _NavTab({
+    required this.index,
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+    required this.vertical,
+  });
 
-  final bool lifted;
+  final int index;
+  final (IconData, IconData, String) destination;
+  final bool selected;
+  final VoidCallback onTap;
+  // true = the rail: the rule runs down the leading edge instead of across the top.
+  final bool vertical;
+
+  @override
+  State<_NavTab> createState() => _NavTabState();
+}
+
+class _NavTabState extends State<_NavTab> {
+  bool _focused = false;
+
+  // Enter and Space activate the focused tab (the InkWell is not itself focusable, see build).
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final k = event.logicalKey;
+    if (k == LogicalKeyboardKey.enter ||
+        k == LogicalKeyboardKey.numpadEnter ||
+        k == LogicalKeyboardKey.space) {
+      widget.onTap();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final index = widget.index;
+    final destination = widget.destination;
+    final selected = widget.selected;
+    final onTap = widget.onTap;
+    final vertical = widget.vertical;
+    final t = context.tokens;
+    final color = selected ? t.ink : t.inkMuted;
+    final style = Theme.of(context).textTheme.labelMedium?.copyWith(
+      color: color,
+      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+    );
+    final rule = ColoredBox(
+      key: ValueKey('nav-rule-$index'),
+      color: selected ? t.brand : Colors.transparent,
+    );
+    // Semantics wrap the label text only (the icon is decoration): a tight node that contrast
+    // checks read as text, not the rule or the hairline. No side padding: narrow tabs need every
+    // dp so Thai words are not split mid-word.
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          selected ? destination.$2 : destination.$1,
+          size: AppIconSize.md,
+          color: color,
+        ),
+        Semantics(
+          button: true,
+          selected: selected,
+          label: destination.$3,
+          excludeSemantics: true,
+          onTap: onTap,
+          child: Text(
+            destination.$3,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: style,
+          ),
+        ),
+      ],
+    );
+    // One focus stop per tab, owned here, not by the InkWell: includeSemantics false keeps the
+    // single label node (button + selected + tap) as the only semantics node, and the outline is
+    // drawn on top as a border with no fill, so text contrast under it is unchanged.
+    return Focus(
+      includeSemantics: false,
+      onKeyEvent: _onKey,
+      onFocusChange: (f) => setState(() => _focused = f),
+      child: Stack(
+        children: [
+          // Not positioned: it sizes the Stack, so the rail's unbounded height still works.
+          InkWell(
+            key: ValueKey('nav-tab-$index'),
+            excludeFromSemantics: true,
+            canRequestFocus: false,
+            onTap: onTap,
+            child: _tabBody(t, content, rule, vertical),
+          ),
+          if (_focused)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  key: ValueKey('nav-focus-$index'),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: t.ink, width: AppStroke.frame),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabBody(AppTokens t, Widget content, Widget rule, bool vertical) {
+    return vertical
+        ? ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: AppSize.tapTarget + AppSpace.xl,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                content,
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: AppStroke.tab,
+                  child: rule,
+                ),
+              ],
+            ),
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: AppStroke.tab, child: rule),
+              Expanded(child: Center(child: content)),
+            ],
+          );
+  }
+}
+
+// The bottom bar: ground colour, a hairline on top, no shadow.
+class AppNavBar extends StatelessWidget {
+  const AppNavBar({
+    super.key,
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<(IconData, IconData, String)> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final circle = Container(
-      width: AppSize.raisedNavIcon,
-      height: AppSize.raisedNavIcon,
+    // Container, not DecoratedBox: it pads for the hairline, so no tab paints under it.
+    return Container(
       decoration: BoxDecoration(
-        color: t.brand,
-        shape: BoxShape.circle,
-        boxShadow: t.cardShadow,
+        color: t.ground,
+        border: Border(
+          top: BorderSide(color: t.hairline, width: AppStroke.rule),
+        ),
       ),
-      child: Icon(Icons.call, color: t.onBrand, size: AppIconSize.md),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          // Two label lines at 1.5x fit in navBar; past that the bar grows with the text.
+          height:
+              AppSize.navBar *
+              (context.textScale.clamp(
+                    AppSize.navBarFitScale,
+                    AppSize.navBarMaxScale,
+                  ) /
+                  AppSize.navBarFitScale),
+          child: Row(
+            children: [
+              for (var i = 0; i < destinations.length; i++)
+                Expanded(
+                  child: _NavTab(
+                    index: i,
+                    destination: destinations[i],
+                    selected: i == selectedIndex,
+                    onTap: () => onSelected(i),
+                    vertical: false,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
-    if (!lifted) return circle;
-    return SizedBox.square(
-      dimension: AppIconSize.md,
-      child: OverflowBox(
-        maxWidth: AppSize.raisedNavIcon,
-        maxHeight: AppSize.raisedNavIcon,
-        child: Transform.translate(
-          offset: const Offset(0, -AppSpace.sm),
-          child: circle,
+  }
+}
+
+// The side rail for wide screens: same tabs, the rule on the leading edge.
+class AppNavRail extends StatelessWidget {
+  const AppNavRail({
+    super.key,
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<(IconData, IconData, String)> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: context.tokens.ground,
+      child: SafeArea(
+        child: SizedBox(
+          width: AppSize.navRail,
+          // Scrolls instead of clipping if a short screen at large text cannot fit five tabs.
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                for (var i = 0; i < destinations.length; i++)
+                  _NavTab(
+                    index: i,
+                    destination: destinations[i],
+                    selected: i == selectedIndex,
+                    onTap: () => onSelected(i),
+                    vertical: true,
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

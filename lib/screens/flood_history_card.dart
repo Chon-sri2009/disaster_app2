@@ -6,7 +6,7 @@ import '../models/flood_history.dart';
 import '../services/flood_history_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
-import '../widgets/soft_ui.dart';
+import '../widgets/notice_ui.dart';
 
 // GISTDA's repeat-flood record for the last known position. Hidden while loading, with no
 // position, or when the backend cannot answer. "No record" is never worded as "safe".
@@ -44,10 +44,7 @@ class _FloodHistoryCardState extends State<FloodHistoryCard> {
           builder: (context, snap) {
             final h = snap.data;
             if (h == null) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.only(top: AppSpace.md),
-              child: SoftCard(child: _Body(h)),
-            );
+            return _Body(h);
           },
         );
       },
@@ -62,24 +59,18 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     final years = h.years;
     final range = years.isEmpty ? '' : '${years.first.year}-${years.last.year}';
     final where = [
       h.district,
       h.province,
     ].whereType<String>().toSet().join(', ');
-    final color = h.found ? t.brand : t.inkMuted;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Section(
+      title: context.tr(th: 'ประวัติน้ำท่วมซ้ำซาก', en: 'Flood history'),
       children: [
-        SectionLabel(
-          context.tr(th: 'ประวัติน้ำท่วมซ้ำซาก', en: 'Flood history'),
-          inCard: true,
-        ),
-        AccentRow(
-          accent: color,
-          leading: Icon(Icons.water_drop_outlined, color: color),
+        RuledRow(
+          icon: Icons.water_drop_outlined,
+          crossAxisAlignment: CrossAxisAlignment.start,
           title: h.found
               ? context.tr(
                   th: 'ท่วม ${h.floodedYears} จาก ${years.length} ปี ($range)',

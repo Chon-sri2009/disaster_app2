@@ -12,8 +12,9 @@ abstract final class AppTheme {
     double size,
     FontWeight weight,
     Color color,
-    double height,
-  ) {
+    double height, {
+    bool figures = false,
+  }) {
     return TextStyle(
       fontFamily: fontFamily,
       fontSize: size,
@@ -21,6 +22,8 @@ abstract final class AppTheme {
       color: color,
       height: height,
       leadingDistribution: TextLeadingDistribution.even,
+      // Tabular figures keep big numbers from jittering as they change.
+      fontFeatures: figures ? const [FontFeature.tabularFigures()] : null,
     );
   }
 
@@ -54,30 +57,33 @@ abstract final class AppTheme {
       surfaceTint: Colors.transparent,
     );
 
-    // Headings and values in 700, body in 400.
+    // Posted notice scale: nothing under 16 sp; weight carries the hierarchy, and 700 is only
+    // for display and headlineMedium.
     final text = TextTheme(
-      displayLarge: _style(48, FontWeight.w700, t.ink, 1.1),
-      displayMedium: _style(40, FontWeight.w700, t.ink, 1.15),
-      displaySmall: _style(36, FontWeight.w700, t.ink, 1.2),
+      displayLarge: _style(48, FontWeight.w700, t.ink, 1.2, figures: true),
+      displayMedium: _style(40, FontWeight.w700, t.ink, 1.25, figures: true),
+      displaySmall: _style(36, FontWeight.w700, t.ink, 1.2, figures: true),
+      // Not in the brief; defined so no slot falls back to a default under 16 sp.
+      headlineLarge: _style(32, FontWeight.w600, t.ink, 1.25),
       headlineMedium: _style(28, FontWeight.w700, t.ink, 1.25),
-      headlineSmall: _style(24, FontWeight.w700, t.ink, 1.3),
-      titleLarge: _style(22, FontWeight.w700, t.ink, 1.3),
-      titleMedium: _style(18, FontWeight.w700, t.ink, 1.4),
-      titleSmall: _style(16, FontWeight.w700, t.ink, 1.4),
-      bodyLarge: _style(18, FontWeight.w400, t.ink, 1.5),
-      bodyMedium: _style(16, FontWeight.w400, t.ink, 1.5),
+      headlineSmall: _style(24, FontWeight.w600, t.ink, 1.3),
+      titleLarge: _style(22, FontWeight.w600, t.ink, 1.3),
+      titleMedium: _style(20, FontWeight.w600, t.ink, 1.4),
+      titleSmall: _style(17, FontWeight.w600, t.ink, 1.4),
+      bodyLarge: _style(17, FontWeight.w400, t.ink, 1.5),
+      bodyMedium: _style(17, FontWeight.w400, t.ink, 1.5),
       bodySmall: _style(16, FontWeight.w400, t.inkMuted, 1.5),
-      labelLarge: _style(16, FontWeight.w700, t.ink, 1.4),
-      labelMedium: _style(14, FontWeight.w700, t.ink, 1.4),
-      labelSmall: _style(14, FontWeight.w500, t.inkMuted, 1.4),
+      labelLarge: _style(17, FontWeight.w600, t.ink, 1.4),
+      labelMedium: _style(16, FontWeight.w600, t.ink, 1.4),
+      labelSmall: _style(16, FontWeight.w400, t.inkMuted, 1.4),
     );
 
     RoundedRectangleBorder rounded(double r) =>
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(r));
-    const stadium = StadiumBorder();
+    final control = rounded(AppRadius.control);
     const tap = Size(AppSize.tapTarget, AppSize.tapTarget);
     OutlineInputBorder field(Color color, double width) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       borderSide: BorderSide(color: color, width: width),
     );
 
@@ -101,18 +107,20 @@ abstract final class AppTheme {
         selectionHandleColor: t.brand,
       ),
       iconTheme: IconThemeData(color: t.ink, size: AppIconSize.md),
-      // Pushed pages (Settings, About, guide topics) wear the header band as their app bar.
+      // Pushed pages: a plain ground bar with ink text (the navy band is retired).
       appBarTheme: AppBarTheme(
-        backgroundColor: t.header,
-        foregroundColor: t.onHeader,
+        backgroundColor: t.ground,
+        foregroundColor: t.ink,
         elevation: AppElevation.none,
         scrolledUnderElevation: AppElevation.none,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: text.titleLarge?.copyWith(color: t.onHeader),
-        iconTheme: IconThemeData(color: t.onHeader),
-        actionsIconTheme: IconThemeData(color: t.onHeader),
+        titleTextStyle: text.titleLarge,
+        iconTheme: IconThemeData(color: t.ink),
+        actionsIconTheme: IconThemeData(color: t.ink),
         toolbarHeight: AppSize.toolbar,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: t.brightness == Brightness.light
+            ? SystemUiOverlayStyle.dark
+            : SystemUiOverlayStyle.light,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -121,7 +129,7 @@ abstract final class AppTheme {
           disabledBackgroundColor: t.hairline,
           disabledForegroundColor: t.inkMuted,
           minimumSize: const Size(AppSize.tapTarget, AppSize.primaryButton),
-          shape: stadium,
+          shape: control,
           textStyle: text.labelLarge,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
         ),
@@ -129,7 +137,7 @@ abstract final class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: tap,
-          shape: stadium,
+          shape: control,
           foregroundColor: t.brand,
           side: BorderSide(color: t.hairline, width: AppStroke.frame),
           textStyle: text.labelLarge,
@@ -139,7 +147,7 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           minimumSize: tap,
-          shape: stadium,
+          shape: control,
           foregroundColor: t.brand,
           textStyle: text.labelLarge,
         ),
@@ -153,7 +161,7 @@ abstract final class AppTheme {
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
           minimumSize: tap,
-          shape: stadium,
+          shape: control,
           side: BorderSide(color: t.hairline, width: AppStroke.rule),
           backgroundColor: t.surface,
           foregroundColor: t.ink,
@@ -167,7 +175,7 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
         color: t.surface,
         surfaceTintColor: Colors.transparent,
-        shape: rounded(AppRadius.lg),
+        shape: rounded(AppRadius.none),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -186,47 +194,6 @@ abstract final class AppTheme {
         iconColor: t.ink,
         textColor: t.ink,
         minVerticalPadding: AppSpace.sm,
-        shape: rounded(AppRadius.md),
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        height: AppSize.navBar,
-        elevation: AppElevation.none,
-        backgroundColor: t.surface,
-        surfaceTintColor: Colors.transparent,
-        shadowColor: Colors.transparent,
-        indicatorColor: t.brandSoft,
-        indicatorShape: stadium,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected)
-              ? text.labelMedium?.copyWith(color: t.brand)
-              : text.labelMedium?.copyWith(
-                  color: t.inkMuted,
-                  fontWeight: FontWeight.w500,
-                ),
-        ),
-        iconTheme: WidgetStateProperty.resolveWith(
-          (states) => IconThemeData(
-            size: AppIconSize.md,
-            color: states.contains(WidgetState.selected) ? t.brand : t.inkMuted,
-          ),
-        ),
-      ),
-      navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: t.surface,
-        indicatorColor: t.brandSoft,
-        indicatorShape: stadium,
-        labelType: NavigationRailLabelType.all,
-        selectedLabelTextStyle: text.labelMedium?.copyWith(color: t.brand),
-        unselectedLabelTextStyle: text.labelMedium?.copyWith(
-          color: t.inkMuted,
-          fontWeight: FontWeight.w500,
-        ),
-        selectedIconTheme: IconThemeData(size: AppIconSize.md, color: t.brand),
-        unselectedIconTheme: IconThemeData(
-          size: AppIconSize.md,
-          color: t.inkMuted,
-        ),
       ),
       sliderTheme: SliderThemeData(
         trackHeight: 8,
@@ -238,15 +205,15 @@ abstract final class AppTheme {
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: t.brand,
-        linearTrackColor: t.brandSoft,
-        circularTrackColor: t.brandSoft,
+        linearTrackColor: t.hairline,
+        circularTrackColor: t.hairline,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: t.ink,
         contentTextStyle: text.bodyMedium?.copyWith(color: t.ground),
         actionTextColor: t.ground,
-        shape: rounded(AppRadius.md),
+        shape: control,
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: t.surface,
@@ -256,17 +223,13 @@ abstract final class AppTheme {
         modalElevation: AppElevation.overlay,
         dragHandleColor: t.hairline,
         dragHandleSize: AppSize.dragHandle,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
-          ),
-        ),
+        shape: rounded(AppRadius.none),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: t.surface,
         surfaceTintColor: Colors.transparent,
         elevation: AppElevation.overlay,
-        shape: rounded(AppRadius.xl),
+        shape: control,
         titleTextStyle: text.titleLarge,
         contentTextStyle: text.bodyLarge,
       ),

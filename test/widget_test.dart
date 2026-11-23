@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'test_helpers.dart';
 
-// Opens every tab of the NavigationBar and checks its main text appears.
+// Opens every tab of the bottom bar (AppNavBar) and checks its main text appears.
 void main() {
   setUpAll(() async {
     await loadAppFonts();
@@ -39,7 +39,7 @@ void main() {
 
     await tester.tap(find.text('แผนที่'));
     await tester.pump();
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(AppNavBar), findsOneWidget);
     // Sensor readings live in the map's sheet, behind the Sensors switch.
     await tester.tap(find.text('เซนเซอร์'));
     await tester.pump();

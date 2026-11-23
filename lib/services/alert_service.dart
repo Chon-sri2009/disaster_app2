@@ -30,10 +30,16 @@ class AlertService extends ChangeNotifier {
         // A broken cache is ignored; the next refresh replaces it.
       }
     }
+    // What listeners would see now, so the first tick notifies only on a real change.
+    _notifiedSignature = _timeSignature();
   }
 
   // Alerts older than this without a refresh are shown as stale.
   static const staleAfter = Duration(minutes: 30);
+  // A phone clock a couple of minutes behind the server puts the data time in the future.
+  // That must not mark alerts stale for ever (R-F10), and 5 min is still far inside
+  // staleAfter. A clock far off (hours) still goes stale. Sensors keep their strict 1 min.
+  static const futureSlack = Duration(minutes: 5);
 
   final StorageService _storage;
   final String snapshotUrl;
@@ -46,6 +52,8 @@ class AlertService extends ChangeNotifier {
   late List<HistoryEntry> _history;
   Timer? _timer;
   bool _busy = false;
+  // A download can finish after the screen is gone: then nothing may notify or be written.
+  bool _disposed = false;
 
   // Notices that were shown and have ended, newest first. Read-only record for the history
   // screen: it must never feed visibleAlerts, levelAt or Home's level.
@@ -56,6 +64,9 @@ class AlertService extends ChangeNotifier {
   // A notice that vanished with no proof it ended is followed this long, then forgotten.
   static const unprovenKeep = Duration(days: 7);
 
+  // The service's own clock, so a screen judges expiry by the same time the rules use.
+  DateTime get now => _clock();
+
   bool get hasSnapshot => _fetchedAt != null;
   // The time of the DATA: when the backend built the snapshot, not when the phone downloaded it.
   // A dead backend keeps serving its last snapshot, so download time would hide that it is old.
@@ -63,10 +74,14 @@ class AlertService extends ChangeNotifier {
   // Listed alert files the backend could not read in its last poll: the list may be missing
   // a live warning, so it must not read as "no alerts".
   int get skippedFiles => _skippedFiles;
-  bool get isStale =>
-      _fetchedAt == null ||
-      _skippedFiles > 0 ||
-      _clock().difference(_fetchedAt!) > staleAfter;
+  // A negative age means the phone clock moved back after the data time (R-F6): the age is
+  // unknown, so it counts as stale, beyond futureSlack.
+  bool get isStale {
+    final fetched = _fetchedAt;
+    if (fetched == null || _skippedFiles > 0) return true;
+    final age = _clock().difference(fetched);
+    return age > staleAfter || age < -futureSlack;
+  }
 
   List<OfficialAlert> get visibleAlerts =>
       AlertRules.visible(_alerts, _clock().toUtc());
@@ -82,7 +97,26 @@ class AlertService extends ChangeNotifier {
 
   // Re-downloads every [every] while the app runs; a refresh still running is skipped.
   void startAutoRefresh({Duration every = const Duration(minutes: 2)}) {
-    _timer ??= Timer.periodic(every, (_) => refresh());
+    _timer ??= Timer.periodic(every, (_) {
+      // Age and expiry change with the clock even when no download happens (offline, or
+      // no URL yet), so the screen must hear about them on every tick.
+      _notifyIfTimeChanged();
+      refresh();
+    });
+  }
+
+  // What the screens show that depends on the clock alone: stale or not, and which notices
+  // are still visible. Notify only when it differs from what listeners last saw.
+  String _timeSignature() =>
+      '$isStale|${visibleAlerts.map((a) => a.id).join(',')}';
+  String _notifiedSignature = '';
+
+  void _notifyIfTimeChanged() {
+    if (_disposed) return;
+    final signature = _timeSignature();
+    if (signature == _notifiedSignature) return;
+    _notifiedSignature = signature;
+    notifyListeners();
   }
 
   // Downloads a fresh snapshot over HTTPS. On any failure the old snapshot is kept.
@@ -92,13 +126,16 @@ class AlertService extends ChangeNotifier {
     _busy = true;
     try {
       final body = await _fetch(url);
+      if (_disposed) return;
       final now = _clock();
       // A live body must say when it was built; without that its age is unknown, and
       // download time would make a dead backend's old data look fresh.
       _apply(body, now, requireGeneratedAt: true);
       await _storage.saveSnapshot(body, now);
     } catch (_) {
-      // Offline or bad data is a normal state: keep showing the cached snapshot with its age.
+      // Offline or bad data is a normal state: keep showing the cached snapshot with its age,
+      // and say so when time alone made it stale or expired a notice.
+      _notifyIfTimeChanged();
     } finally {
       _busy = false;
     }
@@ -106,12 +143,14 @@ class AlertService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _timer?.cancel();
     super.dispose();
   }
 
-  // generatedAt when it is a valid time (a time in the future, from clock skew, must not look
-  // fresher than now). Otherwise the download time, but only for an old cache that predates
+  // generatedAt when it is a valid time, kept as is: a time in the future means the phone
+  // clock is behind, and isStale then calls the data stale (R-F7), so it is never clamped to
+  // look fresh. Otherwise the download time, but only for an old cache that predates
   // generatedAt: null for a live body, which is then rejected.
   DateTime? _dataTime(
     Object? generatedAt,
@@ -122,8 +161,7 @@ class AlertService extends ChangeNotifier {
         ? DateTime.tryParse(generatedAt)?.toUtc()
         : null;
     if (parsed == null) return requireGeneratedAt ? null : downloaded;
-    final now = _clock().toUtc();
-    return parsed.isAfter(now) ? now : parsed;
+    return parsed;
   }
 
   void _apply(
@@ -151,6 +189,7 @@ class AlertService extends ChangeNotifier {
     } catch (_) {
       // History is a convenience; it must never break the alerts themselves.
     }
+    _notifiedSignature = _timeSignature();
     notifyListeners();
   }
 

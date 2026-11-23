@@ -190,16 +190,94 @@ void main() {
     expect(calls, 2);
   });
 
-  test('future_generated_at_is_clamped_to_now', () async {
-    final s = service(
-      text: () =>
-          withGenerated(now.add(const Duration(hours: 3)).toIso8601String()),
-    );
+  // R-F7 (replaces the old clamp-to-now test): a generatedAt in the future means the phone
+  // clock is behind, so the age is unknown: stale, never clamped to look fresh.
+  test('future_generated_at_is_kept_and_stale_beyond_the_slack', () async {
+    final future = now.add(const Duration(hours: 3));
+    final s = service(text: () => withGenerated(future.toIso8601String()));
     await s.refresh();
-    expect(s.fetchedAt, now);
-    // Clock skew must not keep the data fresh once real time passes.
-    now = now.add(const Duration(minutes: 31));
+    expect(s.fetchedAt, future);
     expect(s.isStale, isTrue);
+    // Once the clock catches up (within the slack) it reads fresh again.
+    now = future;
+    expect(s.isStale, isFalse);
+    now = future.add(const Duration(minutes: 31));
+    expect(s.isStale, isTrue);
+  });
+
+  test('cached_snapshot_generated_3h_in_the_future_is_stale', () async {
+    final future = now.add(const Duration(hours: 3));
+    await storage.saveSnapshot(withGenerated(future.toIso8601String()), now);
+    final s = service(error: Exception('offline'));
+    expect(s.hasSnapshot, isTrue);
+    expect(s.fetchedAt, future);
+    expect(s.isStale, isTrue);
+  });
+
+  // R-F10 (a): alert data tolerates a phone clock up to 5 min behind (sensors keep 1 min).
+  for (final (label, ahead, stale) in [
+    ('2_min', const Duration(minutes: 2), false),
+    ('4_min', const Duration(minutes: 4), false),
+    ('exactly_5_min', const Duration(minutes: 5), false),
+    ('5_min_1_s', const Duration(minutes: 5, seconds: 1), true),
+    ('6_min', const Duration(minutes: 6), true),
+    ('3_h', const Duration(hours: 3), true),
+  ]) {
+    test('generated_at_${label}_in_the_future_is_${stale ? 'stale' : 'fresh'}',
+        () async {
+      final future = now.add(ahead);
+      final s = service(text: () => withGenerated(future.toIso8601String()));
+      await s.refresh();
+      expect(s.isStale, stale);
+      await storage.saveSnapshot(withGenerated(future.toIso8601String()), now);
+      expect(service(error: Exception('offline')).isStale, stale);
+    });
+  }
+
+  test('generated_at_30s_in_the_future_is_fresh', () async {
+    final future = now.add(const Duration(seconds: 30));
+    final s = service(text: () => withGenerated(future.toIso8601String()));
+    await s.refresh();
+    expect(s.isStale, isFalse);
+    await storage.saveSnapshot(withGenerated(future.toIso8601String()), now);
+    expect(service(error: Exception('offline')).isStale, isFalse);
+  });
+
+  // R-F9 (a): a fetch that finishes after dispose must not notify or write state.
+  test('fetch_completing_after_dispose_does_not_notify', () async {
+    final gate = Completer<String>();
+    final s = AlertService(
+      storage,
+      snapshotUrl: url,
+      fetcher: (_) => gate.future,
+      clock: () => now,
+    );
+    var notifies = 0;
+    s.addListener(() => notifies++);
+    final pending = s.refresh();
+    s.dispose();
+    gate.complete(body);
+    await pending; // would throw the "used after being disposed" assertion
+    expect(notifies, 0);
+    expect(s.hasSnapshot, isFalse);
+    expect(storage.snapshot, isNull);
+  });
+
+  test('fetch_failing_after_dispose_does_not_notify', () async {
+    final gate = Completer<String>();
+    final s = AlertService(
+      storage,
+      snapshotUrl: url,
+      fetcher: (_) => gate.future,
+      clock: () => now,
+    );
+    var notifies = 0;
+    s.addListener(() => notifies++);
+    final pending = s.refresh();
+    s.dispose();
+    gate.completeError(Exception('offline'));
+    await pending;
+    expect(notifies, 0);
   });
 
   test('invalid_generated_at_is_rejected_on_live_refresh', () async {

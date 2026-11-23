@@ -21,6 +21,15 @@ Debug builds with no server show clearly labelled demo data. Release builds with
 
 ```bash
 flutter run --dart-define=SENSOR_SNAPSHOT_URL=https://your-host/snapshot
+flutter run --dart-define=ALERT_SNAPSHOT_URL=https://your-host/alerts
+```
+
+Official TMD alerts: run the backend with the TMD CAP feeds. It serves them unchanged at
+`/alerts` (503 until the first successful poll). The app flag `ALERT_SNAPSHOT_URL` points at it
+and must be https, so put a TLS proxy in front.
+
+```bash
+cd backend && python sensor_ingest.py --tmd-feed https://www.tmd.go.th/en/api/xml/CAP --tmd-feed https://www.tmd.go.th/api/xml/CAP
 ```
 
 ## Test
@@ -28,7 +37,7 @@ flutter run --dart-define=SENSOR_SNAPSHOT_URL=https://your-host/snapshot
 ```bash
 flutter analyze
 flutter test
-cd backend && python -m unittest test_ingest
+cd backend && python -m unittest discover
 ```
 
 Golden screenshots in `test/goldens/` are rewritten by `flutter test`; review them in the diff.

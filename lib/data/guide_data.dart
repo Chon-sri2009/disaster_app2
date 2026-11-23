@@ -12,6 +12,7 @@ class GuideData {
       title: 'Before a flood: get ready',
       titleTh: 'ก่อนน้ำท่วม: เตรียมตัว',
       icon: Icons.backpack,
+      kind: GuideKind.disaster,
       steps: [
         'Pack a go-bag: water, food, torch, radio, power bank, medicines, copies of ID.',
         'Know the nearest shelter and two routes to reach it.',
@@ -29,6 +30,7 @@ class GuideData {
       title: 'During a flood',
       titleTh: 'ระหว่างน้ำท่วม',
       icon: Icons.flood,
+      kind: GuideKind.disaster,
       steps: [
         'Move to higher ground immediately. Do not wait for the water to reach you.',
         'Never walk or drive through flood water: 15 cm can knock you down, 30 cm can float a car.',
@@ -46,6 +48,7 @@ class GuideData {
       title: 'Evacuation checklist',
       titleTh: 'รายการเตรียมอพยพ',
       icon: Icons.directions_run,
+      kind: GuideKind.disaster,
       steps: [
         'Leave early, before roads are covered.',
         'Take your go-bag, phone, charger and any medicines.',
@@ -65,6 +68,7 @@ class GuideData {
       title: 'Earthquake safety',
       titleTh: 'แผ่นดินไหว',
       icon: Icons.crisis_alert,
+      kind: GuideKind.disaster,
       steps: [
         'Drop to the ground, cover your head and neck, hold on to sturdy furniture.',
         'Stay away from windows, shelves and heavy objects that can fall.',
@@ -82,6 +86,7 @@ class GuideData {
       title: 'Severe bleeding',
       titleTh: 'เลือดออกมาก',
       icon: Icons.healing,
+      kind: GuideKind.firstAid,
       steps: [
         'Press firmly on the wound with a clean cloth. Do not remove it if soaked; add more on top.',
         'Keep pressing for at least 10 minutes without checking.',
@@ -99,6 +104,7 @@ class GuideData {
       title: 'CPR basics (adult)',
       titleTh: 'CPR ผู้ใหญ่ (ปั๊มหัวใจ)',
       icon: Icons.favorite,
+      kind: GuideKind.firstAid,
       steps: [
         'Check if the person responds and breathes. If not, call for help.',
         'Push hard and fast in the centre of the chest: about 100 to 120 times per minute, 5 to 6 cm deep.',
@@ -116,6 +122,7 @@ class GuideData {
       title: 'Burns',
       titleTh: 'แผลไหม้และน้ำร้อนลวก',
       icon: Icons.local_fire_department,
+      kind: GuideKind.firstAid,
       steps: [
         'Cool the burn under cool running water for 20 minutes.',
         'Remove rings and tight clothing near the burn before it swells.',
@@ -133,6 +140,7 @@ class GuideData {
       title: 'Broken bones',
       titleTh: 'กระดูกหัก',
       icon: Icons.personal_injury,
+      kind: GuideKind.firstAid,
       steps: [
         'Keep the person still and the injured part supported in the position found.',
         'Do not try to straighten the bone.',

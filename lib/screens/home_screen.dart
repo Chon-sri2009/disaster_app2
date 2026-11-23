@@ -1,216 +1,380 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../data/emergency_numbers.dart';
 import '../data/mock_data.dart';
+import '../models/alert_level.dart';
 import '../l10n/l10n.dart';
 import '../services/alert_rules.dart';
 import '../services/alert_service.dart';
 import '../services/emergency_launcher.dart';
 import '../services/location_service.dart';
+import '../services/nearby.dart';
+import '../services/place_lookup.dart';
+import '../services/province_locator.dart';
 import '../services/sensor_service.dart';
+import '../services/storage_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
-import '../widgets/sos_hold_button.dart';
+import '../widgets/notice_ui.dart';
+import '../widgets/soft_ui.dart';
 import '../widgets/warning_banner.dart';
+import 'alert_detail_screen.dart';
+import 'alert_history_screen.dart';
+import 'calls_screen.dart';
+import 'settings_screen.dart';
 
-// Home screen: alert level, water level, official alerts, and a pinned press-and-hold SOS button.
+// Home: the title, the level slab, the SOS bar (pinned, or fixed on short screens), then ruled
+// sections for quick calls, the nearest shelter and official notices.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.sensors,
     required this.location,
+    required this.storage,
     this.alerts,
+    this.provinces,
+    this.onOpenMap,
   });
 
   final SensorService sensors;
   final LocationService location;
+  final StorageService storage;
   final AlertService? alerts;
+  // Null until the boundary file is loaded (or if it fails): the province is then unknown.
+  final ProvinceBoundaries? provinces;
+  final VoidCallback? onOpenMap;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// Keeps track of whether the SOS is waiting for GPS.
+// Opens the SOS sheet at once; the sheet itself waits for GPS.
 class _HomeScreenState extends State<HomeScreen> {
-  bool _locating = false;
+  // The hold and the screen-reader long-press can both confirm, so open only one sheet.
+  bool _sosOpen = false;
 
-  // Reads GPS, then shows the ready-made help message in a dialog.
   Future<void> _onSos() async {
-    setState(() => _locating = true);
-    final result = await widget.location.getCurrent();
-    if (!mounted) return;
-    setState(() => _locating = false);
-
-    final point = result.point;
-    final reason = result.issue == null
-        ? ''
-        : context.locationError(result.issue!);
-    String? message;
-    if (point != null) {
-      final lat = point.latitude.toStringAsFixed(6);
-      final lng = point.longitude.toStringAsFixed(6);
-      // Local time plus the UTC offset, so a rescuer in another zone reads the right hour.
-      final now = DateTime.now();
-      final off = now.timeZoneOffset;
-      final hh = off.inHours.abs().toString().padLeft(2, '0');
-      final mm = (off.inMinutes.abs() % 60).toString().padLeft(2, '0');
-      final time =
-          '${now.toString().substring(0, 16)} UTC${off.isNegative ? '-' : '+'}$hh:$mm';
-      // The person reading this may speak either language, so the message carries both.
-      final cached = result.fromCache
-          ? ' (ตำแหน่งที่บันทึกไว้ล่าสุด / last saved position)'
-          : '';
-      message =
-          'SOS! ต้องการความช่วยเหลือ / I need help.\n'
-          'ตำแหน่ง / Location: $lat, $lng$cached\n'
-          'แผนที่ / Map: https://www.google.com/maps?q=$lat,$lng\n'
-          'เวลา / Time: $time';
+    if (_sosOpen) return;
+    _sosOpen = true;
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        useSafeArea: true,
+        builder: (_) => _SosSheet(location: widget.location),
+      );
+    } finally {
+      _sosOpen = false;
     }
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (context) => _SosSheet(
-        message: message,
-        reason: reason,
-        fromCache: result.fromCache,
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, box) {
-        final wide = box.maxWidth >= AppSize.wideBreakpoint;
-        final content = _StatusColumn(
-          sensors: widget.sensors,
-          alerts: widget.alerts,
-          position: widget.location.lastKnown,
-        );
-        if (wide) {
-          // Tablet or landscape: status on the left, SOS panel pinned on the right.
-          final diameter = (box.maxHeight - 120).clamp(120.0, 220.0);
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: ContentWidth(child: content),
-                ),
-              ),
-              _SosPanel(
-                busy: _locating,
-                onConfirmed: _onSos,
-                diameter: diameter,
-                width: 320,
-              ),
-            ],
-          );
-        }
-        // Phone portrait: status scrolls, SOS stays pinned in the thumb zone.
-        return Column(
-          children: [
-            Expanded(child: SingleChildScrollView(child: content)),
-            _SosPanel(
-              busy: _locating,
+    final t = context.tokens;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: t.brightness == Brightness.light
+          ? SystemUiOverlayStyle.dark
+          : SystemUiOverlayStyle.light,
+      child: LayoutBuilder(
+        builder: (context, box) {
+          // Large text takes the short layout too: a pinned bar plus a big slab would leave
+          // little room to read.
+          final tall =
+              box.maxHeight >= AppSize.sosHeightTallScreen &&
+              context.textScale < AppSize.compactTextScale;
+          final sos = ContentWidth(
+            child: SosBar(
               onConfirmed: _onSos,
-              diameter: box.maxHeight >= 640 ? 192 : 160,
+              busy: false,
+              height: tall ? AppSize.sosHeight : AppSize.sosHeightCompact,
+              hint: context.tr(
+                th: 'กดค้าง 1.5 วินาทีเพื่อส่งตำแหน่ง',
+                en: 'Hold 1.5 seconds to share your location',
+              ),
+              semanticLabel: context.tr(th: 'SOS ฉุกเฉิน', en: 'SOS emergency'),
+              semanticHint: context.tr(
+                th: 'กดค้าง 1.5 วินาทีเพื่อส่งตำแหน่งของคุณ',
+                en: 'Press and hold for 1.5 seconds to send your location',
+              ),
             ),
-          ],
-        );
-      },
+          );
+          final head = Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+            child: ContentWidth(
+              child: _Head(storage: widget.storage, compact: !tall),
+            ),
+          );
+          final slab = ContentWidth(
+            child: _Slab(
+              sensors: widget.sensors,
+              alerts: widget.alerts,
+              storage: widget.storage,
+              provinces: widget.provinces,
+              compact: !tall,
+            ),
+          );
+          final sections = Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+            child: ContentWidth(
+              child: _Board(
+                alerts: widget.alerts,
+                storage: widget.storage,
+                provinces: widget.provinces,
+                onOpenMap: widget.onOpenMap,
+              ),
+            ),
+          );
+          // A short, wide screen (landscape phone) keeps the SOS bar in its own column so the
+          // level gets the full height.
+          final sideBySide = !tall && box.maxWidth >= AppSize.wideBreakpoint;
+          // SOS is always on screen. A tall screen scrolls the slab away and pins the bar under
+          // the status bar; a short one fixes the bar at the top and scrolls everything else.
+          return SafeArea(
+            bottom: false,
+            child: sideBySide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [head, slab, sections],
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: AppSize.sidePanelWidth,
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            right: AppSpace.md,
+                            top: AppSpace.sm,
+                          ),
+                          child: sos,
+                        ),
+                      ),
+                    ],
+                  )
+                : tall
+                ? CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(child: head),
+                      SliverToBoxAdapter(child: slab),
+                      // The gap keeps a red danger slab apart from the red SOS bar.
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: AppSpace.md),
+                      ),
+                      PinnedHeaderSliver(
+                        child: ColoredBox(
+                          color: t.ground,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                            child: sos,
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(child: sections),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      sos,
+                      const SizedBox(height: AppSpace.xs),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [head, slab, sections],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          );
+        },
+      ),
     );
   }
 }
 
-// The scrolling part of Home: level band, official alerts and the water meter.
-class _StatusColumn extends StatelessWidget {
-  const _StatusColumn({required this.sensors, this.alerts, this.position});
+// The level Home shows: the sensors' level and the official alert for the last known area,
+// whichever is worse. fromOfficial says the official alert decided it.
+({AlertLevel? level, bool fromOfficial}) homeLevel(
+  SensorService sensors,
+  AlertService? alerts,
+  StorageService storage, {
+  ProvinceBoundaries? provinces,
+}) {
+  final LatLng? p = storage.lastPosition;
+  final official = alerts != null && alerts.hasSnapshot && p != null
+      ? alerts.levelAt(p, provinceCode: provinces?.codeAt(p))
+      : null;
+  final level = AlertRules.combine(sensors.level, official);
+  final fromOfficial =
+      level != null && level == official && level != sensors.level;
+  return (level: level, fromOfficial: fromOfficial);
+}
 
-  final SensorService sensors;
-  final AlertService? alerts;
-  final LatLng? position;
+// Where the level applies: whether the phone has a last known position.
+String _areaText(BuildContext context, StorageService storage) =>
+    storage.lastPosition == null
+    ? context.tr(th: 'ยังไม่ทราบพื้นที่', en: 'Area not known yet')
+    : context.tr(th: 'พื้นที่ตำแหน่งล่าสุดของคุณ', en: 'Your last known area');
+
+// The screen title with the settings gear, the "Water level" header and the area line.
+class _Head extends StatelessWidget {
+  const _Head({required this.storage, required this.compact});
+
+  final StorageService storage;
+
+  // Short screens and large text: smaller title, and the area shares the header's row.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final t = context.tokens;
+    final text = Theme.of(context).textTheme;
+    final header = Semantics(
+      header: true,
+      child: Text(
+        context.tr(th: 'ระดับน้ำ', en: 'Water level'),
+        style: text.titleMedium,
+      ),
+    );
+    // The slab speaks the area too, so this copy is for the eyes only.
+    final area = ExcludeSemantics(
+      child: ListenableBuilder(
+        listenable: storage,
+        builder: (context, _) => Row(
+          mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.place, size: AppIconSize.sm, color: t.mark),
+            const SizedBox(width: AppSpace.xs),
+            Flexible(
+              child: Text(
+                _areaText(context, storage),
+                style: text.bodySmall?.copyWith(color: t.inkMuted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _LevelBand(sensors: sensors, alerts: alerts, position: position),
-        Padding(
-          padding: const EdgeInsets.all(AppSpace.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Official alerts come first: they outrank the community sensor below.
-              if (alerts != null) _OfficialAlerts(alerts: alerts!),
-              if (sensors.isDemo) _WaterMeter(sensors: sensors),
-            ],
-          ),
+        ScreenTitle(
+          context.tr(th: 'แจ้งภัยและช่วยเหลือ', en: 'Disaster Alert'),
+          trailing: SettingsButton(storage: storage),
+          compact: compact,
         ),
+        if (compact)
+          // One row when it fits, wrapped when it does not.
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpace.md,
+              children: [header, area],
+            ),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.sm),
+            child: header,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(
+              top: AppSpace.xs,
+              bottom: AppSpace.sm,
+            ),
+            child: area,
+          ),
+        ],
       ],
     );
   }
 }
 
-// A full-width colored band with the alert level as icon + word + advice (never color alone).
-class _LevelBand extends StatelessWidget {
-  const _LevelBand({required this.sensors, this.alerts, this.position});
+// The water-level slab: the tier's gauge, icon, step and word (never color alone), the advice
+// and where the level came from, one source per line. No data is neutral: never Safe.
+class _Slab extends StatelessWidget {
+  const _Slab({
+    required this.sensors,
+    required this.storage,
+    this.alerts,
+    this.provinces,
+    this.compact = false,
+  });
 
   final SensorService sensors;
+  final StorageService storage;
   final AlertService? alerts;
-  final LatLng? position;
+  final ProvinceBoundaries? provinces;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return ListenableBuilder(
-      listenable: Listenable.merge([sensors, ?alerts]),
+      listenable: Listenable.merge([sensors, ?alerts, storage]),
       builder: (context, _) {
-        final p = position;
-        final official = alerts != null && alerts!.hasSnapshot && p != null
-            ? alerts!.levelAt(p)
-            : null;
-        final level = AlertRules.combine(sensors.level, official);
-        final fromOfficial = level != null && level == official && level != sensors.level;
-        final t = context.tokens;
-        final style = level == null ? null : t.styleFor(level);
-        final onColor = style?.onColor ?? t.ink;
+        final (:level, :fromOfficial) = homeLevel(
+          sensors,
+          alerts,
+          storage,
+          provinces: provinces,
+        );
         final at = sensors.fetchedAt;
-        final String source;
+        final List<String> sources;
         if (fromOfficial) {
-          source = context.tr(
-            th: 'ประกาศเตือนภัยทางการ ในพื้นที่ล่าสุดของคุณ',
-            en: 'Official alert for your last known area',
-          );
+          sources = [
+            context.tr(
+              th: 'ประกาศเตือนภัยทางการ ในพื้นที่ล่าสุดของคุณ',
+              en: 'Official alert for your last known area',
+            ),
+          ];
         } else if (sensors.isDemo) {
-          source = context.tr(
-            th: 'ข้อมูลทดลอง ไม่ใช่ค่าจริง',
-            en: 'Demo data, not real',
-          );
+          sources = [
+            context.tr(
+              th: 'ข้อมูลทดลอง ไม่ใช่ค่าจริง',
+              en: 'Demo data, not real',
+            ),
+          ];
         } else if (!sensors.isLive) {
-          source = context.tr(
-            th: 'ยังไม่ได้เชื่อมต่อเซนเซอร์',
-            en: 'Not connected to sensors yet',
-          );
+          sources = [
+            context.tr(
+              th: 'ยังไม่ได้เชื่อมต่อเซนเซอร์',
+              en: 'Not connected to sensors yet',
+            ),
+          ];
         } else if (at == null) {
-          source = context.tr(
-            th: 'เชื่อมต่อเซนเซอร์ไม่ได้',
-            en: 'Cannot reach the sensors',
-          );
+          sources = [
+            context.tr(
+              th: 'เชื่อมต่อเซนเซอร์ไม่ได้',
+              en: 'Cannot reach the sensors',
+            ),
+          ];
         } else {
-          source = context.tr(
-            th:
-                'จากเซนเซอร์ชุมชน · อัปเดต ${context.stamp(at)}'
-                '${sensors.isStale ? ' (ข้อมูลอาจเก่า)' : ''}',
-            en:
-                'From community sensors · updated ${context.stamp(at)}'
-                '${sensors.isStale ? ' (may be out of date)' : ''}',
-          );
+          sources = [
+            // DRAFT (Phase R, owner to approve Thai): the old one-line "From community sensors ·
+            // updated …" is now two lines; the " · " is gone and English "updated" is "Updated".
+            context.tr(th: 'จากเซนเซอร์ชุมชน', en: 'From community sensors'),
+            context.tr(
+              th:
+                  'อัปเดต ${context.stamp(at)}'
+                  '${sensors.isStale ? ' (ข้อมูลอาจเก่า)' : ''}',
+              en:
+                  'Updated ${context.stamp(at)}'
+                  '${sensors.isStale ? ' (may be out of date)' : ''}',
+            ),
+          ];
         }
         final label = level == null
             ? context.tr(th: 'ไม่มีข้อมูลสด', en: 'No live data')
@@ -221,279 +385,238 @@ class _LevelBand extends StatelessWidget {
                 en: 'Do not assume it is safe. Watch T-Alert and the 1784 hotline.',
               )
             : context.levelAdvice(level);
-        return Semantics(
-          container: true,
-          liveRegion: true,
-          label: '$source: $label. $advice',
-          child: ExcludeSemantics(
-            child: Container(
-              width: double.infinity,
-              color: style?.color ?? t.hairline,
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpace.lg),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        style?.icon ?? Icons.sensors_off,
-                        size: 56,
-                        color: onColor,
-                      ),
-                      const SizedBox(width: AppSpace.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              source,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: onColor,
-                              ),
-                            ),
-                            Text(
-                              label,
-                              style: theme.textTheme.displaySmall?.copyWith(
-                                color: onColor,
-                              ),
-                            ),
-                            Text(
-                              advice,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: onColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+        final step = level == null
+            ? null
+            : context.tr(
+                th: 'ระดับ ${level.index + 1} จาก 4',
+                en: 'Level ${level.index + 1} of 4',
+              );
+        // The last line of the slab. Never a bare time for data that is not live.
+        final posted = sensors.isDemo
+            ? context.tr(
+                th: 'ทดลอง ${context.clock(sensors.latest.time)}',
+                en: 'Demo ${context.clock(sensors.latest.time)}',
+              )
+            : at == null
+            ? context.tr(th: 'ไม่มีข้อมูลสด', en: 'No live data')
+            : context.stamp(at);
+        return LevelSlab(
+          level: level,
+          label: label,
+          step: step,
+          advice: advice,
+          sources: sources,
+          posted: posted,
+          area: _areaText(context, storage),
+          compact: compact,
         );
       },
     );
   }
 }
 
-// Water level as a number plus a gauge bar with a tick at the safe limit.
-class _WaterMeter extends StatelessWidget {
-  const _WaterMeter({required this.sensors});
-
-  final SensorService sensors;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = context.tokens;
-    return ListenableBuilder(
-      listenable: sensors,
-      builder: (context, _) {
-        final reading = sensors.latest;
-        final over = sensors.waterOverLimit;
-        final fill = (reading.waterCm / MockData.waterMaxCm).clamp(0.0, 1.0);
-        final limit = MockData.waterLimitCm / MockData.waterMaxCm;
-        final cm = context.cmUnit;
-        final level = reading.waterCm.toStringAsFixed(0);
-        final limitText = MockData.waterLimitCm.toStringAsFixed(0);
-        return Semantics(
-          container: true,
-          label: context.tr(
-            th:
-                'ระดับน้ำ $level เซนติเมตร ระดับปลอดภัยไม่เกิน $limitText เซนติเมตร'
-                '${over ? ' เกินระดับปลอดภัยแล้ว' : ''}',
-            en:
-                'Water level $level centimeters, safe limit $limitText centimeters'
-                '${over ? ', over the limit' : ''}',
-          ),
-          child: ExcludeSemantics(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        context.tr(th: 'ระดับน้ำ', en: 'Water level'),
-                        style: theme.textTheme.titleMedium,
-                      ),
-                    ),
-                    Text(
-                      '$level $cm',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: over ? t.danger : t.ink,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpace.sm),
-                LayoutBuilder(
-                  builder: (context, box) {
-                    return SizedBox(
-                      height: 24,
-                      child: Stack(
-                        alignment: Alignment.centerLeft,
-                        children: [
-                          Container(
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: t.hairline,
-                              borderRadius: BorderRadius.circular(AppRadius.sm),
-                            ),
-                          ),
-                          AnimatedContainer(
-                            duration: context.motion(AppMotion.base),
-                            width: box.maxWidth * fill,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: over ? t.danger : t.accent,
-                              borderRadius: BorderRadius.circular(AppRadius.sm),
-                            ),
-                          ),
-                          Positioned(
-                            left: box.maxWidth * limit - 1.5,
-                            child: Container(
-                              width: 3,
-                              height: 24,
-                              color: t.ink,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpace.sm),
-                Text(
-                  context.tr(
-                    th:
-                        'ระดับปลอดภัยไม่เกิน $limitText $cm · '
-                        'ข้อมูลทดลอง ไม่ใช่ค่าจริง · ${context.clock(reading.time)}',
-                    en:
-                        'Safe limit $limitText $cm · '
-                        'demo data, not live · ${context.clock(reading.time)}',
-                  ),
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// The pinned bottom (or right) panel holding the SOS button and its one-line hint.
-class _SosPanel extends StatelessWidget {
-  const _SosPanel({
-    required this.busy,
-    required this.onConfirmed,
-    required this.diameter,
-    this.width,
+// The ruled sections: quick calls, nearest shelter and official notices.
+class _Board extends StatelessWidget {
+  const _Board({
+    required this.storage,
+    this.alerts,
+    this.provinces,
+    this.onOpenMap,
   });
 
-  final bool busy;
-  final VoidCallback onConfirmed;
-  final double diameter;
-  final double? width;
+  final StorageService storage;
+  final AlertService? alerts;
+  final ProvinceBoundaries? provinces;
+  final VoidCallback? onOpenMap;
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Container(
-      width: width ?? double.infinity,
-      // In the side panel the button sits in the middle of the full height.
-      alignment: width != null ? Alignment.center : null,
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border(
-          top: width == null ? BorderSide(color: t.hairline) : BorderSide.none,
-          left: width != null ? BorderSide(color: t.hairline) : BorderSide.none,
-        ),
-      ),
-      padding: const EdgeInsets.all(AppSpace.md),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.lg),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // The button shrinks to fit when the panel is short (landscape, large text).
-          Flexible(
-            child: LayoutBuilder(
-              builder: (context, box) {
-                final fit = [
-                  diameter,
-                  box.maxWidth,
-                  box.maxHeight,
-                ].reduce((a, b) => a < b ? a : b);
-                return SosHoldButton(
-                  busy: busy,
-                  onConfirmed: onConfirmed,
-                  diameter: fit,
-                );
-              },
+          const _QuickCalls(),
+          _NearestShelter(storage: storage, onOpenMap: onOpenMap),
+          if (alerts != null)
+            _OfficialAlerts(
+              alerts: alerts!,
+              storage: storage,
+              provinces: provinces,
             ),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          Text(
-            busy
-                ? context.tr(
-                    th: 'กำลังหาตำแหน่งของคุณ…',
-                    en: 'Finding your location…',
-                  )
-                : context.tr(
-                    th: 'กดค้าง 1.5 วินาทีเพื่อส่งตำแหน่งของคุณ',
-                    en: 'Hold for 1.5 seconds to share your location',
-                  ),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
         ],
       ),
     );
   }
 }
 
-// Official alerts with sender and time. With no backend yet it says so plainly instead of
-// showing an invented warning.
+// One ruled row per emergency number; a tap opens the dialer (as on the Call tab).
+class _QuickCalls extends StatelessWidget {
+  const _QuickCalls();
+
+  @override
+  Widget build(BuildContext context) {
+    return Section(
+      title: context.tr(th: 'โทรด่วน', en: 'Quick call'),
+      children: [
+        for (final n in EmergencyNumbers.sos)
+          RuledRow(
+            icon: emergencyIcon(n),
+            title: n.number,
+            subtitle: context.serviceName(n),
+            trailing: const Icon(Icons.call),
+            semanticLabel: context.tr(
+              th: 'โทร ${n.number} ${context.serviceName(n)}',
+              en: 'Call ${n.number}, ${context.serviceName(n)}',
+            ),
+            onTap: () => EmergencyLauncher.call(n.number),
+          ),
+      ],
+    );
+  }
+}
+
+// The nearest shelter with directions, or (position unknown) a way into the shelter map.
+class _NearestShelter extends StatelessWidget {
+  const _NearestShelter({required this.storage, this.onOpenMap});
+
+  final StorageService storage;
+  final VoidCallback? onOpenMap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: storage,
+      builder: (context, _) {
+        final shelters = storage.shelters;
+        if (shelters.isEmpty) return const SizedBox.shrink();
+        final t = context.tokens;
+        final from = storage.lastPosition;
+        // Sample shelters must never pass for real ones (PRODUCT principle 5).
+        final sample = MockData.isDemoShelterList(shelters);
+        final title = from == null
+            ? context.tr(th: 'ศูนย์พักพิง', en: 'Shelters')
+            : context.tr(th: 'ศูนย์พักพิงใกล้สุด', en: 'Nearest shelter');
+        final children = <Widget>[
+          if (sample)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.sm),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Tag(
+                  context.tr(th: 'ตัวอย่าง', en: 'Sample'),
+                  icon: Icons.science_outlined,
+                ),
+              ),
+            ),
+          if (sample)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xs),
+              child: Text(
+                context.tr(
+                  th: 'ตัวอย่าง ไม่ใช่ศูนย์พักพิงจริง',
+                  en: 'Sample, not real shelters',
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+        ];
+        if (from == null) {
+          children.add(
+            RuledRow(
+              icon: Icons.home_work,
+              title: context.tr(
+                th: '${shelters.length} แห่งในเครื่องนี้',
+                en: '${shelters.length} saved on this phone',
+              ),
+              subtitle: context.tr(
+                th: 'ยังไม่ทราบตำแหน่งของคุณ ดูบนแผนที่',
+                en: 'Your position is not known yet. See the map.',
+              ),
+              trailing: Icon(Icons.chevron_right, color: t.inkMuted),
+              onTap: onOpenMap,
+            ),
+          );
+        } else {
+          final s = Nearby.sorted(shelters, from).first;
+          children.add(
+            RuledRow(
+              icon: Icons.home_work,
+              title: context.shelterName(s),
+              subtitle: s.capacity == null
+                  ? null
+                  : context.shelterCapacity(s.capacity!),
+              trailing: Tag(
+                context.distance(Nearby.metersTo(from, s)),
+                icon: Icons.near_me,
+              ),
+            ),
+          );
+          children.add(
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.sm),
+              child: FilledButton.icon(
+                onPressed: () => EmergencyLauncher.navigate(s.lat, s.lng),
+                icon: const Icon(Icons.directions),
+                label: Text(
+                  context.tr(th: 'นำทางไปที่นี่', en: 'Get directions'),
+                ),
+              ),
+            ),
+          );
+        }
+        return Section(title: title, children: children);
+      },
+    );
+  }
+}
+
+// Official notices with level, sender and time. With no backend yet it says so plainly instead
+// of showing an invented warning.
 class _OfficialAlerts extends StatelessWidget {
-  const _OfficialAlerts({required this.alerts});
+  const _OfficialAlerts({
+    required this.alerts,
+    required this.storage,
+    this.provinces,
+  });
 
   final AlertService alerts;
+  final StorageService storage;
+  final ProvinceBoundaries? provinces;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = context.tokens;
     return ListenableBuilder(
-      listenable: alerts,
+      listenable: Listenable.merge([alerts, storage]),
       builder: (context, _) {
         final at = alerts.fetchedAt;
-        final Widget body;
+        final children = <Widget>[];
         if (at == null) {
-          body = WarningBanner(
-            kind: BannerKind.offline,
-            message: context.tr(
-              th:
-                  'แอปนี้ยังไม่ได้เชื่อมต่อประกาศเตือนภัยทางการ '
-                  'โปรดติดตาม T-Alert และสายด่วน 1784 ควบคู่กัน',
-              en:
-                  'This app is not connected to official alerts yet. '
-                  'Please also watch T-Alert and the 1784 hotline.',
+          children.add(
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.sm),
+              child: WarningBanner(
+                kind: BannerKind.offline,
+                message: context.tr(
+                  th:
+                      'แอปนี้ยังไม่ได้เชื่อมต่อประกาศเตือนภัยทางการ '
+                      'โปรดติดตาม T-Alert และสายด่วน 1784 ควบคู่กัน',
+                  en:
+                      'This app is not connected to official alerts yet. '
+                      'Please also watch T-Alert and the 1784 hotline.',
+                ),
+              ),
             ),
           );
         } else {
           final shown = alerts.visibleAlerts;
-          body = Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (alerts.isStale)
-                WarningBanner(
+          if (alerts.isStale) {
+            children.add(
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpace.sm),
+                child: WarningBanner(
                   kind: BannerKind.offline,
                   message: context.tr(
                     th:
@@ -504,54 +627,214 @@ class _OfficialAlerts extends StatelessWidget {
                         'They may be out of date.',
                   ),
                 ),
-              if (shown.isEmpty && !alerts.isStale)
-                Text(
+              ),
+            );
+          }
+          if (shown.isEmpty && !alerts.isStale) {
+            children.add(
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+                child: Text(
                   context.tr(
                     th: 'ไม่มีประกาศเตือนภัยในพื้นที่ · ตรวจล่าสุด ${context.stamp(at)}',
                     en: 'No alerts for your area · checked ${context.stamp(at)}',
                   ),
                   style: theme.textTheme.bodyMedium,
                 ),
-              for (final a in shown)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpace.sm),
-                  child: WarningBanner(
-                    message:
-                        '${context.levelLabel(a.level)} · ${a.sender} · '
-                        '${context.stamp(a.sent)}\n'
-                        '${a.headline[context.isThai ? 'th' : 'en'] ?? a.headline['th'] ?? a.headline.values.first}',
+              ),
+            );
+          }
+          // Same inputs as the level above, so a notice tagged "in your area" is the one that
+          // raised the level. Yours first, unknown next, other areas last; nothing is hidden.
+          final point = storage.lastPosition;
+          final code = point == null ? null : provinces?.codeAt(point);
+          final ranked =
+              [
+                for (final (n, a) in shown.indexed)
+                  (n, a, AlertRules.areaOf(a, point, code)),
+              ]..sort((x, y) {
+                final byArea = x.$3.index.compareTo(y.$3.index);
+                return byArea != 0 ? byArea : x.$1.compareTo(y.$1);
+              });
+          for (final (_, a, area) in ranked) {
+            final style = t.styleFor(a.level);
+            final tag = _areaTag(context, area);
+            final headline =
+                a.headline[context.isThai ? 'th' : 'en'] ??
+                a.headline['th'] ??
+                context.levelLabel(a.level);
+            children.add(
+              RuledRow(
+                // Opens the full notice (min 48 dp tall).
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AlertDetailScreen(
+                      alert: a,
+                      alerts: alerts,
+                      provinces: provinces,
+                    ),
                   ),
                 ),
-            ],
-          );
+                title: headline,
+                subtitle: '${a.sender} · ${context.stamp(a.sent)}',
+                semanticLabel:
+                    '${context.levelLabel(a.level)}. $headline. '
+                    '${a.sender}, ${context.stamp(a.sent)}. ${tag.word}',
+                trailing: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Tag(
+                      context.levelLabel(a.level),
+                      icon: style.icon,
+                      color: style.color,
+                      onColor: style.onColor,
+                    ),
+                    const SizedBox(height: AppSpace.xs),
+                    Tag(
+                      tag.word,
+                      icon: tag.icon,
+                      color: tag.color,
+                      onColor: tag.onColor,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
         }
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpace.lg),
-          child: body,
+        children.add(
+          RuledRow(
+            // Past notices only; opens the record (min 48 dp tall).
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    AlertHistoryScreen(alerts: alerts, provinces: provinces),
+              ),
+            ),
+            icon: Icons.history,
+            // DRAFT wording, owner to approve.
+            title: context.tr(th: 'ประวัติประกาศ', en: 'Alert history'),
+          ),
+        );
+        return Section(
+          title: context.tr(th: 'ประกาศทางการ', en: 'Official notices'),
+          children: children,
         );
       },
     );
   }
 }
 
-// What opens after a confirmed SOS: calling comes first, the ready-made message second.
-class _SosSheet extends StatelessWidget {
-  const _SosSheet({
-    required this.message,
-    required this.reason,
-    required this.fromCache,
-  });
+// Icon, word and color of a notice's area tag; the word and icon carry the meaning, the color
+// only backs them up.
+({String word, IconData icon, Color? color, Color? onColor}) _areaTag(
+  BuildContext context,
+  AlertArea area,
+) {
+  final t = context.tokens;
+  return switch (area) {
+    AlertArea.inYourArea => (
+      // DRAFT wording, owner to approve.
+      word: context.tr(th: 'ในพื้นที่ของคุณ', en: 'In your area'),
+      icon: Icons.place,
+      color: null,
+      onColor: null,
+    ),
+    AlertArea.otherAreas => (
+      // DRAFT wording, owner to approve.
+      word: context.tr(th: 'พื้นที่อื่น', en: 'Other areas'),
+      icon: Icons.public,
+      color: t.ground,
+      onColor: t.inkMuted,
+    ),
+    AlertArea.unknown => (
+      // DRAFT wording, owner to approve.
+      word: context.tr(th: 'ไม่ทราบพื้นที่', en: 'Area unknown'),
+      icon: Icons.location_off,
+      color: t.offlineBg,
+      onColor: t.ink,
+    ),
+  };
+}
 
-  // Null when no position (fresh or saved) is available.
-  final String? message;
-  final String reason;
-  final bool fromCache;
+// What opens after a confirmed SOS: calling comes first, the ready-made message second. The
+// call buttons never wait for GPS; the position and then the address fill in when they arrive.
+class _SosSheet extends StatefulWidget {
+  const _SosSheet({required this.location});
+
+  final LocationService location;
+
+  @override
+  State<_SosSheet> createState() => _SosSheetState();
+}
+
+class _SosSheetState extends State<_SosSheet> {
+  // Null while GPS is still being read.
+  LocationResult? _result;
+  // Null until the address lookup answers; the message shows '-' meanwhile.
+  Place? _place;
+  // Set once when the position arrives so later rebuilds never change the time line.
+  DateTime? _at;
+
+  @override
+  void initState() {
+    super.initState();
+    _locate();
+  }
+
+  Future<void> _locate() async {
+    final r = await widget.location.getCurrent();
+    if (!mounted) return;
+    setState(() {
+      _result = r;
+      _at = DateTime.now();
+    });
+    final point = r.point;
+    if (point == null) return;
+    Place place;
+    try {
+      place = await widget.location.describe(point);
+    } catch (_) {
+      place = const Place();
+    }
+    if (!mounted) return;
+    setState(() => _place = place);
+  }
+
+  // The message carries both languages because the person reading it may speak either.
+  String _message(BuildContext context, LatLng point, bool fromCache) {
+    final where = _place == null ? '' : context.placeText(_place!);
+    final lat = point.latitude.toStringAsFixed(6);
+    final lng = point.longitude.toStringAsFixed(6);
+    // Local time plus the UTC offset, so a rescuer in another zone reads the right hour.
+    final now = _at!;
+    final off = now.timeZoneOffset;
+    final hh = off.inHours.abs().toString().padLeft(2, '0');
+    final mm = (off.inMinutes.abs() % 60).toString().padLeft(2, '0');
+    final time =
+        '${now.toString().substring(0, 16)} UTC${off.isNegative ? '-' : '+'}$hh:$mm';
+    final cached = fromCache
+        ? ' (ตำแหน่งที่บันทึกไว้ล่าสุด / last saved position)'
+        : '';
+    return 'SOS! ต้องการความช่วยเหลือ / I need help.\n'
+        'ที่อยู่ / Address: ${where.isEmpty ? '-' : where}$cached\n'
+        'แผนที่ / Map: https://www.google.com/maps?q=$lat,$lng\n'
+        'เวลา / Time: $time';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = context.tokens;
-    final text = message;
+    final result = _result;
+    final locating = result == null;
+    final reason = (result == null || result.issue == null)
+        ? ''
+        : context.locationError(result.issue!);
+    final fromCache = result?.fromCache ?? false;
+    final point = result?.point;
+    final text = point == null ? null : _message(context, point, fromCache);
     final primary = EmergencyNumbers.medical;
     final others = EmergencyNumbers.sos.where((n) => n != primary);
     return SingleChildScrollView(
@@ -565,7 +848,7 @@ class _SosSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            text == null
+            (text == null && !locating)
                 ? context.tr(
                     th: 'หาตำแหน่งของคุณไม่ได้',
                     en: 'Cannot find your location',
@@ -574,7 +857,7 @@ class _SosSheet extends StatelessWidget {
             style: theme.textTheme.headlineSmall,
           ),
           const SizedBox(height: AppSpace.md),
-          if (text == null)
+          if (text == null && !locating)
             WarningBanner(
               kind: BannerKind.error,
               message: context.tr(
@@ -597,18 +880,7 @@ class _SosSheet extends StatelessWidget {
                 ),
               ),
             ),
-          if (text != null) ...[
-            Container(
-              padding: const EdgeInsets.all(AppSpace.md),
-              decoration: BoxDecoration(
-                color: t.ground,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: t.hairline),
-              ),
-              child: SelectableText(text),
-            ),
-            const SizedBox(height: AppSpace.md),
-          ],
+          const SizedBox(height: AppSpace.md),
           FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: t.danger,
@@ -623,7 +895,48 @@ class _SosSheet extends StatelessWidget {
               ),
             ),
           ),
+          if (locating) ...[
+            SectionLabel(
+              context.tr(th: 'ส่งตำแหน่งของคุณ', en: 'Send your location'),
+            ),
+            // Neutral, not red: waiting for GPS is a normal state.
+            Semantics(
+              liveRegion: true,
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: AppIconSize.sm,
+                    height: AppIconSize.sm,
+                    child: CircularProgressIndicator(
+                      strokeWidth: AppStroke.frame,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  Icon(Icons.my_location, color: t.ink),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      // DRAFT (same words as the SOS button's busy hint)
+                      context.tr(
+                        th: 'กำลังหาตำแหน่งของคุณ…',
+                        en: 'Finding your location…',
+                      ),
+                      style: theme.textTheme.bodyMedium?.copyWith(color: t.ink),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpace.sm),
+          ],
           if (text != null) ...[
+            SectionLabel(
+              context.tr(th: 'ส่งตำแหน่งของคุณ', en: 'Send your location'),
+            ),
+            SoftCard(
+              color: t.ground,
+              child: SelectableText(text, style: theme.textTheme.bodyMedium),
+            ),
             const SizedBox(height: AppSpace.sm),
             Row(
               children: [
@@ -646,19 +959,16 @@ class _SosSheet extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: AppSpace.sm),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: AppSpace.sm,
-            children: [
-              for (final n in others)
-                TextButton.icon(
-                  onPressed: () => EmergencyLauncher.call(n.number),
-                  icon: const Icon(Icons.call),
-                  label: Text('${n.number} ${context.serviceName(n)}'),
-                ),
-            ],
-          ),
+          SectionLabel(context.tr(th: 'เบอร์อื่น', en: 'Other numbers')),
+          for (final n in others)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
+              child: OutlinedButton.icon(
+                onPressed: () => EmergencyLauncher.call(n.number),
+                icon: const Icon(Icons.call),
+                label: Text('${n.number} ${context.serviceName(n)}'),
+              ),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(context.tr(th: 'ปิด', en: 'Close')),

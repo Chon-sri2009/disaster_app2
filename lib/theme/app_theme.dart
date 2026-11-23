@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app_tokens.dart';
 
-// Builds the one light ThemeData: Sarabun type, flat surfaces, 48 dp controls.
+// Builds the day and night themes: Sarabun type, rounded soft controls, 48 dp targets.
 abstract final class AppTheme {
   static const String fontFamily = 'Sarabun';
 
@@ -11,8 +12,9 @@ abstract final class AppTheme {
     double size,
     FontWeight weight,
     Color color,
-    double height,
-  ) {
+    double height, {
+    bool figures = false,
+  }) {
     return TextStyle(
       fontFamily: fontFamily,
       fontSize: size,
@@ -20,68 +22,114 @@ abstract final class AppTheme {
       color: color,
       height: height,
       leadingDistribution: TextLeadingDistribution.even,
+      // Tabular figures keep big numbers from jittering as they change.
+      fontFeatures: figures ? const [FontFeature.tabularFigures()] : null,
     );
   }
 
-  // The complete light theme.
-  static ThemeData light() {
-    const t = AppTokens.light;
+  static ThemeData light() => _build(AppTokens.light);
+
+  static ThemeData dark() => _build(AppTokens.dark);
+
+  static ThemeData _build(AppTokens t) {
     final scheme = ColorScheme(
-      brightness: Brightness.light,
-      primary: t.accent,
-      onPrimary: t.onAccent,
-      secondary: t.accent,
-      onSecondary: t.onAccent,
+      brightness: t.brightness,
+      primary: t.brand,
+      onPrimary: t.onBrand,
+      secondary: t.brand,
+      onSecondary: t.onBrand,
       error: t.danger,
       onError: t.onDanger,
       surface: t.surface,
       onSurface: t.ink,
       onSurfaceVariant: t.inkMuted,
-      outline: t.outline,
+      outline: t.hairline,
       outlineVariant: t.hairline,
-      primaryContainer: t.accentSoft,
+      primaryContainer: t.brandSoft,
       onPrimaryContainer: t.ink,
+      secondaryContainer: t.brandSoft,
+      onSecondaryContainer: t.ink,
+      surfaceContainerLowest: t.surface,
+      surfaceContainerLow: t.surface,
+      surfaceContainer: t.surface,
+      surfaceContainerHigh: t.surface,
       surfaceContainerHighest: t.ground,
+      surfaceTint: Colors.transparent,
     );
 
+    // Posted notice scale: nothing under 16 sp; weight carries the hierarchy, and 700 is only
+    // for display and headlineMedium.
     final text = TextTheme(
-      displayLarge: _style(56, FontWeight.w700, t.ink, 1.1),
-      displaySmall: _style(36, FontWeight.w700, t.ink, 1.2),
+      displayLarge: _style(48, FontWeight.w700, t.ink, 1.2, figures: true),
+      displayMedium: _style(40, FontWeight.w700, t.ink, 1.25, figures: true),
+      displaySmall: _style(36, FontWeight.w700, t.ink, 1.2, figures: true),
+      // Not in the brief; defined so no slot falls back to a default under 16 sp.
+      headlineLarge: _style(32, FontWeight.w600, t.ink, 1.25),
       headlineMedium: _style(28, FontWeight.w700, t.ink, 1.25),
-      headlineSmall: _style(24, FontWeight.w700, t.ink, 1.3),
+      headlineSmall: _style(24, FontWeight.w600, t.ink, 1.3),
       titleLarge: _style(22, FontWeight.w600, t.ink, 1.3),
-      titleMedium: _style(18, FontWeight.w600, t.ink, 1.4),
-      titleSmall: _style(16, FontWeight.w600, t.ink, 1.4),
-      bodyLarge: _style(18, FontWeight.w400, t.ink, 1.5),
-      bodyMedium: _style(16, FontWeight.w400, t.ink, 1.5),
+      titleMedium: _style(20, FontWeight.w600, t.ink, 1.4),
+      titleSmall: _style(17, FontWeight.w600, t.ink, 1.4),
+      bodyLarge: _style(17, FontWeight.w400, t.ink, 1.5),
+      bodyMedium: _style(17, FontWeight.w400, t.ink, 1.5),
       bodySmall: _style(16, FontWeight.w400, t.inkMuted, 1.5),
-      labelLarge: _style(16, FontWeight.w600, t.ink, 1.4),
-      labelMedium: _style(14, FontWeight.w600, t.ink, 1.4),
-      labelSmall: _style(14, FontWeight.w500, t.inkMuted, 1.4),
+      labelLarge: _style(17, FontWeight.w600, t.ink, 1.4),
+      labelMedium: _style(16, FontWeight.w600, t.ink, 1.4),
+      labelSmall: _style(16, FontWeight.w400, t.inkMuted, 1.4),
     );
 
+    RoundedRectangleBorder rounded(double r) =>
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(r));
+    final control = rounded(AppRadius.control);
     const tap = Size(AppSize.tapTarget, AppSize.tapTarget);
-    final buttonShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(AppRadius.md),
-    );
-    final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      borderSide: BorderSide(color: t.outline),
+    OutlineInputBorder field(Color color, double width) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.control),
+      borderSide: BorderSide(color: color, width: width),
     );
 
     return ThemeData(
       useMaterial3: true,
+      brightness: t.brightness,
       colorScheme: scheme,
       fontFamily: fontFamily,
       textTheme: text,
       scaffoldBackgroundColor: t.ground,
-      extensions: const [AppTokens.light],
+      canvasColor: t.ground,
+      extensions: [t],
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
+      splashFactory: InkRipple.splashFactory,
+      highlightColor: t.pressed,
+      splashColor: t.pressed,
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: t.brand,
+        selectionColor: t.selection,
+        selectionHandleColor: t.brand,
+      ),
+      iconTheme: IconThemeData(color: t.ink, size: AppIconSize.md),
+      // Pushed pages: a plain ground bar with ink text (the navy band is retired).
+      appBarTheme: AppBarTheme(
+        backgroundColor: t.ground,
+        foregroundColor: t.ink,
+        elevation: AppElevation.none,
+        scrolledUnderElevation: AppElevation.none,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: text.titleLarge,
+        iconTheme: IconThemeData(color: t.ink),
+        actionsIconTheme: IconThemeData(color: t.ink),
+        toolbarHeight: AppSize.toolbar,
+        systemOverlayStyle: t.brightness == Brightness.light
+            ? SystemUiOverlayStyle.dark
+            : SystemUiOverlayStyle.light,
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(AppSize.tapTarget, 56),
-          shape: buttonShape,
+          backgroundColor: t.brand,
+          foregroundColor: t.onBrand,
+          disabledBackgroundColor: t.hairline,
+          disabledForegroundColor: t.inkMuted,
+          minimumSize: const Size(AppSize.tapTarget, AppSize.primaryButton),
+          shape: control,
           textStyle: text.labelLarge,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
         ),
@@ -89,9 +137,9 @@ abstract final class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: tap,
-          shape: buttonShape,
-          foregroundColor: t.accent,
-          side: BorderSide(color: t.accent, width: 1.5),
+          shape: control,
+          foregroundColor: t.brand,
+          side: BorderSide(color: t.hairline, width: AppStroke.frame),
           textStyle: text.labelLarge,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
         ),
@@ -99,7 +147,26 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           minimumSize: tap,
-          foregroundColor: t.accent,
+          shape: control,
+          foregroundColor: t.brand,
+          textStyle: text.labelLarge,
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          minimumSize: tap,
+          shape: const CircleBorder(),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          minimumSize: tap,
+          shape: control,
+          side: BorderSide(color: t.hairline, width: AppStroke.rule),
+          backgroundColor: t.surface,
+          foregroundColor: t.ink,
+          selectedForegroundColor: t.onBrand,
+          selectedBackgroundColor: t.brand,
           textStyle: text.labelLarge,
         ),
       ),
@@ -108,94 +175,85 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
         color: t.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          side: BorderSide(color: t.hairline),
-        ),
+        shape: rounded(AppRadius.none),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: t.surface,
-        border: fieldBorder,
-        enabledBorder: fieldBorder,
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(color: t.accent, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(color: t.danger, width: 2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(color: t.danger, width: 2),
-        ),
+        fillColor: t.ground,
+        border: field(t.hairline, AppStroke.rule),
+        enabledBorder: field(t.hairline, AppStroke.rule),
+        focusedBorder: field(t.brand, AppStroke.frame),
+        errorBorder: field(t.dangerInk, AppStroke.frame),
+        focusedErrorBorder: field(t.dangerInk, AppStroke.frame),
         labelStyle: text.bodyMedium?.copyWith(color: t.inkMuted),
-        errorStyle: text.bodyMedium?.copyWith(color: t.danger),
+        floatingLabelStyle: text.labelLarge?.copyWith(color: t.brand),
+        errorStyle: text.bodyMedium?.copyWith(color: t.dangerInk),
         contentPadding: const EdgeInsets.all(AppSpace.md),
       ),
-      expansionTileTheme: ExpansionTileThemeData(
-        shape: const Border(),
-        collapsedShape: const Border(),
-        tilePadding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-        iconColor: t.accent,
-        collapsedIconColor: t.inkMuted,
+      listTileTheme: ListTileThemeData(
+        iconColor: t.ink,
         textColor: t.ink,
-        collapsedTextColor: t.ink,
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        height: 80,
-        elevation: AppElevation.none,
-        backgroundColor: t.surface,
-        surfaceTintColor: Colors.transparent,
-        indicatorColor: t.accentSoft,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        labelTextStyle: WidgetStatePropertyAll(text.labelMedium),
-        iconTheme: WidgetStateProperty.resolveWith(
-          (states) => IconThemeData(
-            size: 28,
-            color: states.contains(WidgetState.selected)
-                ? t.accent
-                : t.inkMuted,
-          ),
-        ),
-      ),
-      navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: t.surface,
-        indicatorColor: t.accentSoft,
-        labelType: NavigationRailLabelType.all,
-        selectedLabelTextStyle: text.labelMedium?.copyWith(color: t.ink),
-        unselectedLabelTextStyle: text.labelMedium?.copyWith(color: t.inkMuted),
-        selectedIconTheme: IconThemeData(size: 28, color: t.accent),
-        unselectedIconTheme: IconThemeData(size: 28, color: t.inkMuted),
+        minVerticalPadding: AppSpace.sm,
       ),
       sliderTheme: SliderThemeData(
         trackHeight: 8,
-        activeTrackColor: t.accent,
+        activeTrackColor: t.brand,
         inactiveTrackColor: t.hairline,
-        thumbColor: t.accent,
+        thumbColor: t.brand,
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: t.brand,
+        linearTrackColor: t.hairline,
+        circularTrackColor: t.hairline,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: t.ink,
-        contentTextStyle: text.bodyMedium?.copyWith(color: t.surface),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-        ),
+        contentTextStyle: text.bodyMedium?.copyWith(color: t.ground),
+        actionTextColor: t.ground,
+        shape: control,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: t.surface,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: t.surface,
+        elevation: AppElevation.overlay,
+        modalElevation: AppElevation.overlay,
+        dragHandleColor: t.hairline,
+        dragHandleSize: AppSize.dragHandle,
+        shape: rounded(AppRadius.none),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: t.surface,
         surfaceTintColor: Colors.transparent,
         elevation: AppElevation.overlay,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
+        shape: control,
         titleTextStyle: text.titleLarge,
         contentTextStyle: text.bodyLarge,
       ),
-      dividerTheme: DividerThemeData(color: t.hairline, thickness: 1, space: 1),
+      expansionTileTheme: ExpansionTileThemeData(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+        iconColor: t.inkMuted,
+        collapsedIconColor: t.inkMuted,
+        textColor: t.ink,
+        collapsedTextColor: t.ink,
+      ),
+      dividerTheme: DividerThemeData(
+        color: t.hairline,
+        thickness: AppStroke.rule,
+        space: AppStroke.rule,
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: t.ink,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        textStyle: text.labelMedium?.copyWith(color: t.ground),
+      ),
     );
   }
 }

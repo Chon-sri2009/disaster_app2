@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../models/alert_history_entry.dart';
 import '../models/alert_level.dart';
 import '../models/official_alert.dart';
 import 'alert_rules.dart';
@@ -19,6 +21,7 @@ class AlertService extends ChangeNotifier {
     DateTime Function()? clock,
   }) : _fetch = fetcher ?? httpGetText,
        _clock = clock ?? DateTime.now {
+    _history = _loadHistory();
     final cached = _storage.snapshot;
     if (cached != null) {
       try {
@@ -27,10 +30,16 @@ class AlertService extends ChangeNotifier {
         // A broken cache is ignored; the next refresh replaces it.
       }
     }
+    // What listeners would see now, so the first tick notifies only on a real change.
+    _notifiedSignature = _timeSignature();
   }
 
   // Alerts older than this without a refresh are shown as stale.
   static const staleAfter = Duration(minutes: 30);
+  // A phone clock a couple of minutes behind the server puts the data time in the future.
+  // That must not mark alerts stale for ever (R-F10), and 5 min is still far inside
+  // staleAfter. A clock far off (hours) still goes stale. Sensors keep their strict 1 min.
+  static const futureSlack = Duration(minutes: 5);
 
   final StorageService _storage;
   final String snapshotUrl;
@@ -39,39 +48,255 @@ class AlertService extends ChangeNotifier {
 
   List<OfficialAlert> _alerts = const [];
   DateTime? _fetchedAt;
+  int _skippedFiles = 0;
+  late List<HistoryEntry> _history;
+  Timer? _timer;
+  bool _busy = false;
+  // A download can finish after the screen is gone: then nothing may notify or be written.
+  bool _disposed = false;
+
+  // Notices that were shown and have ended, newest first. Read-only record for the history
+  // screen: it must never feed visibleAlerts, levelAt or Home's level.
+  List<HistoryEntry> get history => List.unmodifiable(_history);
+
+  static const maxHistory = 50;
+  static const historyKeep = Duration(days: 30);
+  // A notice that vanished with no proof it ended is followed this long, then forgotten.
+  static const unprovenKeep = Duration(days: 7);
+
+  // The service's own clock, so a screen judges expiry by the same time the rules use.
+  DateTime get now => _clock();
 
   bool get hasSnapshot => _fetchedAt != null;
+  // The time of the DATA: when the backend built the snapshot, not when the phone downloaded it.
+  // A dead backend keeps serving its last snapshot, so download time would hide that it is old.
   DateTime? get fetchedAt => _fetchedAt;
-  bool get isStale =>
-      _fetchedAt == null || _clock().difference(_fetchedAt!) > staleAfter;
+  // Listed alert files the backend could not read in its last poll: the list may be missing
+  // a live warning, so it must not read as "no alerts".
+  int get skippedFiles => _skippedFiles;
+  // A negative age means the phone clock moved back after the data time (R-F6): the age is
+  // unknown, so it counts as stale, beyond futureSlack.
+  bool get isStale {
+    final fetched = _fetchedAt;
+    if (fetched == null || _skippedFiles > 0) return true;
+    final age = _clock().difference(fetched);
+    return age > staleAfter || age < -futureSlack;
+  }
 
   List<OfficialAlert> get visibleAlerts =>
       AlertRules.visible(_alerts, _clock().toUtc());
 
-  AlertLevel levelAt(LatLng point) =>
-      AlertRules.levelAt(_alerts, point, _clock().toUtc());
+  // [provinceCode] is the user's province, or null when unknown (then codes never match).
+  AlertLevel levelAt(LatLng point, {String? provinceCode}) =>
+      AlertRules.levelAt(
+        _alerts,
+        point,
+        _clock().toUtc(),
+        provinceCode: provinceCode,
+      );
+
+  // Re-downloads every [every] while the app runs; a refresh still running is skipped.
+  void startAutoRefresh({Duration every = const Duration(minutes: 2)}) {
+    _timer ??= Timer.periodic(every, (_) {
+      // Age and expiry change with the clock even when no download happens (offline, or
+      // no URL yet), so the screen must hear about them on every tick.
+      _notifyIfTimeChanged();
+      refresh();
+    });
+  }
+
+  // What the screens show that depends on the clock alone: stale or not, and which notices
+  // are still visible. Notify only when it differs from what listeners last saw.
+  String _timeSignature() =>
+      '$isStale|${visibleAlerts.map((a) => a.id).join(',')}';
+  String _notifiedSignature = '';
+
+  void _notifyIfTimeChanged() {
+    if (_disposed) return;
+    final signature = _timeSignature();
+    if (signature == _notifiedSignature) return;
+    _notifiedSignature = signature;
+    notifyListeners();
+  }
 
   // Downloads a fresh snapshot over HTTPS. On any failure the old snapshot is kept.
   Future<void> refresh() async {
     final url = Uri.tryParse(snapshotUrl);
-    if (url == null || url.scheme != 'https') return;
+    if (url == null || url.scheme != 'https' || _busy) return;
+    _busy = true;
     try {
       final body = await _fetch(url);
+      if (_disposed) return;
       final now = _clock();
-      _apply(body, now);
+      // A live body must say when it was built; without that its age is unknown, and
+      // download time would make a dead backend's old data look fresh.
+      _apply(body, now, requireGeneratedAt: true);
       await _storage.saveSnapshot(body, now);
     } catch (_) {
-      // Offline or bad data is a normal state: keep showing the cached snapshot with its age.
+      // Offline or bad data is a normal state: keep showing the cached snapshot with its age,
+      // and say so when time alone made it stale or expired a notice.
+      _notifyIfTimeChanged();
+    } finally {
+      _busy = false;
     }
   }
 
-  void _apply(String json, DateTime fetchedAt) {
+  @override
+  void dispose() {
+    _disposed = true;
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  // generatedAt when it is a valid time, kept as is: a time in the future means the phone
+  // clock is behind, and isStale then calls the data stale (R-F7), so it is never clamped to
+  // look fresh. Otherwise the download time, but only for an old cache that predates
+  // generatedAt: null for a live body, which is then rejected.
+  DateTime? _dataTime(
+    Object? generatedAt,
+    DateTime downloaded, {
+    required bool requireGeneratedAt,
+  }) {
+    final parsed = generatedAt is String
+        ? DateTime.tryParse(generatedAt)?.toUtc()
+        : null;
+    if (parsed == null) return requireGeneratedAt ? null : downloaded;
+    return parsed;
+  }
+
+  void _apply(
+    String json,
+    DateTime fetchedAt, {
+    bool requireGeneratedAt = false,
+  }) {
     final map = jsonDecode(json) as Map<String, dynamic>;
-    _alerts = [
+    final alerts = [
       for (final a in map['alerts'] as List)
         OfficialAlert.fromJson(a as Map<String, dynamic>),
     ];
-    _fetchedAt = fetchedAt;
+    final time = _dataTime(
+      map['generatedAt'],
+      fetchedAt,
+      requireGeneratedAt: requireGeneratedAt,
+    );
+    if (time == null) throw const FormatException('no generatedAt');
+    final skipped = map['skippedFiles'];
+    _alerts = alerts;
+    _fetchedAt = time;
+    _skippedFiles = skipped is int && skipped > 0 ? skipped : 0;
+    try {
+      _recordEnded(alerts);
+    } catch (_) {
+      // History is a convenience; it must never break the alerts themselves.
+    }
+    _notifiedSignature = _timeSignature();
     notifyListeners();
+  }
+
+  List<HistoryEntry> _loadHistory() {
+    final out = <HistoryEntry>[];
+    for (final j in _storage.alertHistory) {
+      try {
+        out.add(HistoryEntry.fromJson(j));
+      } catch (_) {
+        // Skip one bad entry, keep the rest.
+      }
+    }
+    return _pruneHistory(out, _clock().toUtc());
+  }
+
+  // One rule for load and save: drop entries older than 30 days, newest first, at most 50.
+  static List<HistoryEntry> _pruneHistory(
+    List<HistoryEntry> entries,
+    DateTime now,
+  ) {
+    final kept = [
+      for (final e in entries)
+        if (now.difference(e.endedAt) <= historyKeep) e,
+    ]..sort((x, y) => y.endedAt.compareTo(x.endedAt));
+    return kept.take(maxHistory).toList();
+  }
+
+  // Compares the notices seen as visible so far with this snapshot. A notice is recorded as
+  // ended only with proof: a Cancel or Update in the snapshot, or its expiry time passed.
+  // A missing notice alone proves nothing (a partial or stale list can omit it).
+  void _recordEnded(List<OfficialAlert> alerts) {
+    final now = _clock().toUtc();
+    final visibleNow = AlertRules.visible(alerts, now);
+    final visibleIds = {for (final a in visibleNow) a.id};
+    final cancelled = <String>{};
+    final replaced = <String>{};
+    for (final a in alerts) {
+      if (a.status != 'Actual') continue; // Test or Exercise proves nothing
+      if (a.msgType == 'Cancel') cancelled.addAll(a.references);
+      if (a.msgType == 'Update') replaced.addAll(a.references);
+    }
+
+    final tracked = <AlertRecord>[];
+    for (final j in _storage.trackedAlerts) {
+      try {
+        tracked.add(AlertRecord.fromJson(j));
+      } catch (_) {
+        // Skip one bad record.
+      }
+    }
+
+    final keep = <String, AlertRecord>{};
+    final ended = <HistoryEntry>[];
+    for (final r in tracked) {
+      if (visibleIds.contains(r.id)) continue;
+      // Some files could not be read: nothing may be ended by absence this round.
+      if (_skippedFiles > 0) {
+        keep[r.id] = r;
+        continue;
+      }
+      EndReason? reason;
+      var endedAt = now;
+      if (cancelled.contains(r.id)) {
+        reason = EndReason.cancelled;
+      } else if (replaced.contains(r.id)) {
+        reason = EndReason.replaced;
+      } else if (!now.isBefore(r.effectiveExpiry)) {
+        reason = EndReason.expired;
+        endedAt = r.effectiveExpiry;
+      }
+      if (reason != null) {
+        ended.add(HistoryEntry(record: r, endedAt: endedAt, reason: reason));
+      } else {
+        final since = r.missingSince ?? now;
+        if (now.difference(since) <= unprovenKeep) {
+          keep[r.id] = r.withMissingSince(since);
+        }
+      }
+    }
+    for (final a in visibleNow) {
+      keep[a.id] = AlertRecord.of(a);
+    }
+
+    final known = {for (final e in _history) e.record.id};
+    final next = _pruneHistory([
+      ..._history,
+      for (final e in ended)
+        if (known.add(e.record.id)) e,
+    ], now);
+
+    final changed =
+        next.length != _history.length ||
+        [for (final e in next) e.record.id].join() !=
+            [for (final e in _history) e.record.id].join();
+    _history = next;
+    // Non-critical data: a failing write must not become an uncaught zone error.
+    unawaited(
+      _storage
+          .saveTrackedAlerts([for (final r in keep.values) r.toJson()])
+          .catchError((_) {}),
+    );
+    if (changed || ended.isNotEmpty) {
+      unawaited(
+        _storage
+            .saveAlertHistory([for (final e in next) e.toJson()])
+            .catchError((_) {}),
+      );
+    }
   }
 }

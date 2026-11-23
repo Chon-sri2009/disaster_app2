@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,7 +19,10 @@ class StorageService extends ChangeNotifier {
   static const _reportsKey = 'reports';
   static const _lastPositionKey = 'last_position';
   static const _snapshotKey = 'alert_snapshot';
+  static const _trackedKey = 'alert_tracked';
+  static const _historyKey = 'alert_history';
   static const _languageKey = 'language';
+  static const _themeKey = 'theme';
 
   final SharedPreferences _prefs;
   late List<DamageReport> _reports;
@@ -32,6 +36,18 @@ class StorageService extends ChangeNotifier {
 
   Future<void> setLanguage(AppLang lang) async {
     await _prefs.setString(_languageKey, lang.code);
+    notifyListeners();
+  }
+
+  // Day board, night board, or follow the phone (the default).
+  ThemeMode get themeMode => switch (_prefs.getString(_themeKey)) {
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => ThemeMode.system,
+  };
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    await _prefs.setString(_themeKey, mode.name);
     notifyListeners();
   }
 
@@ -117,6 +133,31 @@ class StorageService extends ChangeNotifier {
           'fetchedAt': fetchedAt.toUtc().toIso8601String(),
         }),
       );
+
+  // Notices seen as visible and not yet ended (compact JSON records); [] when missing or broken.
+  List<Map<String, dynamic>> get trackedAlerts => _jsonList(_trackedKey);
+
+  Future<void> saveTrackedAlerts(List<Map<String, dynamic>> records) =>
+      _prefs.setString(_trackedKey, jsonEncode(records));
+
+  // Ended notices, newest first (compact JSON); [] when missing or broken.
+  List<Map<String, dynamic>> get alertHistory => _jsonList(_historyKey);
+
+  Future<void> saveAlertHistory(List<Map<String, dynamic>> entries) =>
+      _prefs.setString(_historyKey, jsonEncode(entries));
+
+  List<Map<String, dynamic>> _jsonList(String key) {
+    final text = _prefs.getString(key);
+    if (text == null) return [];
+    try {
+      return [
+        for (final e in jsonDecode(text) as List<dynamic>)
+          e as Map<String, dynamic>,
+      ];
+    } catch (_) {
+      return [];
+    }
+  }
 
   // Reads saved reports; a broken save returns an empty list instead of crashing.
   List<DamageReport> _loadReports() {

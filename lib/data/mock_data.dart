@@ -23,10 +23,15 @@ class MockData {
   // Map centre (Bangkok, as an example area).
   static const LatLng areaCenter = LatLng(13.7563, 100.5018);
 
+  // True while the saved list is still this sample list, so screens can label it as such.
+  static bool isDemoShelterList(List<Shelter> list) =>
+      list.isNotEmpty && list.every((s) => shelters.any((m) => m.id == s.id));
+
   static const List<Shelter> shelters = [
     Shelter(
       id: 's1',
       name: 'City Hall Shelter',
+      nameTh: 'ศูนย์พักพิงศาลากลาง',
       lat: 13.7600,
       lng: 100.4960,
       capacity: 300,
@@ -34,6 +39,7 @@ class MockData {
     Shelter(
       id: 's2',
       name: 'Green Hill School',
+      nameTh: 'โรงเรียนเนินเขียว',
       lat: 13.7520,
       lng: 100.5100,
       capacity: 200,
@@ -41,6 +47,7 @@ class MockData {
     Shelter(
       id: 's3',
       name: 'Community Sports Hall',
+      nameTh: 'โรงยิมชุมชน',
       lat: 13.7650,
       lng: 100.5080,
       capacity: 450,
@@ -48,6 +55,7 @@ class MockData {
     Shelter(
       id: 's4',
       name: 'Sunrise Temple Hall',
+      nameTh: 'ศาลาวัดตะวันขึ้น',
       lat: 13.7480,
       lng: 100.4950,
       capacity: 150,
@@ -55,6 +63,7 @@ class MockData {
     Shelter(
       id: 's5',
       name: 'North District Clinic',
+      nameTh: 'คลินิกเขตเหนือ',
       lat: 13.7700,
       lng: 100.5020,
       capacity: 80,

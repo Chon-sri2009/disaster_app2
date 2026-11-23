@@ -22,7 +22,7 @@ class SensorService extends ChangeNotifier {
     _latest = MockData.startReading();
     if (isLive) {
       refresh();
-      _timer = Timer.periodic(pollEvery, (_) => refresh());
+      _timer = Timer.periodic(pollEvery, (_) => _tick());
     } else if (isDemo) {
       _subscription = _controller.stream.listen((reading) {
         _latest = reading;
@@ -37,6 +37,8 @@ class SensorService extends ChangeNotifier {
   static const pollEvery = Duration(seconds: 30);
   // The backend marks a station stale after 2 min; the phone allows for slow polling.
   static const staleAfter = Duration(minutes: 5);
+  // Normal clock jitter or an NTP nudge backwards is tolerated up to this much.
+  static const clockBackSlack = Duration(minutes: 1);
 
   final String snapshotUrl;
   final Future<String> Function(Uri url) _fetch;
@@ -50,6 +52,10 @@ class SensorService extends ChangeNotifier {
   List<StationStatus> _stations = const [];
   DateTime? _fetchedAt;
   bool _busy = false;
+  // A download can finish after the screen is gone: then nothing may notify or be written.
+  bool _disposed = false;
+  // Last staleness the listeners were told about; starts true because no data is stale.
+  bool _wasStale = true;
 
   // True when a real backend address is configured.
   bool get isLive => Uri.tryParse(snapshotUrl)?.scheme == 'https';
@@ -57,9 +63,17 @@ class SensorService extends ChangeNotifier {
   bool get isDemo => !isLive && kDebugMode;
 
   List<StationStatus> get stations => _stations;
+  // The time of the DATA (the server's `generatedAt`), not of the download: a fresh download
+  // of old data must read as old (R-F8).
   DateTime? get fetchedAt => _fetchedAt;
-  bool get isStale =>
-      _fetchedAt == null || _clock().difference(_fetchedAt!) > staleAfter;
+  // A negative age means the phone clock moved back after the download (R-F6). The age is
+  // then unknown, so old data must not stay fresh: stale, beyond a small slack for jitter.
+  bool get isStale {
+    final fetched = _fetchedAt;
+    if (fetched == null) return true;
+    final age = _clock().difference(fetched);
+    return age > staleAfter || age < -clockBackSlack;
+  }
 
   // Demo-mode readings (the live mode has no vibration or fixed limits).
   SensorReading get latest => _latest;
@@ -89,23 +103,59 @@ class SensorService extends ChangeNotifier {
     return AlertLevel.safe;
   }
 
+  // The poll beat. Check staleness first and on its own: a hung fetch keeps _busy true, and
+  // an old Safe must still turn into "no data" without waiting for it.
+  void _tick() {
+    _notifyIfStaleChanged();
+    refresh();
+  }
+
+  // Time alone makes data stale, so nothing else would notify. Only a flip notifies: no
+  // rebuild on every tick.
+  void _notifyIfStaleChanged() {
+    if (_disposed) return;
+    final stale = isStale;
+    if (stale != _wasStale) {
+      _wasStale = stale;
+      notifyListeners();
+    }
+  }
+
   // Downloads /snapshot. On any failure the last good data stays, with its age.
   Future<void> refresh() async {
     if (!isLive || _busy) return;
     _busy = true;
     try {
-      final map = jsonDecode(await _fetch(Uri.parse(snapshotUrl)));
-      _stations = [
-        for (final s in (map as Map<String, dynamic>)['stations'] as List)
+      final body = await _fetch(Uri.parse(snapshotUrl));
+      if (_disposed) return;
+      final map = jsonDecode(body) as Map<String, dynamic>;
+      // Parse everything first: a body with no usable time is rejected whole, so the old
+      // data keeps its own age and nothing is half-updated.
+      final time = _dataTime(map['generatedAt']);
+      final stations = [
+        for (final s in map['stations'] as List)
           StationStatus.fromJson(s as Map<String, dynamic>),
       ];
-      _fetchedAt = _clock();
+      _stations = stations;
+      _fetchedAt = time;
+      _wasStale = isStale;
       notifyListeners();
     } catch (_) {
       // Offline or bad data is a normal state: keep the old snapshot; isStale reports its age.
+      // Time may have made it stale meanwhile, so tell the listeners.
+      _notifyIfStaleChanged();
     } finally {
       _busy = false;
     }
+  }
+
+  // Only an explicit-UTC string counts: no zone parses as local time (7 h off in Bangkok).
+  // A future time is kept as is (isStale decides), never clamped to now.
+  static DateTime _dataTime(Object? raw) {
+    if (raw is! String) throw const FormatException('generatedAt missing');
+    final t = DateTime.tryParse(raw);
+    if (t == null || !t.isUtc) throw const FormatException('generatedAt invalid');
+    return t;
   }
 
   // Demo helper: forces the water reading to a value chosen with the slider.
@@ -123,6 +173,7 @@ class SensorService extends ChangeNotifier {
   // Stops the timer and stream when the app closes.
   @override
   void dispose() {
+    _disposed = true;
     _timer?.cancel();
     _subscription?.cancel();
     _controller.close();

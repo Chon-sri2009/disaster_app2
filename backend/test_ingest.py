@@ -2,6 +2,7 @@
 import json
 import threading
 import unittest
+import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 
@@ -41,6 +42,9 @@ class Base(unittest.TestCase):
 class AuthTests(Base):
     def test_bad_signature(self):
         self.assertEqual(self.send(0, 100, sig="0" * 64)[0], 401)
+
+    def test_non_ascii_signature_is_401_not_a_crash(self):
+        self.assertEqual(self.send(0, 100, sig="é" * 64)[0], 401)
 
     def test_unknown_device(self):
         raw = body("nope", 1, 0, 100)
@@ -167,6 +171,74 @@ class HttpSmoke(unittest.TestCase):
             self.assertEqual(snap["stations"][0]["band"], "safe")
         finally:
             srv.shutdown()
+
+
+class StubPoller:
+    def __init__(self, text):
+        self._text = text
+
+    def snapshot_json(self):
+        return self._text
+
+
+def _get(url):
+    """(status, content-type, raw body) without raising on 4xx/5xx."""
+    try:
+        r = urllib.request.urlopen(url)
+    except urllib.error.HTTPError as e:
+        r = e
+    with r:
+        return r.status, r.headers.get("Content-Type"), r.read()
+
+
+class AlertsRouteTests(unittest.TestCase):
+    def serve(self, poller):
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), si.make_handler(si.Store(CFG), poller=poller))
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        return f"http://127.0.0.1:{srv.server_address[1]}"
+
+    def test_alerts_route_serves_poller_snapshot(self):
+        text = json.dumps({"generatedAt": "2026-11-18T00:00:00Z", "alerts": []})
+        status, ctype, raw = _get(self.serve(StubPoller(text)) + "/alerts")
+        self.assertEqual(status, 200)
+        self.assertEqual(ctype, "application/json; charset=utf-8")
+        self.assertEqual(json.loads(raw), {"generatedAt": "2026-11-18T00:00:00Z", "alerts": []})
+
+    def test_alerts_route_404_without_poller(self):
+        status, _, _ = _get(self.serve(None) + "/alerts")
+        self.assertEqual(status, 404)
+
+    def test_alerts_route_503_when_poller_never_succeeded(self):
+        status, ctype, raw = _get(self.serve(StubPoller(json.dumps({"alerts": []}))) + "/alerts")
+        self.assertEqual(status, 503)
+        self.assertEqual(ctype, "application/json; charset=utf-8")
+        self.assertEqual(json.loads(raw), {"error": "no alert data yet"})
+
+    def test_alerts_route_thai_text_round_trips(self):
+        thai = "พายุฝนฟ้าคะนอง กรุงเทพมหานคร"
+        text = json.dumps({"generatedAt": "2026-11-18T00:00:00Z", "alerts": [{"headline": thai}]},
+                          ensure_ascii=False)
+        status, ctype, raw = _get(self.serve(StubPoller(text)) + "/alerts")
+        self.assertEqual(status, 200)
+        self.assertIn("charset=utf-8", ctype)
+        self.assertEqual(json.loads(raw.decode("utf-8"))["alerts"][0]["headline"], thai)
+
+    def test_alerts_route_ignores_query_string(self):
+        text = json.dumps({"generatedAt": "2026-11-18T00:00:00Z", "alerts": []})
+        status, _, _ = _get(self.serve(StubPoller(text)) + "/alerts?x=1")
+        self.assertEqual(status, 200)
+
+    def test_other_routes_unchanged_with_poller(self):
+        base = self.serve(StubPoller("{}"))
+        self.assertEqual(_get(base + "/health")[0], 200)
+        self.assertEqual(_get(base + "/nope")[0], 404)
+
+    def test_tmd_feed_urls_must_be_http_or_https(self):
+        self.assertEqual(si.check_feed_urls(["https://a/x", "http://b/y"]), ["https://a/x", "http://b/y"])
+        with self.assertRaises(ValueError):
+            si.check_feed_urls(["https://a/x", "file:///etc/passwd"])
 
 
 if __name__ == "__main__":

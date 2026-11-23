@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disaster Alert & Rescue: Project Deck</title>
+<style>
+:root{--bg:#f6f4ef;--fg:#1c1b19;--mute:#5b5852;--rule:#cfcac0;--accent:#b3261e;--ok:#1b6b3a;--watch:#8a6d00;--card:#ffffff}
+@media (prefers-color-scheme:dark){:root{--bg:#161513;--fg:#f1eee8;--mute:#aaa59b;--rule:#3a3733;--accent:#ff8a80;--ok:#7fd49a;--watch:#e8c55a;--card:#1f1d1a}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:Sarabun,"Segoe UI",system-ui,sans-serif}
+.slide{display:none;min-height:100vh;padding:6vh 8vw 10vh;flex-direction:column;justify-content:center}
+.slide.on{display:flex}
+h1{font-size:clamp(2rem,5vw,3.6rem);line-height:1.1;margin:0 0 .4em}
+h2{font-size:clamp(1.5rem,3.4vw,2.4rem);margin:0 0 .6em;border-top:4px solid var(--fg);padding-top:.4em}
+p,li{font-size:clamp(1.05rem,1.9vw,1.4rem);line-height:1.45}
+.mute{color:var(--mute)}
+ul{padding-left:1.2em;margin:.3em 0}
+li{margin:.35em 0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.2rem}
+.card{background:var(--card);border:1px solid var(--rule);padding:1rem 1.2rem}
+.card h3{margin:0 0 .4em;font-size:1.15rem}
+.card p,.card li{font-size:1.05rem}
+.tag{display:inline-block;border:2px solid currentColor;padding:.05em .5em;font-weight:700;font-size:1rem;margin-right:.4em}
+.t-ok{color:var(--ok)}.t-watch{color:var(--watch)}.t-warn{color:#c25400}.t-danger{color:var(--accent)}
+.big{font-size:clamp(2.6rem,8vw,5.5rem);font-weight:800;line-height:1}
+.flow{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;font-size:1.15rem}
+.flow span.b{border:2px solid var(--fg);padding:.4em .8em;background:var(--card)}
+table{border-collapse:collapse;width:100%}
+td,th{border-bottom:1px solid var(--rule);padding:.5em .6em;text-align:left;font-size:1.05rem;vertical-align:top}
+th{font-weight:700}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:.6rem 1.2rem;background:var(--bg);border-top:1px solid var(--rule)}
+button{font:inherit;min-width:48px;min-height:48px;padding:0 1.2rem;border:2px solid var(--fg);background:var(--card);color:var(--fg);cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.count{color:var(--mute)}
+@media print{.slide{display:flex;min-height:auto;page-break-after:always}nav{display:none}}
+</style>
+</head>
+<body>
+
+<section class="slide on" aria-label="Title">
+  <p class="mute">Project deck · 2026-11-23</p>
+  <h1>Disaster Alert &amp; Rescue</h1>
+  <p>A Thai-first flood warning app that works offline and never says "Safe" when it does not know.</p>
+  <p class="mute">Flutter app · small Python backend · ESP32 water sensors</p>
+</section>
+
+<section class="slide" aria-label="Problem">
+  <h2>The problem</h2>
+  <ul>
+    <li>Official flood warnings in Thailand arrive late, and often only on screens people are not looking at.</li>
+    <li>When water rises, users are scared, one-handed, on low battery, with weak or no signal.</li>
+    <li>Goal: tell a person about a warning <strong>for their location</strong> faster than they would otherwise hear it.</li>
+  </ul>
+  <p class="mute">Success test: find the alert level and SOS in under two seconds, with no signal.</p>
+</section>
+
+<section class="slide" aria-label="What the app does">
+  <h2>What the app does</h2>
+  <div class="cols">
+    <div class="card"><h3>Home</h3><p>Big alert band for the user's area, place in words, hold-to-SOS, nearest shelter, area-tagged official notices.</p></div>
+    <div class="card"><h3>Map</h3><p>Offline Bangkok map, about 110 shelters, community-sensor markers.</p></div>
+    <div class="card"><h3>Call</h3><p>One-tap emergency lines. The user always presses the final call or send.</p></div>
+    <div class="card"><h3>Report</h3><p>Photo, location and note, saved on the phone only. It says so before saving.</p></div>
+    <div class="card"><h3>Guide</h3><p>Offline first-aid and evacuation topics, in the owner's wording.</p></div>
+  </div>
+  <p class="mute">Thai by default, English switch. Day and night themes. Works at 1.5× text.</p>
+</section>
+
+<section class="slide" aria-label="Four tiers">
+  <h2>Every state is icon + word + colour</h2>
+  <p>
+    <span class="tag t-ok">✓ Safe</span>
+    <span class="tag t-watch">◔ Watch</span>
+    <span class="tag t-warn">▲ Warning</span>
+    <span class="tag t-danger">✖ Danger</span>
+  </p>
+  <ul>
+    <li>Never colour alone. Tap targets at least 48 dp, text at least 16 sp.</li>
+    <li>Offline is a normal state, never red.</li>
+    <li>Stale, offline, faulty or missing data is <strong>"no data"</strong>, never Safe.</li>
+  </ul>
+</section>
+
+<section class="slide" aria-label="Architecture">
+  <h2>How it works</h2>
+  <div class="flow">
+    <span class="b">ESP32 sensors</span>→<span class="b">signed POST</span>→<span class="b">Python backend</span>→<span class="b">HTTPS JSON</span>→<span class="b">Phone app</span>
+  </div>
+  <div class="flow" style="margin-top:1rem">
+    <span class="b">TMD official CAP feed</span>→<span class="b">poller</span>→<span class="b">/alerts snapshot</span>→<span class="b">Phone app</span>
+  </div>
+  <ul style="margin-top:1.4rem">
+    <li>Backend: Python standard library only, SQLite, one process.</li>
+    <li>The phone caches every snapshot and always shows how old it is.</li>
+    <li>If the poller dies, the snapshot's own timestamp ages and the app says "may be out of date".</li>
+  </ul>
+</section>
+
+<section class="slide" aria-label="Trust rules">
+  <h2>Rules that never bend</h2>
+  <div class="cols">
+    <div class="card"><h3>Never a false Safe</h3><p>Only an official alert can raise a level.</p></div>
+    <div class="card"><h3>Observations, not orders</h3><p>Sensors say "community sensor, not an official gauge". The app issues no official warning or evacuation order.</p></div>
+    <div class="card"><h3>Owner owns the words</h3><p>Safety text is never reworded. New text is marked DRAFT.</p></div>
+    <div class="card"><h3>Privacy</h3><p>Keys stay on the server. GPS stays on the phone unless approved.</p></div>
+  </div>
+</section>
+
+<section class="slide" aria-label="Progress">
+  <h2>Where we are</h2>
+  <div class="cols">
+    <div class="card">
+      <h3 class="t-ok">Done and tested</h3>
+      <ul>
+        <li>App: 5 tabs, 4 tiers, SOS, offline map</li>
+        <li>Sensor backend with signed readings</li>
+        <li>Official TMD alerts end to end (Phase A)</li>
+        <li>Province targeting, detail, history (Phase B)</li>
+        <li>"Posted notice" redesign (Phase R)</li>
+        <li>Stale-data and clock-change safety fixes</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 class="t-danger">Not done</h3>
+      <ul>
+        <li>Backend not on HTTPS: nobody can be warned yet</li>
+        <li>No push notification</li>
+        <li>No location request at app open</li>
+        <li>Sensors never run on real hardware</li>
+        <li>Guide has no expert sign-off; 191/199/1155 unconfirmed</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="slide" aria-label="Proof">
+  <h2>Proof, honestly</h2>
+  <p class="big">115 · 134</p>
+  <p>Flutter tests (CI set) and backend tests at last record. Backend re-run 2026-11-23: all pass. <code>flutter analyze</code> clean at last record.</p>
+  <ul>
+    <li><strong>Not proof:</strong> golden screenshots (rewritten, not compared), firmware (never compiled), a real phone, a live TMD run behind HTTPS.</li>
+    <li>Simulated audit of 100 Bangkok residents: <strong>35/100, blocked</strong>. It is code-based reasoning, not user research.</li>
+  </ul>
+</section>
+
+<section class="slide" aria-label="Blockers">
+  <h2>What we need from the owner</h2>
+  <table>
+    <tr><th>Input</th><th>Unblocks</th></tr>
+    <tr><td>Backend host, route, budget (Cloudflare chosen)</td><td>Any real use</td></tr>
+    <tr><td>Confirm 191, 199, 1155</td><td>Release</td></tr>
+    <tr><td>Two expert reviewers for the Guide</td><td>Release</td></tr>
+    <tr><td>App name, controller, privacy notice</td><td>Store release</td></tr>
+    <tr><td>Yes to ask for location at launch</td><td>Nearest shelter on first open</td></tr>
+    <tr><td>SOS order, Danger advice line, shelter data, week-indoors guide</td><td>Phase H tasks</td></tr>
+    <tr><td>Nominatim: GPS goes to OpenStreetMap, decide how</td><td>Privacy notice</td></tr>
+  </table>
+</section>
+
+<section class="slide" aria-label="Roadmap">
+  <h2>What comes next</h2>
+  <ol>
+    <li><strong>C. Hosting and delivery:</strong> HTTPS, kill switch, live TMD run, latency table, then push.</li>
+    <li><strong>H. Panic-readiness:</strong> location at launch, per-area level, SOS order, shelter status.</li>
+    <li><strong>D. Trust:</strong> verified numbers, expert sign-off, privacy notice.</li>
+    <li><strong>F. Sensors in the field:</strong> hardware, a season beside an official gauge.</li>
+    <li><strong>G. Reach:</strong> more languages, store release.</li>
+  </ol>
+  <p class="mute">Out of scope by decision: other hazards. Floods are the focus.</p>
+</section>
+
+<section class="slide" aria-label="How we build">
+  <h2>How we build</h2>
+  <ul>
+    <li><strong>Opus</strong> advises on hard tasks and reviews safety-critical code; <strong>Sonnet</strong> implements; <strong>Haiku</strong> does lookups.</li>
+    <li>Test first, small commits. No commit or push without the owner's ask.</li>
+    <li>Work stays inside the roadmap; new ideas get the owner's yes first.</li>
+  </ul>
+</section>
+
+<section class="slide" aria-label="Close">
+  <h1>The app is built.<br>The road to real users is not.</h1>
+  <p>Next step: choose the hosting route, so a real warning can reach a real phone.</p>
+</section>
+
+<nav aria-label="Slide controls">
+  <button id="prev" aria-label="Previous slide">←</button>
+  <span class="count" id="count" aria-live="polite"></span>
+  <button id="next" aria-label="Next slide">→</button>
+</nav>
+
+<script>
+(function(){
+  var s=[].slice.call(document.querySelectorAll('.slide')),i=0,c=document.getElementById('count');
+  function show(n){i=Math.max(0,Math.min(s.length-1,n));s.forEach(function(e,k){e.classList.toggle('on',k===i)});c.textContent=(i+1)+' / '+s.length;try{history.replaceState(null,'','#'+(i+1))}catch(e){}}
+  document.getElementById('prev').onclick=function(){show(i-1)};
+  document.getElementById('next').onclick=function(){show(i+1)};
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')show(i+1);
+    if(e.key==='ArrowLeft'||e.key==='PageUp')show(i-1);
+  });
+  var h=parseInt(location.hash.slice(1),10);show(isNaN(h)?0:h-1);
+})();
+</script>
+</body>
+</html>

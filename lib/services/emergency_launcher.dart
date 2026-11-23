@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:url_launcher/url_launcher.dart';
 
 // Opens the phone's dialler or SMS composer. The user always presses call/send;
@@ -15,12 +17,38 @@ abstract final class EmergencyLauncher {
     ),
   );
 
-  // Opens turn-by-turn directions in the phone's map app.
-  static Future<bool> navigate(double lat, double lng) => launchUrl(
+  // Links to try for directions, best first: the Google Maps app itself (no
+  // browser, no chooser), then the web link, which any map app or browser takes.
+  static List<Uri> navigationUris(
+    double lat,
+    double lng, {
+    required bool ios,
+  }) => [
+    if (ios)
+      Uri(
+        scheme: 'comgooglemaps',
+        host: '',
+        queryParameters: {'daddr': '$lat,$lng', 'directionsmode': 'driving'},
+      )
+    else
+      Uri.parse('google.navigation:q=$lat,$lng'),
     Uri.https('www.google.com', '/maps/dir/', {
       'api': '1',
       'destination': '$lat,$lng',
     }),
-    mode: LaunchMode.externalApplication,
-  );
+  ];
+
+  // Opens turn-by-turn directions, in the Google Maps app when it is installed.
+  static Future<bool> navigate(double lat, double lng) async {
+    for (final uri in navigationUris(lat, lng, ios: Platform.isIOS)) {
+      try {
+        if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          return true;
+        }
+      } catch (_) {
+        // No app handles this link: try the next one.
+      }
+    }
+    return false;
+  }
 }

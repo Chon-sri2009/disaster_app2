@@ -55,3 +55,12 @@ __pycache__/
 node_modules/
 
 backend/*.db
+
+# Release signing material
+android/key.properties
+*.jks
+*.keystore
+
+# Local sensor databases
+sensors.db
+backend/sensors.db

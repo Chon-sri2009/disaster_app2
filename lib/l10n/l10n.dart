@@ -2,7 +2,9 @@ import 'package:flutter/widgets.dart';
 
 import '../data/emergency_numbers.dart';
 import '../models/alert_level.dart';
+import '../models/shelter.dart';
 import '../services/location_service.dart';
+import '../services/place_lookup.dart';
 
 // Thai/English text lives next to where it is used: context.tr(th: ..., en: ...).
 // The helpers below cover the strings that several screens share.
@@ -10,6 +12,9 @@ extension AppL10n on BuildContext {
   bool get isThai => Localizations.localeOf(this).languageCode == 'th';
 
   String tr({required String th, required String en}) => isThai ? th : en;
+
+  // The shelter's name in the app language (English name if no Thai one exists).
+  String shelterName(Shelter s) => isThai ? (s.nameTh ?? s.name) : s.name;
 
   String get cmUnit => tr(th: 'ซม.', en: 'cm');
 
@@ -38,6 +43,31 @@ extension AppL10n on BuildContext {
       en: 'Leave for a shelter now.',
     ),
   };
+
+  // "850 m" / "1.2 km", rounded to what a walker can use.
+  String distance(double meters) => meters < 1000
+      ? tr(
+          th: '${(meters / 10).round() * 10} ม.',
+          en: '${(meters / 10).round() * 10} m',
+        )
+      : tr(
+          th: '${(meters / 1000).toStringAsFixed(1)} กม.',
+          en: '${(meters / 1000).toStringAsFixed(1)} km',
+        );
+
+  // A place in words: the address, or "Near <shelter> (about 300 m)" when no address is known.
+  String placeText(Place place) {
+    final near = place.nearest;
+    if (place.address != null) return place.address!;
+    if (near == null) return '';
+    return tr(
+      th: 'ใกล้ ${shelterName(near)} (ประมาณ ${distance(place.meters ?? 0)})',
+      en: 'Near ${shelterName(near)} (about ${distance(place.meters ?? 0)})',
+    );
+  }
+
+  String shelterCapacity(int people) =>
+      tr(th: 'รองรับได้ประมาณ $people คน', en: 'Holds about $people people');
 
   String serviceName(EmergencyNumber n) => tr(th: n.serviceTh, en: n.service);
 

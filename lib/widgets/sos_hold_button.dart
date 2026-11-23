@@ -4,18 +4,19 @@ import 'package:flutter/services.dart';
 import '../l10n/l10n.dart';
 import '../theme/app_tokens.dart';
 
-// A big round SOS button: hold it about 1.5 s while a ring fills, with haptic feedback, to confirm.
+// The SOS card: a rounded red card with a soft red glow. Hold it about 1.5 s while a white bar
+// fills across its foot, with haptic feedback, to confirm. A short tap does nothing.
 class SosHoldButton extends StatefulWidget {
   const SosHoldButton({
     super.key,
     required this.onConfirmed,
     required this.busy,
-    required this.diameter,
+    required this.height,
   });
 
   final VoidCallback onConfirmed;
   final bool busy;
-  final double diameter;
+  final double height;
 
   @override
   State<SosHoldButton> createState() => _SosHoldButtonState();
@@ -24,7 +25,10 @@ class SosHoldButton extends StatefulWidget {
 // Drives the hold timer: forward while a finger is down, back when it lifts early.
 class _SosHoldButtonState extends State<SosHoldButton>
     with SingleTickerProviderStateMixin {
-  static const double _ring = 10;
+  static const double _bar = AppSize.sosBar;
+  static final BorderRadius _pill = BorderRadius.circular(AppRadius.pill);
+
+  Color get _track => context.tokens.onDanger.withValues(alpha: 0.3);
 
   late final AnimationController _hold = AnimationController(
     vsync: this,
@@ -38,7 +42,7 @@ class _SosHoldButtonState extends State<SosHoldButton>
     super.dispose();
   }
 
-  // When the ring completes: strong haptic, tell the screen, then reset the ring.
+  // When the bar completes: strong haptic, tell the screen, then reset the bar.
   void _onStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed) return;
     HapticFeedback.heavyImpact();
@@ -48,14 +52,14 @@ class _SosHoldButtonState extends State<SosHoldButton>
     });
   }
 
-  // Finger down: gentle haptic and start filling the ring.
+  // Finger down: gentle haptic and start filling the bar.
   void _down() {
     if (widget.busy) return;
     HapticFeedback.mediumImpact();
     _hold.forward();
   }
 
-  // Finger up or cancelled before the end: empty the ring (instantly if animations are off).
+  // Finger up or cancelled before the end: empty the bar (instantly if animations are off).
   void _release() {
     if (_hold.isCompleted || _hold.isDismissed) return;
     if (MediaQuery.disableAnimationsOf(context)) {
@@ -76,6 +80,12 @@ class _SosHoldButtonState extends State<SosHoldButton>
   Widget build(BuildContext context) {
     final t = context.tokens;
     final theme = Theme.of(context);
+    final hint = widget.busy
+        ? context.tr(th: 'กำลังหาตำแหน่งของคุณ…', en: 'Finding your location…')
+        : context.tr(
+            th: 'กดค้าง 1.5 วินาทีเพื่อส่งตำแหน่ง',
+            en: 'Hold 1.5 seconds to share your location',
+          );
     return Semantics(
       button: true,
       enabled: !widget.busy,
@@ -90,30 +100,32 @@ class _SosHoldButtonState extends State<SosHoldButton>
         onPointerDown: (_) => _down(),
         onPointerUp: (_) => _release(),
         onPointerCancel: (_) => _release(),
-        child: SizedBox.square(
-          dimension: widget.diameter,
-          child: AnimatedBuilder(
-            animation: _hold,
-            builder: (context, _) => Stack(
-              fit: StackFit.expand,
-              children: [
-                CircularProgressIndicator(
-                  value: widget.busy ? null : _hold.value,
-                  strokeWidth: _ring,
-                  strokeCap: StrokeCap.round,
-                  color: t.ink,
-                  backgroundColor: t.hairline,
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(_ring + AppSpace.sm),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: t.danger,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpace.sm),
+        child: Container(
+          height: widget.height,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: t.danger,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            // A surface ring keeps the card apart from a red header band at danger level.
+            border: Border.all(color: t.surface, width: AppStroke.frame),
+            boxShadow: [
+              BoxShadow(
+                color: t.danger.withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                  child: Row(
+                    children: [
+                      // The 48 sp word is large at any setting; holding it there leaves the
+                      // instruction room to stay whole when the phone's text is enlarged.
+                      MediaQuery.withNoTextScaling(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
@@ -124,11 +136,51 @@ class _SosHoldButtonState extends State<SosHoldButton>
                           ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: AppSpace.md),
+                      Expanded(
+                        child: Text(
+                          hint,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: t.onDanger,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              // The hold bar: a white pill filling along a faint white track at the card's foot.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.md,
+                  0,
+                  AppSpace.md,
+                  AppSpace.sm + AppSpace.xs,
+                ),
+                child: SizedBox(
+                  height: _bar,
+                  child: widget.busy
+                      ? LinearProgressIndicator(
+                          minHeight: _bar,
+                          color: t.onDanger,
+                          backgroundColor: _track,
+                          borderRadius: _pill,
+                        )
+                      : AnimatedBuilder(
+                          animation: _hold,
+                          builder: (context, _) => LinearProgressIndicator(
+                            value: _hold.value,
+                            minHeight: _bar,
+                            color: t.onDanger,
+                            backgroundColor: _track,
+                            borderRadius: _pill,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

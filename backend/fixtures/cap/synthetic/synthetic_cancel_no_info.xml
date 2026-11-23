@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC: hand-written, NOT published by TMD. Covers a Cancel with no <info>,
+     a shape TMD has not yet been seen to publish (see docs/CAP_FIELDS.md). -->
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>TMD20261118180000_2-en</identifier>
+  <sender>TMD</sender>
+  <sent>2026-11-18T18:00:00+07:00</sent>
+  <status>Actual</status>
+  <msgType>Cancel</msgType>
+  <scope>Public</scope>
+  <references>TMD,TMD20261118155021_2-en,2026-11-18T17:45:00+07:00</references>
+</alert>

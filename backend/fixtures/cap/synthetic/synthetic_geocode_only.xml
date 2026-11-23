@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC: hand-written, NOT published by TMD. Covers an area with geocodes but
+     no <polygon>, a shape TMD has not yet been seen to publish (see docs/CAP_FIELDS.md). -->
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>TMDSYNTH_GEO_1-en</identifier>
+  <sender>TMD</sender>
+  <sent>2026-11-18T09:00:00+07:00</sent>
+  <status>Actual</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>en-US</language>
+    <event>Heavy Rain</event>
+    <severity>Severe</severity>
+    <expires>2026-11-18T21:00:00+07:00</expires>
+    <headline>Heavy Rain Risk Area</headline>
+    <area>
+      <areaDesc>Songkhla Satun</areaDesc>
+      <geocode><valueName>ISO3166-2</valueName><value>TH-90</value></geocode>
+      <geocode><valueName>ISO3166-2</valueName><value>TH-91</value></geocode>
+    </area>
+  </info>
+</alert>

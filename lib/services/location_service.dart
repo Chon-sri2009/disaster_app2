@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'nearby.dart';
+import 'place_lookup.dart';
 import 'storage_service.dart';
 
 // Why GPS failed. The words for each case live in l10n (context.locationError).
@@ -26,9 +28,29 @@ class _LocationProblem implements Exception {
 
 // Reads the phone's GPS position and never throws; falls back to the last saved position.
 class LocationService {
-  LocationService(this._storage);
+  LocationService(this._storage, {this._lookup = nominatimLookup});
 
   final StorageService _storage;
+  final AddressLookup _lookup;
+
+  // Says where a position is: the street address when it can be found quickly, otherwise the
+  // nearest saved shelter (works offline). Never throws.
+  Future<Place> describe(LatLng point) async {
+    String? address;
+    try {
+      address = await _lookup(
+        point,
+        _storage.language,
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+    if (address != null) return Place(address: address);
+    final shelters = Nearby.sorted(_storage.shelters, point);
+    if (shelters.isEmpty) return const Place();
+    return Place(
+      nearest: shelters.first,
+      meters: Nearby.metersTo(point, shelters.first),
+    );
+  }
 
   // The last position we saved, or null if GPS has never worked.
   LatLng? get lastKnown => _storage.lastPosition;

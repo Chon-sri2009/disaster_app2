@@ -7,6 +7,7 @@ class DamageReport {
     required this.createdAt,
     this.lat,
     this.lng,
+    this.address,
     this.photoPath,
   });
 
@@ -16,6 +17,9 @@ class DamageReport {
   final DateTime createdAt;
   final double? lat;
   final double? lng;
+
+  // Where the damage is, in words (found from GPS or typed by the person).
+  final String? address;
   final String? photoPath;
 
   // Builds a report from a decoded JSON map.
@@ -26,6 +30,7 @@ class DamageReport {
     createdAt: DateTime.parse(json['createdAt'] as String),
     lat: (json['lat'] as num?)?.toDouble(),
     lng: (json['lng'] as num?)?.toDouble(),
+    address: json['address'] as String?,
     photoPath: json['photoPath'] as String?,
   );
 
@@ -37,6 +42,7 @@ class DamageReport {
     'createdAt': createdAt.toIso8601String(),
     'lat': lat,
     'lng': lng,
+    'address': address,
     'photoPath': photoPath,
   };
 }

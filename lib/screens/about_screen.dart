@@ -4,6 +4,7 @@ import '../data/emergency_numbers.dart';
 import '../l10n/l10n.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/content_width.dart';
+import '../widgets/notice_ui.dart';
 
 // About: disclaimer (content required by DEVELOPMENT_PLAN.md 9.4) and data sources (9.2, 5.7).
 // DRAFT wording: the owner must rewrite it and Thai counsel must review it before release.
@@ -13,10 +14,7 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    Widget heading(String text) => Padding(
-      padding: const EdgeInsets.only(top: AppSpace.lg, bottom: AppSpace.sm),
-      child: Text(text, style: theme.textTheme.titleLarge),
-    );
+    final t = context.tokens;
     final disclaimer = [
       context.tr(
         th: 'แอปนี้ไม่ใช่ช่องทางแจ้งเตือนภัยอย่างเป็นทางการของรัฐ',
@@ -82,39 +80,90 @@ class AboutScreen extends StatelessWidget {
         .map((n) => '${n.number} (${context.serviceName(n)})')
         .join(', ');
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          context.tr(
-            th: 'เกี่ยวกับแอปและข้อสงวนสิทธิ์',
-            en: 'About and disclaimer',
-          ),
-        ),
-      ),
+      // Back arrow only: the long title lives in the body, where it wraps instead of being cut.
+      appBar: AppBar(),
       body: SafeArea(
         child: ContentWidth(
           child: ListView(
-            padding: const EdgeInsets.all(AppSpace.md),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.md,
+              0,
+              AppSpace.md,
+              AppSpace.lg,
+            ),
             children: [
-              heading(context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer')),
-              for (final line in disclaimer)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                  child: Text(line, style: theme.textTheme.bodyLarge),
-                ),
-              Text(
+              ScreenTitle(
                 context.tr(
-                  th: 'ในเหตุฉุกเฉิน โทร $numbers',
-                  en: 'In an emergency call $numbers.',
+                  th: 'เกี่ยวกับแอปและข้อสงวนสิทธิ์',
+                  en: 'About and disclaimer',
                 ),
-                style: theme.textTheme.bodyLarge,
+                compact: true,
               ),
-              heading(context.tr(th: 'แหล่งข้อมูล', en: 'Data sources')),
-              for (final s in sources)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(s.$1),
-                  subtitle: Text(s.$2),
-                ),
+              Section(
+                title: context.tr(th: 'ข้อสงวนสิทธิ์', en: 'Disclaimer'),
+                children: [
+                  // The first line is the one that matters most, so it leads as a title.
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: AppSpace.md,
+                      bottom: AppSpace.sm,
+                    ),
+                    child: Text(
+                      disclaimer.first,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  for (final line in disclaimer.skip(1))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                      child: Text(line, style: theme.textTheme.bodyLarge),
+                    ),
+                  const SizedBox(height: AppSpace.xs),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: t.errorBg,
+                      border: Border.all(
+                        color: t.dangerInk,
+                        width: AppStroke.frame,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpace.md),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.call, color: t.dangerInk),
+                          const SizedBox(width: AppSpace.md),
+                          Expanded(
+                            child: Text(
+                              context.tr(
+                                th: 'ในเหตุฉุกเฉิน โทร $numbers',
+                                en: 'In an emergency call $numbers.',
+                              ),
+                              style: theme.textTheme.titleSmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Section(
+                title: context.tr(th: 'แหล่งข้อมูล', en: 'Data sources'),
+                children: [
+                  for (final (i, s) in sources.indexed)
+                    RuledRow(
+                      // The build's own data is the one caveat; its icon differs from the rest.
+                      icon: i == sources.length - 1
+                          ? Icons.science_outlined
+                          : Icons.source_outlined,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      title: s.$1,
+                      subtitle: s.$2,
+                    ),
+                ],
+              ),
             ],
           ),
         ),

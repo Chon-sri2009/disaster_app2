@@ -1,0 +1,743 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T01:24:09+00:00",
+  "title": "Design System: Disaster Alert & Rescue",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Newsprint Paper",
+        "canonical": "#F2EDE2",
+        "tonalRamp": [
+          "#2F291E",
+          "#51462F",
+          "#75643D",
+          "#9C824A",
+          "#B59C63",
+          "#C9BB9C",
+          "#E1DCD0",
+          "#F4F3F0"
+        ]
+      },
+      "paper-raised": {
+        "role": "neutral",
+        "displayName": "Raised Paper",
+        "canonical": "#FBF8F1",
+        "tonalRamp": [
+          "#332B1A",
+          "#594A27",
+          "#826A31",
+          "#AF8B37",
+          "#C8A450",
+          "#D3BF92",
+          "#E5DECC",
+          "#F6F4EF"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "Notice Ink",
+        "canonical": "#16140F",
+        "tonalRamp": [
+          "#2A2822",
+          "#484337",
+          "#675F4B",
+          "#877B5E",
+          "#A19578",
+          "#BDB7A8",
+          "#DDDBD5",
+          "#F3F3F1"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Faded Ink",
+        "canonical": "#4A463D",
+        "tonalRamp": [
+          "#282724",
+          "#44413B",
+          "#605C52",
+          "#7D7768",
+          "#979082",
+          "#B8B5AD",
+          "#DBDAD7",
+          "#F3F2F2"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Pencil Rule",
+        "canonical": "#BDB4A1",
+        "tonalRamp": [
+          "#2A2822",
+          "#484338",
+          "#665E4C",
+          "#867960",
+          "#9F9379",
+          "#BDB6A8",
+          "#DDDAD5",
+          "#F3F3F1"
+        ]
+      },
+      "pressed": {
+        "role": "neutral",
+        "displayName": "Pressed Paper",
+        "canonical": "#E3DBCA",
+        "tonalRamp": [
+          "#2D291F",
+          "#4E4532",
+          "#706143",
+          "#947F51",
+          "#AE986B",
+          "#C4B9A1",
+          "#E0DBD2",
+          "#F4F3F0"
+        ]
+      },
+      "offline-day": {
+        "role": "neutral",
+        "displayName": "Quiet Slate Paper",
+        "canonical": "#E6E0D2",
+        "tonalRamp": [
+          "#2D2920",
+          "#4C4533",
+          "#6E6244",
+          "#927F54",
+          "#AB996D",
+          "#C3B9A2",
+          "#DFDBD2",
+          "#F4F3F1"
+        ]
+      },
+      "error-day": {
+        "role": "neutral",
+        "displayName": "Blush Error Paper",
+        "canonical": "#F6DEDA",
+        "tonalRamp": [
+          "#341D19",
+          "#5B2C25",
+          "#86392D",
+          "#B44431",
+          "#CE5D4B",
+          "#D6998F",
+          "#E6CFCB",
+          "#F6F0EF"
+        ]
+      },
+      "danger-ink-day": {
+        "role": "neutral",
+        "displayName": "Danger Ink (day)",
+        "canonical": "#A3101A",
+        "tonalRamp": [
+          "#381417",
+          "#641B20",
+          "#951D25",
+          "#CB1A26",
+          "#E53440",
+          "#E28389",
+          "#EBC7C9",
+          "#F7EDEE"
+        ]
+      },
+      "charcoal": {
+        "role": "neutral",
+        "displayName": "Night Charcoal",
+        "canonical": "#14130F",
+        "tonalRamp": [
+          "#292823",
+          "#464439",
+          "#64604F",
+          "#827C63",
+          "#9C957D",
+          "#BBB7AA",
+          "#DCDBD6",
+          "#F3F3F1"
+        ]
+      },
+      "charcoal-raised": {
+        "role": "neutral",
+        "displayName": "Raised Charcoal",
+        "canonical": "#1F1D18",
+        "tonalRamp": [
+          "#292723",
+          "#45423A",
+          "#635D50",
+          "#807965",
+          "#9A927F",
+          "#BAB6AB",
+          "#DCDAD6",
+          "#F3F3F2"
+        ]
+      },
+      "paper-ink": {
+        "role": "primary",
+        "displayName": "Paper Ink (night)",
+        "canonical": "#EFE8D8",
+        "tonalRamp": [
+          "#302A1D",
+          "#52472D",
+          "#78653B",
+          "#A08446",
+          "#B99E5F",
+          "#CBBC9A",
+          "#E2DCCF",
+          "#F5F3F0"
+        ]
+      },
+      "paper-ink-muted": {
+        "role": "neutral",
+        "displayName": "Faded Paper Ink",
+        "canonical": "#B8B09F",
+        "tonalRamp": [
+          "#2A2723",
+          "#464239",
+          "#645D4E",
+          "#837963",
+          "#9C927C",
+          "#BBB6AA",
+          "#DCDAD5",
+          "#F3F3F1"
+        ]
+      },
+      "rule-night": {
+        "role": "neutral",
+        "displayName": "Night Rule",
+        "canonical": "#6F6858",
+        "tonalRamp": [
+          "#292724",
+          "#45423B",
+          "#625D51",
+          "#7F7866",
+          "#999180",
+          "#B9B5AC",
+          "#DBDAD6",
+          "#F3F3F2"
+        ]
+      },
+      "pressed-night": {
+        "role": "neutral",
+        "displayName": "Pressed Charcoal",
+        "canonical": "#2E2B24",
+        "tonalRamp": [
+          "#292724",
+          "#45423A",
+          "#625D50",
+          "#807866",
+          "#99927F",
+          "#BAB5AB",
+          "#DBDAD6",
+          "#F3F3F2"
+        ]
+      },
+      "offline-night": {
+        "role": "neutral",
+        "displayName": "Quiet Night Slate",
+        "canonical": "#26241E",
+        "tonalRamp": [
+          "#292824",
+          "#45423B",
+          "#625E51",
+          "#7F7966",
+          "#999380",
+          "#B9B6AC",
+          "#DBDAD6",
+          "#F3F3F2"
+        ]
+      },
+      "error-night": {
+        "role": "neutral",
+        "displayName": "Night Error Tint",
+        "canonical": "#3A1A17",
+        "tonalRamp": [
+          "#301E1D",
+          "#53302C",
+          "#793F3A",
+          "#A14C44",
+          "#BB665E",
+          "#CC9E99",
+          "#E2D1CF",
+          "#F5F0F0"
+        ]
+      },
+      "danger-ink-night": {
+        "role": "neutral",
+        "displayName": "Danger Ink (night)",
+        "canonical": "#FF9A90",
+        "tonalRamp": [
+          "#3C1410",
+          "#6C1B13",
+          "#A21D10",
+          "#DF1A07",
+          "#F83420",
+          "#ED8378",
+          "#EFC7C3",
+          "#F8EDEC"
+        ]
+      },
+      "safe": {
+        "role": "tertiary",
+        "displayName": "Safe Field Green",
+        "canonical": "#1D6B3A",
+        "tonalRamp": [
+          "#1A3323",
+          "#265939",
+          "#2F834E",
+          "#35B163",
+          "#4ECA7C",
+          "#91D4AA",
+          "#CCE5D5",
+          "#EFF6F1"
+        ]
+      },
+      "on-safe": {
+        "role": "neutral",
+        "displayName": "On Safe",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8C8C8C",
+          "#B2B2B2",
+          "#D9D9D9",
+          "#F2F2F2"
+        ]
+      },
+      "watch": {
+        "role": "tertiary",
+        "displayName": "Signal Yellow",
+        "canonical": "#F2C200",
+        "tonalRamp": [
+          "#3C3410",
+          "#6C5B13",
+          "#A28510",
+          "#DFB407",
+          "#F8CD20",
+          "#EDD678",
+          "#EFE6C3",
+          "#F8F6EC"
+        ]
+      },
+      "on-watch": {
+        "role": "neutral",
+        "displayName": "On Watch",
+        "canonical": "#16140F",
+        "tonalRamp": [
+          "#2A2822",
+          "#484337",
+          "#675F4B",
+          "#877B5E",
+          "#A19578",
+          "#BDB7A8",
+          "#DDDBD5",
+          "#F3F3F1"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Warning Orange",
+        "canonical": "#B93D0B",
+        "tonalRamp": [
+          "#3A1E13",
+          "#672F18",
+          "#9A3E18",
+          "#D34A13",
+          "#EC642C",
+          "#E69D7F",
+          "#ECD0C5",
+          "#F7F0ED"
+        ]
+      },
+      "on-warning": {
+        "role": "neutral",
+        "displayName": "On Warning",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8C8C8C",
+          "#B2B2B2",
+          "#D9D9D9",
+          "#F2F2F2"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Danger and SOS Red",
+        "canonical": "#B3121C",
+        "tonalRamp": [
+          "#381416",
+          "#641B20",
+          "#951D25",
+          "#CB1B26",
+          "#E4343F",
+          "#E28389",
+          "#EBC7C9",
+          "#F7EDEE"
+        ]
+      },
+      "on-danger": {
+        "role": "neutral",
+        "displayName": "On Danger",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8C8C8C",
+          "#B2B2B2",
+          "#D9D9D9",
+          "#F2F2F2"
+        ]
+      },
+      "safe-ink-day": {
+        "role": "tertiary",
+        "displayName": "Safe as text (day)",
+        "canonical": "#1D6B3A",
+        "tonalRamp": [
+          "#1A3323",
+          "#265939",
+          "#2F834E",
+          "#35B163",
+          "#4ECA7C",
+          "#91D4AA",
+          "#CCE5D5",
+          "#EFF6F1"
+        ]
+      },
+      "watch-ink-day": {
+        "role": "tertiary",
+        "displayName": "Watch as text (day)",
+        "canonical": "#6E5300",
+        "tonalRamp": [
+          "#3C3210",
+          "#6C5613",
+          "#A27F10",
+          "#DFAA07",
+          "#F8C320",
+          "#EDD078",
+          "#EFE4C3",
+          "#F8F5EC"
+        ]
+      },
+      "warning-ink-day": {
+        "role": "tertiary",
+        "displayName": "Warning as text (day)",
+        "canonical": "#A33508",
+        "tonalRamp": [
+          "#3A1E12",
+          "#682F17",
+          "#9C3D17",
+          "#D54A11",
+          "#EE632A",
+          "#E79C7E",
+          "#EDD0C5",
+          "#F8F0ED"
+        ]
+      },
+      "safe-ink-night": {
+        "role": "tertiary",
+        "displayName": "Safe as text (night)",
+        "canonical": "#86D49F",
+        "tonalRamp": [
+          "#1C3122",
+          "#2B5538",
+          "#367C4D",
+          "#3FA660",
+          "#59C07A",
+          "#97CEA9",
+          "#CEE3D5",
+          "#EFF5F1"
+        ]
+      },
+      "watch-ink-night": {
+        "role": "tertiary",
+        "displayName": "Watch as text (night)",
+        "canonical": "#F2C200",
+        "tonalRamp": [
+          "#3C3410",
+          "#6C5B13",
+          "#A28510",
+          "#DFB407",
+          "#F8CD20",
+          "#EDD678",
+          "#EFE6C3",
+          "#F8F6EC"
+        ]
+      },
+      "warning-ink-night": {
+        "role": "tertiary",
+        "displayName": "Warning as text (night)",
+        "canonical": "#FFA270",
+        "tonalRamp": [
+          "#3C2010",
+          "#6C3213",
+          "#A24310",
+          "#DF5207",
+          "#F86C20",
+          "#EDA178",
+          "#EFD2C3",
+          "#F8F0EC"
+        ]
+      },
+      "selection": {
+        "role": "neutral",
+        "displayName": "Highlighter Selection",
+        "canonical": "#F2C20066"
+      }
+    },
+    "typographyMeta": {
+      "display-large": {
+        "displayName": "Display Large",
+        "purpose": "The word SOS in the SOS block."
+      },
+      "display-small": {
+        "displayName": "Display Small",
+        "purpose": "Level word and sensor values."
+      },
+      "headline-medium": {
+        "displayName": "Headline Medium",
+        "purpose": "Screen title in ScreenHeader and the startup notice."
+      },
+      "headline-small": {
+        "displayName": "Headline Small",
+        "purpose": "App bar title on pushed pages."
+      },
+      "title-large": {
+        "displayName": "Title Large",
+        "purpose": "Dialog titles."
+      },
+      "title-medium": {
+        "displayName": "Title Medium",
+        "purpose": "Section labels and guide step numbers."
+      },
+      "title-small": {
+        "displayName": "Title Small",
+        "purpose": "Row and tile titles, SOS hint."
+      },
+      "body-large": {
+        "displayName": "Body Large",
+        "purpose": "Level advice, guide steps, dialog body."
+      },
+      "body-medium": {
+        "displayName": "Body Medium",
+        "purpose": "Body, banners, field text."
+      },
+      "label-large": {
+        "displayName": "Label Large",
+        "purpose": "Buttons."
+      },
+      "label-medium": {
+        "displayName": "Label Medium",
+        "purpose": "Nav labels, tags, bulletin strip, current meter step."
+      },
+      "label-small": {
+        "displayName": "Label Small",
+        "purpose": "Other meter steps, map credit."
+      }
+    },
+    "shadows": [
+      {
+        "name": "overlay",
+        "value": "Material elevation 3 (AppElevation.overlay)",
+        "purpose": "Dialogs, bottom sheets and snackbars only; everything else is flat and framed."
+      }
+    ],
+    "strokes": [
+      {
+        "name": "rule",
+        "value": "1dp",
+        "purpose": "Dividers, empty meter and gauge cells."
+      },
+      {
+        "name": "frame",
+        "value": "2dp",
+        "purpose": "Every block, tile, field, banner and marker."
+      },
+      {
+        "name": "heavy",
+        "value": "3dp",
+        "purpose": "Header rules, tab bar rule, level notice, SOS, current meter step, focus."
+      }
+    ],
+    "motion": [
+      {
+        "name": "fast",
+        "value": "150ms",
+        "purpose": "Short state changes."
+      },
+      {
+        "name": "base",
+        "value": "200ms",
+        "purpose": "Gauge fill, SOS bar release, list expansion."
+      },
+      {
+        "name": "slow",
+        "value": "250ms",
+        "purpose": "Level field colour change."
+      },
+      {
+        "name": "sosHold",
+        "value": "1500ms",
+        "purpose": "SOS press-and-hold time."
+      },
+      {
+        "name": "reduce-motion",
+        "value": "context.motion(d) returns zero when animations are disabled",
+        "purpose": "Every duration goes through it."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "600dp width (rail also needs 480dp height)"
+      },
+      {
+        "name": "tall-sos",
+        "value": "700dp height (112dp SOS, else 88dp)"
+      },
+      {
+        "name": "content-max",
+        "value": "640dp"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ink block with paper text, 56 dp, square. Main action on every screen.",
+      "html": "<button class=\"ds-btn-primary\">Save report</button>",
+      "css": ".ds-btn-primary { font-family: Sarabun, 'Noto Sans Thai', sans-serif; background: #16140F; color: #F2EDE2; font-size: 16px; font-weight: 700; line-height: 1.4; min-height: 56px; padding: 0 24px; border: none; border-radius: 0; cursor: pointer; } .ds-btn-primary:hover { background: #2E2B24; } .ds-btn-primary:active { background: #000000; } .ds-btn-primary:focus-visible { outline: 3px solid #F2C200; outline-offset: 2px; } .ds-btn-primary:disabled { background: #BDB4A1; color: #4A463D; }"
+    },
+    {
+      "name": "Outlined Button",
+      "kind": "button",
+      "refersTo": "button-outlined",
+      "description": "2 dp ink frame, ink text, 48 dp, square. Secondary actions.",
+      "html": "<button class=\"ds-btn-outlined\">Open map</button>",
+      "css": ".ds-btn-outlined { font-family: Sarabun, 'Noto Sans Thai', sans-serif; background: transparent; color: #16140F; font-size: 16px; font-weight: 700; min-height: 48px; padding: 0 16px; border: 2px solid #16140F; border-radius: 0; cursor: pointer; } .ds-btn-outlined:hover { background: #E3DBCA; } .ds-btn-outlined:focus-visible { outline: 3px solid #F2C200; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "Raised paper, square, 2 dp ink border; 3 dp on focus.",
+      "html": "<label class=\"ds-field\"><span>Note</span><input placeholder=\"What happened?\"></label>",
+      "css": ".ds-field { font-family: Sarabun, 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; gap: 4px; color: #4A463D; font-size: 16px; } .ds-field input { font-family: Sarabun, 'Noto Sans Thai', sans-serif; font-size: 16px; color: #16140F; background: #FBF8F1; border: 2px solid #16140F; border-radius: 0; padding: 16px; } .ds-field input:focus-visible { outline: none; border-width: 3px; padding: 15px; }"
+    },
+    {
+      "name": "Notice Tile",
+      "kind": "card",
+      "refersTo": "notice-tile",
+      "description": "Framed block that is a button; selected turns into an ink block.",
+      "html": "<div style=\"display:flex;gap:8px\"><button class=\"ds-tile\"><b>1669</b><br>Medical</button><button class=\"ds-tile ds-tile-selected\"><b>191</b><br>Police</button></div>",
+      "css": ".ds-tile { font-family: Sarabun, 'Noto Sans Thai', sans-serif; text-align: left; background: #FBF8F1; color: #16140F; border: 2px solid #16140F; border-radius: 0; padding: 16px; min-height: 48px; min-width: 96px; font-size: 16px; cursor: pointer; } .ds-tile b { font-size: 22px; } .ds-tile:hover { background: #E3DBCA; } .ds-tile:focus-visible { outline: 3px solid #F2C200; outline-offset: 2px; } .ds-tile-selected, .ds-tile-selected:hover { background: #16140F; color: #F2EDE2; }"
+    },
+    {
+      "name": "Level Notice with Meter",
+      "kind": "custom",
+      "refersTo": "level-field-safe",
+      "description": "Signature: bulletin strip, tier field with icon + word + advice, the 4-step level meter.",
+      "html": "<div class=\"ds-level\"><div class=\"ds-level-strip\"><span>Your last known area</span><span>08:18</span></div><div class=\"ds-level-field\"><svg width=\"48\" height=\"48\" viewBox=\"0 0 24 24\" fill=\"#FFFFFF\"><path d=\"M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 15-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z\"/></svg><div><small>Level 1 of 4</small><strong>SAFE</strong><p>No action needed yet.</p></div></div><div class=\"ds-level-meter\"><i class=\"on cur\"></i><i></i><i></i><i></i></div></div>",
+      "css": ".ds-level { font-family: Sarabun, 'Noto Sans Thai', sans-serif; border: 3px solid #16140F; background: #FBF8F1; color: #16140F; max-width: 360px; } .ds-level-strip { display: flex; justify-content: space-between; background: #16140F; color: #F2EDE2; font-size: 14px; font-weight: 700; padding: 4px 16px; } .ds-level-field { display: flex; gap: 16px; background: #1D6B3A; color: #FFFFFF; padding: 16px; } .ds-level-field small { display: block; font-size: 14px; font-weight: 700; } .ds-level-field strong { display: block; font-size: 36px; line-height: 1.2; } .ds-level-field p { margin: 0; font-size: 18px; font-weight: 500; } .ds-level-meter { display: flex; gap: 8px; padding: 16px; border-top: 3px solid #16140F; } .ds-level-meter i { flex: 1; height: 20px; border: 1px solid #16140F; background: #FBF8F1; } .ds-level-meter i.on { background: #1D6B3A; } .ds-level-meter i.cur { border-width: 3px; }"
+    },
+    {
+      "name": "SOS Block",
+      "kind": "custom",
+      "refersTo": "sos-block",
+      "description": "Full-width framed red block; press and hold 1.5 s while a white bar fills its foot.",
+      "html": "<button class=\"ds-sos\"><span class=\"ds-sos-row\"><span class=\"ds-sos-word\">SOS</span><span>Hold 1.5 seconds to share your location</span></span><span class=\"ds-sos-bar\"></span></button>",
+      "css": ".ds-sos { font-family: Sarabun, 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; width: 100%; max-width: 390px; height: 112px; padding: 0; background: #B3121C; color: #FFFFFF; border: 3px solid #16140F; border-radius: 0; cursor: pointer; text-align: left; } .ds-sos-row { flex: 1; display: flex; align-items: center; gap: 16px; padding: 0 16px; font-size: 16px; font-weight: 700; } .ds-sos-word { font-size: 48px; line-height: 1.1; } .ds-sos-bar { height: 10px; width: 0; background: #FFFFFF; transition: width 0.2s; } .ds-sos:active .ds-sos-bar { width: 100%; transition: width 1.5s linear; } .ds-sos:focus-visible { outline: 3px solid #F2C200; outline-offset: 2px; }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "nav-bar",
+      "description": "Ground-coloured bar under a 3 dp ink rule; selected tab is a square ink indicator.",
+      "html": "<nav class=\"ds-nav\"><a class=\"sel\"><span class=\"ds-ind\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z\"/></svg></span>Home</a><a><span class=\"ds-ind\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M15 5.1 9 3 3 5v16l6-2.1 6 2.1 6-2V3l-6 2.1zM15 19l-6-2.1V5l6 2.1V19z\"/></svg></span>Map</a><a><span class=\"ds-ind\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M3 10h11v2H3zm0-4h11v2H3zm0 8h7v2H3zm17.6-2.6-5.6 5.6-2.1-2.1-1.4 1.4 3.5 3.5 7-7z\"/></svg></span>Report</a><a><span class=\"ds-ind\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M21 5c-1.1-.4-2.3-.5-3.5-.5-1.9 0-4 .4-5.5 1.5-1.5-1.1-3.6-1.5-5.5-1.5S2.5 4.9 1 6v14.6c1.5-1.1 3.6-1.5 5.5-1.5s4 .4 5.5 1.5c1.5-1.1 3.6-1.5 5.5-1.5 1.2 0 2.4.1 3.5.5z\"/></svg></span>Guide</a></nav>",
+      "css": ".ds-nav { font-family: Sarabun, 'Noto Sans Thai', sans-serif; display: flex; background: #F2EDE2; border-top: 3px solid #16140F; height: 76px; max-width: 390px; } .ds-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 500; color: #4A463D; cursor: pointer; } .ds-ind { display: flex; align-items: center; justify-content: center; width: 64px; height: 32px; color: #16140F; } .ds-nav a.sel { color: #16140F; font-weight: 700; } .ds-nav a.sel .ds-ind { background: #16140F; color: #F2EDE2; } .ds-nav a:hover .ds-ind { background: #E3DBCA; } .ds-nav a.sel:hover .ds-ind { background: #16140F; } .ds-nav a:focus-visible { outline: 3px solid #F2C200; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Banner (offline)",
+      "kind": "custom",
+      "refersTo": "notice-frame",
+      "description": "Calm offline notice: quiet tint, hairline frame, cloud-off icon, optional action.",
+      "html": "<div class=\"ds-banner\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"#16140F\"><path d=\"M19.4 10A7.5 7.5 0 0 0 6 7.2L4.3 5.5 3 6.8l2.1 2.1A5 5 0 0 0 6 19h11.7l2 2 1.3-1.3L4.3 3 19.4 10zM8 17a3 3 0 0 1-.3-6l7.9 7.9V17H8z\"/></svg><div><p>Cannot reach the sensors. No live data yet.</p><button>Try again</button></div></div>",
+      "css": ".ds-banner { font-family: Sarabun, 'Noto Sans Thai', sans-serif; display: flex; gap: 16px; align-items: flex-start; background: #E6E0D2; border: 2px solid #BDB4A1; padding: 16px; color: #16140F; font-size: 16px; max-width: 360px; } .ds-banner p { margin: 0; } .ds-banner button { font-family: Sarabun, 'Noto Sans Thai', sans-serif; background: none; border: none; padding: 0; min-height: 48px; font-size: 16px; font-weight: 700; color: #16140F; text-decoration: underline; text-decoration-thickness: 2px; cursor: pointer; } .ds-banner button:focus-visible { outline: 3px solid #F2C200; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Posted Public Notice",
+    "overview": "The app is a public notice pinned to a board: square blocks framed in ink, ruled into sections, set in heavy Thai type. The level is a solid field of its tier color with its word and advice on it, and the same 4-step segmented scale is reused for every gauge. It deliberately is not soft rounded cards, pastel banners and a round red hero button.\n\nThere are two boards and they follow the phone's setting (`ThemeMode.system`). Day: newsprint paper ground, ink-black 2 dp frames and rules. Night: the same board in charcoal with paper-coloured frames and text. Tier fields and the SOS red are the same on both boards; only the tier colours used as text on the board change. Selection anywhere is an ink block with ground-coloured text.\n\nThe scene it is built for: a frightened resident, one hand, often at night or in rain, low brightness, weak or no signal, who must find the level and the SOS in two seconds.",
+    "keyCharacteristics": [
+      "Square corners everywhere; frames and rules instead of shadows.",
+      "One solid field per alert tier, always with icon and word.",
+      "Sarabun 700 for headings, values and labels; 400 for body.",
+      "The segmented level meter is the signature, reused for levels and measured values.",
+      "SOS is a full-width framed red block pinned above the tab bar, press and hold to confirm.",
+      "Day and night boards, both contrast-tested."
+    ],
+    "rules": [
+      {
+        "name": "The Ink-Is-The-Accent Rule",
+        "body": "There is no brand colour. Primary actions, selected tabs, selected tiles and tags are ink blocks with ground-coloured text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Colour-Means-State Rule",
+        "body": "Green, yellow, orange and red appear only for an alert tier, SOS, over-limit or the first-aid call button; the one exception is the yellow text-selection highlighter. The base map's own colours are not UI. A new colour needs a state it explains.",
+        "section": "colors"
+      },
+      {
+        "name": "The Calm Offline Rule",
+        "body": "Offline and \"no data\" use the quiet offlineBg tint with a hairline frame and a cloud or sensor-off icon. Never red.",
+        "section": "colors"
+      },
+      {
+        "name": "The 16 sp Floor Rule",
+        "body": "Body and caption text is 16 sp or more. Only labels (nav, tags, meter steps, map credit) go to 14 sp, and always at 500 or 700.",
+        "section": "typography"
+      },
+      {
+        "name": "The Even Leading Rule",
+        "body": "Never build a `TextStyle` by hand without `leadingDistribution.even`; go through the theme's text styles and `copyWith`.",
+        "section": "typography"
+      },
+      {
+        "name": "The Shrink-Not-Break Rule",
+        "body": "A Thai word in a narrow cell (meter steps) scales down with `FittedBox` rather than breaking mid-syllable.",
+        "section": "typography"
+      },
+      {
+        "name": "The Frames-Not-Shadows Rule",
+        "body": "A block is separated from the board by its ink frame. Do not add `BoxShadow` or elevation to anything that is not an overlay.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** give every state icon + text + colour: SAFE check circle, WATCH eye, WARNING triangle, DANGER octagon, offline cloud-off, no data sensor-off.",
+      "**Do** read colours through `context.tokens` and sizes, spacing, strokes and durations from `AppSpace`, `AppStroke`, `AppSize`, `AppIconSize` and `AppMotion`. Add a token before adding a literal.",
+      "**Do** make every control at least 48 dp (`AppSize.tapTarget`) with a screen-reader label; primary actions 56 dp.",
+      "**Do** keep body text at 16 sp or more and build type from the theme so `leadingDistribution.even` is kept.",
+      "**Do** add every new colour pair to the day and night lists in `test/design_test.dart` (4.5:1 text, 3:1 UI).",
+      "**Do** reuse `LevelMeter` / `SegmentedGauge` for any new gauge, and `NoticeFrame` / `NoticeTile` for any new block.",
+      "**Do** pass durations through `context.motion()`.",
+      "**Do** say what is demo, stale or not connected, in the block itself.",
+      "**Do** use the packages already in `pubspec.yaml`; no new packages."
+    ],
+    "donts": [
+      "**Don't** round corners, add shadows or gradients, or use pastel banners: blocks are square and framed.",
+      "**Don't** introduce a brand accent; ink is the accent.",
+      "**Don't** use red, orange, yellow or green in the UI for anything but an alert tier, SOS, over-limit, the first-aid call button or the selection highlighter, and never red for offline.",
+      "**Don't** let a short tap send SOS; it stays press and hold.",
+      "**Don't** reword safety, first-aid or disclaimer text: that wording belongs to the user.",
+      "**Don't** put raw hex outside `lib/theme/app_palette.dart`."
+    ]
+  }
+}
